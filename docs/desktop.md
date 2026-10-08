@@ -21,7 +21,7 @@ This produces `dist/NexusIDE.app` and `dist/NexusIDE-0.2.0.dmg`. By default the 
 
 After linking the CLI, run `nexus desktop` from another initialized project to open that project's workspace. Build the host again after changing `desktop/macos/NexusDesktop.swift`. The compiled executable lives at `dist/NexusIDE-host`.
 
-The window provides the dashboard's agents, task activity, approvals, file editor, memory, skills, history and connections. The terminal wrapper remains available through `nexus terminal`; an embedded desktop terminal is not implemented yet.
+The window provides the dashboard's agents, task activity, approvals, file editor, memory, skills, history, connections and an explicitly started embedded PTY. The terminal is authenticated through the loopback session, bounds retained output, stops with the app, and does not send output to models. It runs under your account and is not a sandbox; `nexus terminal` remains available in Terminal.app.
 
 Closing the window or choosing **Quit NexusIDE** closes its server and cancels active jobs and pending approvals. Save edits first. Run records remain in the project's `.nexus` directory. The launcher also handles Ctrl-C and SIGTERM.
 
@@ -37,6 +37,6 @@ The host uses Apple's [WKNavigationDelegate](https://developer.apple.com/documen
 
 ## Verification and limits
 
-`node scripts/verify-desktop.js` checks URL validation, native process launch, dashboard HTTP authentication and shutdown in a temporary workspace. It records `.nexus/verification/desktop.json`. The current receipt does **not** verify visual layout or interaction.
+`node scripts/verify-desktop.js` checks URL validation, native process launch, dashboard HTTP authentication and shutdown in a temporary workspace. Native visual checks also covered workspace rendering, navigation and an embedded terminal command in the packaged app.
 
-This is a source-built macOS shell. A standalone `.app` containing a runtime, code signing/notarization, an installer, automatic updates, and Windows/Linux hosts are still outstanding. `nexus serve` remains the browser interface on supported Node platforms.
+The build produces a standalone app wrapper and DMG, but still requires the local Node runtime. Developer ID signing/notarization, automatic updates, bundled Node and Windows/Linux hosts remain outstanding. `nexus serve` remains the browser interface on supported Node platforms.

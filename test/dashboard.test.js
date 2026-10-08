@@ -104,3 +104,21 @@ test('semantic dashboard endpoints enforce authentication and project-only retri
   assert.equal(result.matches.length, 1);
   assert.equal(result.matches[0].text, 'Project note');
 });
+
+test('dashboard terminal is authenticated, bounded, interactive and explicitly stopped', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'nexus-terminal-api-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const app = await startServer({ root, port: 0 }); t.after(() => app.close());
+  const origin = new URL(app.url).origin, headers = { authorization: `Bearer ${app.token}`, 'content-type': 'application/json' };
+  assert.equal((await fetch(`${origin}/api/terminal/start`, { method: 'POST' })).status, 401);
+  assert.equal((await fetch(`${origin}/api/terminal/start`, { method: 'POST', headers, body: '{}' })).status, 201);
+  assert.equal((await fetch(`${origin}/api/terminal/start`, { method: 'POST', headers, body: '{}' })).status, 409);
+  const input = await fetch(`${origin}/api/terminal/input`, { method: 'POST', headers, body: JSON.stringify({ input: 'printf NEXUS_EMBEDDED_TERMINAL_OK\\n\n' }) });
+  assert.equal(input.status, 200);
+  let output = '';
+  for (let i = 0; i < 100 && !output.includes('NEXUS_EMBEDDED_TERMINAL_OK'); i++) { await new Promise(resolve => setTimeout(resolve, 10)); output += (await (await fetch(`${origin}/api/terminal/output?cursor=0`, { headers })).json()).output; }
+  assert.match(output, /NEXUS_EMBEDDED_TERMINAL_OK/);
+  assert.equal((await fetch(`${origin}/api/terminal/input`, { method: 'POST', headers, body: JSON.stringify({ input: 'x'.repeat(10001) }) })).status, 400);
+  assert.equal((await fetch(`${origin}/api/terminal/stop`, { method: 'POST', headers, body: '{}' })).status, 200);
+  assert.equal((await (await fetch(`${origin}/api/terminal/output`, { headers })).json()).running, false);
+});

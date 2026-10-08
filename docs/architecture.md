@@ -31,7 +31,7 @@ flowchart TD
 
 | Layer | Working implementation | Boundaries |
 |---|---|---|
-| Interfaces | CLI; user PTY; macOS WebKit shell; authenticated local dashboard with task activity, approvals, agent editor and project file editor; ACP bridge with selectable agents/modes and cancellation | The browser dashboard passed desktop, 390 px mobile, 768 px tablet and task-planning checks in Chrome. VS Code activation and terminal initialization passed a real host check; interactive agent selection is pending. Zed tasks are not yet verified in Zed. ACP has protocol tests but has not been exercised in Zed. The macOS native shell has launch/authentication/shutdown checks and reproducible app/DMG packaging with ad-hoc signing; native-shell visual validation, embedded terminal, Developer ID signing and notarization remain pending. |
+| Interfaces | CLI; user PTY; packaged macOS WebKit app; authenticated local dashboard with task activity, approvals, agent editor, project file editor and embedded PTY; ACP bridge with selectable agents/modes and cancellation | The browser dashboard passed desktop, 390 px mobile, 768 px tablet and task-planning checks in Chrome. VS Code activation and terminal initialization passed a real host check; interactive agent selection is pending. Zed 1.23.2 launched the custom ACP process and completed a persisted demo prompt. The macOS app passed native visual workspace/navigation and embedded-terminal checks plus reproducible app/DMG packaging with ad-hoc signing; Developer ID signing and notarization remain pending. |
 | Agent runtime | Persistent definitions, explicit read/write/execute permissions, native JSON and foreign Markdown imports, skill resources and provenance, scoped memory | Imported vendor hooks and runtime-specific behavior are not emulated. |
 | Orchestration | Model-assisted plan creation, role routing, sequential/parallel DAG stages, approval gates, structured report handoffs, bounded context, cancellation | Planner output must validate. Isolated stage worktrees exchange reports, not automatically merged files. No autonomous recursive delegation. |
 | Tools and execution | File tools, bounded code search, protected Git diff/status, approved commands, user PTY, Docker command adapter, MCP transports, application profiles | Docker boundaries verified with a pinned local image in a synthetic workspace. Browser/database/codegraph capabilities depend on explicitly connected MCP services. |
@@ -55,10 +55,10 @@ After Ollama was reinstalled, `gpt-oss:20b` again completed the live synthetic t
 
 ## Remaining work toward the full product
 
-1. Validate selected cloud models, exercise the ACP bridge in Zed, and complete interactive VS Code launcher checks.
+1. Validate selected cloud models and manually check the VS Code dashboard-launch flow. VS Code's Run Agent command and Zed's ACP bridge have completed real host-level demo prompts with persisted history.
 2. Extend live provider and container checks to real development tasks and additional supported models.
 3. Validate browser services and connect real research projects. Semantic note retrieval and codebase-memory-mcp now have live synthetic checks; extend their scope beyond notes and source-only indexing.
 4. Complete separate TradingAgents/OpenMontage environments and end-to-end hobby workflows once their provider/data/media setup is selected.
-5. Evaluate a larger vector/database backend and finish embedded-terminal support. Bounded local code/document retrieval and macOS app/DMG packaging are implemented. Reviewed fast-forward merges and explicit run/workflow crash-status recovery are implemented and tested. Stale writer locks can be inspected and cleared with `nexus recover` after the owning process is confirmed absent.
+5. Evaluate a larger vector/database backend and richer terminal emulation. Bounded local code/document retrieval, an authenticated embedded PTY, and macOS app/DMG packaging are implemented. Reviewed fast-forward merges and explicit run/workflow crash-status recovery are implemented and tested. Stale writer locks can be inspected and cleared with `nexus recover` after the owning process is confirmed absent.
 
 These remaining items are not represented as completed features.

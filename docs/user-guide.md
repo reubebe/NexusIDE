@@ -172,7 +172,7 @@ For an unfinished run whose recorded process has exited, use `npm start -- recov
 
 ## Current limits
 
-The VS Code extension passed activation and terminal initialization checks inside VS Code 1.127.0; interactive command flows remain to be checked. Zed task/ACP examples have protocol tests but have not been verified inside Zed. Docker is optional; its configured restrictions have now passed a live synthetic check on this machine. The local Ollama model has passed a live tool-use check. Additional provider APIs, MCP servers, browser automation, trading runtime, and video tooling require separate setup. See [architecture status](architecture.md) and [integration review](integrations.md) for what has actually been exercised.
+The VS Code extension passed activation, terminal initialization and Run Agent checks inside VS Code 1.127.0 with persisted demo history. Zed 1.23.2 launched the NexusIDE ACP process and completed a demo prompt with persisted history. Docker is optional; its configured restrictions have now passed a live synthetic check on this machine. The local Ollama model has passed a live tool-use check. Additional provider APIs, MCP servers, browser automation, trading runtime, and video tooling require separate setup. See [architecture status](architecture.md) and [integration review](integrations.md) for what has actually been exercised.
 
 ## Codebase navigation
 

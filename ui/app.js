@@ -43,7 +43,7 @@ const node = (tag, text, className) => { const n = document.createElement(tag); 
 const action = fn => async event => { event?.preventDefault(); try { $('notice').textContent = ''; await fn(); } catch (e) { $('notice').textContent = e.message; } };
 indexButton.onclick = action(async () => { indexButton.disabled = true; try { const result = await api('memory/index', 'POST', {}); searchResults.textContent = `Indexed ${result.indexed} notes with ${result.model}.`; } finally { indexButton.disabled = false; } });
 searchButton.onclick = action(async () => { const result = await api('memory/search', 'POST', { query: searchInput.value }); searchResults.textContent = result.matches.map(m => m.text).join('\n\n') || 'No current indexed project notes.'; if (result.stale) searchResults.textContent += `\n${result.stale} notes need reindexing.`; });
-const titles = { workspace: 'Tasks', files: 'Project files', agents: 'Agents', history: 'Run library', memory: 'Memory', settings: 'Connections' };
+const titles = { workspace: 'Tasks', files: 'Project files', agents: 'Agents', history: 'Run library', memory: 'Memory', settings: 'Connections', terminal: 'Terminal' };
 const filesButton = node('button', 'Project files'); filesButton.dataset.tab = 'files'; document.querySelector('nav').append(filesButton);
 for (const button of document.querySelectorAll('[data-tab]')) button.onclick = () => {
   for (const section of document.querySelectorAll('.tab')) section.hidden = section.id !== button.dataset.tab;
@@ -51,6 +51,19 @@ for (const button of document.querySelectorAll('[data-tab]')) button.onclick = (
   $('page-title').textContent = titles[button.dataset.tab];
   if (button.dataset.tab === 'files') action(() => loadFiles())();
 };
+let terminalCursor = 0, terminalTimer;
+const cleanTerminalOutput = value => value.replace(/[\u001b\u009b][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d\/#&.:=?%@~_]+)*)?\u0007)|(?:(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))/g, '');
+async function pollTerminal() {
+  const result = await api(`terminal/output?cursor=${terminalCursor}`);
+  if (result.output) { const output = $('terminal-output'), clean = cleanTerminalOutput(result.output); output.textContent = output.textContent === 'Terminal is stopped.' ? clean : output.textContent + clean; output.scrollTop = output.scrollHeight; }
+  terminalCursor = result.cursor;
+  $('terminal-start').disabled = result.running; $('terminal-stop').disabled = !result.running; $('terminal-input').disabled = !result.running;
+  if (result.running) terminalTimer = setTimeout(() => action(pollTerminal)(), 300);
+}
+$('terminal-start').onclick = action(async () => { await api('terminal/start', 'POST', {}); terminalCursor = 0; $('terminal-output').textContent = ''; clearTimeout(terminalTimer); await pollTerminal(); });
+$('terminal-stop').onclick = action(async () => { await api('terminal/stop', 'POST', {}); clearTimeout(terminalTimer); $('terminal-output').textContent += '\n[terminal stopped]'; await pollTerminal(); });
+$('terminal-form').onsubmit = action(async () => { const input = $('terminal-input'); await api('terminal/input', 'POST', { input: input.value + '\n' }); input.value = ''; });
+pollTerminal().catch(() => {});
 function render() {
   $('project-path').textContent = state.root;
   $('stats').replaceChildren(...[[state.agents.length, 'AVAILABLE AGENTS'], [state.runs.length, 'RUN RECORDS'], [state.skills.length, 'INSTALLED SKILLS']].map(([count, label]) => { const n = node('div', undefined, 'stat'); n.append(node('strong', count), node('span', label)); return n; }));

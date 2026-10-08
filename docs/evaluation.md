@@ -43,10 +43,10 @@ The Chrome dashboard check covered desktop navigation, file edits, approval decl
 ## Still required
 
 - Responsive dashboard layouts and task planning passed Chrome checks; broader browser and assistive-technology coverage remains.
-- Zed host validation and interactive VS Code run-agent/dashboard flows.
+- Manual VS Code dashboard-launch flow. VS Code 1.127.0 completed the extension's Run Agent command through the real CLI with persisted demo history; Zed 1.23.2 launched the custom NexusIDE ACP process and completed a demo prompt with persisted history.
 - Complete real research and movie/trading workflows with selected external runtimes and data. Installed instruction packs alone do not prove these integrations.
 - Broader code/document retrieval coverage. Native semantic note indexing and one code graph backend are implemented and live-verified within the documented scope.
-- Desktop visual validation, embedded terminal, Developer ID signing/notarization and additional platforms. A standalone macOS app bundle and DMG are now produced with a verified ad-hoc local signature.
+- Developer ID signing/notarization and additional platforms. The packaged macOS app passed native visual workspace/navigation checks; its authenticated embedded PTY executed and displayed a local command, and the app bundle/DMG use a verified ad-hoc local signature.
 - Broader live model checks, platform coverage and adversarial review of external dependencies.
 
 Repeatable live-check scripts are `scripts/verify-local-model.js`, `scripts/verify-sandbox.js`, `scripts/verify-vscode.js`, `scripts/verify-semantic-memory.js`, and `scripts/verify-codegraph.js`. They use synthetic workspaces and store local receipts; inspect each receipt's scope and timestamp before making compatibility claims. The default `doctor` command does not itself perform live model or MCP calls.

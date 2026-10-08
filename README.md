@@ -83,7 +83,7 @@ nexus terminal
 
 Agent commands require `permissions.execute: true`, the run option, and action approval. The command executor uses executable/argument arrays, a 60-second timeout, 100 KB combined output cap, and cancellation. It does not interpolate shell strings. An explicitly approved shell or interpreter can still execute arbitrary code.
 
-`nexus terminal` is a user-operated PTY shell. Its commands run directly under your account; it is not an agent sandbox and its output is not silently fed to a model.
+`nexus terminal` is a user-operated PTY shell. The authenticated dashboard and packaged macOS app also expose an explicitly started local shell under **Terminal**. Commands run directly under your account; this is not an agent sandbox and output is not silently fed to a model.
 
 For Docker execution, add `--sandbox-image repository@sha256:DIGEST` to an agent run. The image must already exist locally. Network is disabled, root filesystem is read-only, capabilities are dropped, and CPU, memory and process counts are bounded. The workspace is writable. Keep credentials and `.nexus` outside a sandbox workspace by using a separate worktree. Docker is required; there is no fallback to host execution when Docker fails.
 
@@ -141,7 +141,7 @@ For optional encrypted secrets, set `NEXUS_VAULT_PASSWORD` (at least 12 characte
 
 ## Editors
 
-The [VS Code extension](extensions/vscode) launches the same CLI in an integrated terminal and requires workspace trust. Set its `nexuside.cliPath` user setting to this installation's absolute `src/cli.js` path. Its activation, command registration and real CLI initialization were verified inside VS Code 1.127.0 using an isolated test workspace. Interactive agent selection and dashboard launch still need user-flow checks.
+The [VS Code extension](extensions/vscode) launches the same CLI in an integrated terminal and requires workspace trust. Set its `nexuside.cliPath` user setting to this installation's absolute `src/cli.js` path. Activation, command registration, real CLI initialization, the Run Agent command and persisted demo history were verified inside VS Code 1.127.0 using an isolated test workspace. Dashboard launch still needs a manual user-flow check.
 
 [Zed tasks](integrations/zed/tasks.json) launch the CLI/dashboard/terminal after `npm link`. Add these task entries to your project's existing `.zed/tasks.json`; preserve existing entries. NexusIDE also provides a native Agent Client Protocol (ACP) bridge: configure the absolute Node and `src/cli.js` paths from [the Zed agent settings example](integrations/zed/agent-settings.json) in Zed's `settings.json`. The bridge exposes project agents as selectable modes and uses NexusIDE's shared runtime and approvals. It is protocol-tested, but has not yet been exercised inside Zed itself. Editor-provided MCP servers and extra-directory grants are deliberately not accepted; configure approved NexusIDE MCP access in the project.
 

@@ -15,11 +15,13 @@ import { createHash } from 'node:crypto';
 import { acquireWorkspace } from './locks.js';
 import { planTask } from './planner.js';
 import { rebuildMemoryIndex, semanticRecall } from './semantic-memory.js';
+import { commandEnvironment } from './process.js';
 
 export async function startServer({ root, port = 4317 }) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid port.');
   const token = randomBytes(32).toString('hex');
   const jobs = new Map(), approvals = new Map();
+  let terminal;
   let origin, launching = false;
   async function body(req) {
     if (!req.headers['content-type']?.startsWith('application/json')) throw new Error('Expected JSON.');
@@ -79,6 +81,30 @@ export async function startServer({ root, port = 4317 }) {
       if (req.method === 'POST' && pathname === '/api/memory') return send(res, 201, await remember(root, await body(req)));
       if (req.method === 'POST' && pathname === '/api/memory/index') return send(res, 200, await rebuildMemoryIndex(root));
       if (req.method === 'POST' && pathname === '/api/memory/search') { const data = await body(req); return send(res, 200, await semanticRecall(root, data.query)); }
+      if (req.method === 'POST' && pathname === '/api/terminal/start') {
+        if (terminal) return send(res, 409, { error: 'Terminal is already running.' });
+        const pty = await import('node-pty');
+        const shell = process.platform === 'win32' ? 'powershell.exe' : process.env.SHELL || '/bin/bash';
+        const processPty = pty.spawn(shell, [], { name: 'xterm-256color', cwd: root, cols: 100, rows: 30, env: { ...commandEnvironment(), TERM: 'xterm-256color', NEXUS_WORKSPACE: root } });
+        terminal = { process: processPty, output: '', cursor: 0, exitCode: null };
+        processPty.onData(data => { if (!terminal) return; terminal.output += data; if (terminal.output.length > 200000) { const cut = terminal.output.length - 150000; terminal.output = terminal.output.slice(cut); terminal.cursor += cut; } });
+        processPty.onExit(({ exitCode }) => { if (terminal) terminal.exitCode = exitCode; });
+        return send(res, 201, { running: true });
+      }
+      if (req.method === 'POST' && pathname === '/api/terminal/input') {
+        if (!terminal || terminal.exitCode !== null) return send(res, 409, { error: 'Terminal is not running.' });
+        const data = await body(req);
+        if (typeof data.input !== 'string' || data.input.length > 10000) throw new Error('Terminal input must be under 10000 characters.');
+        terminal.process.write(data.input); return send(res, 200, { accepted: data.input.length });
+      }
+      if (req.method === 'GET' && pathname === '/api/terminal/output') {
+        if (!terminal) return send(res, 200, { running: false, output: '', cursor: 0, exitCode: null });
+        const requested = Number(url.searchParams.get('cursor') || 0), start = Math.max(terminal.cursor, Number.isSafeInteger(requested) ? requested : 0);
+        return send(res, 200, { running: terminal.exitCode === null, output: terminal.output.slice(start - terminal.cursor), cursor: terminal.cursor + terminal.output.length, exitCode: terminal.exitCode });
+      }
+      if (req.method === 'POST' && pathname === '/api/terminal/stop') {
+        if (terminal?.exitCode === null) terminal.process.kill(); terminal = undefined; return send(res, 200, { stopped: true });
+      }
       if (req.method === 'POST' && pathname === '/api/approval') {
         const data = await body(req), approval = approvals.get(data.id);
         if (!approval || typeof data.allow !== 'boolean') return send(res, 404, { error: 'Approval expired or invalid.' });
@@ -131,5 +157,5 @@ export async function startServer({ root, port = 4317 }) {
   server.headersTimeout = 10000;
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
   origin = `http://127.0.0.1:${server.address().port}`;
-  return { server, token, url: `${origin}/#${token}`, async close() { for (const job of jobs.values()) job.controller.abort(); for (const approval of approvals.values()) approval.resolve(false); await new Promise(resolve => server.close(resolve)); } };
+  return { server, token, url: `${origin}/#${token}`, async close() { terminal?.process.kill(); for (const job of jobs.values()) job.controller.abort(); for (const approval of approvals.values()) approval.resolve(false); await new Promise(resolve => server.close(resolve)); } };
 }

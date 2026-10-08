@@ -22,8 +22,22 @@ exports.run = async () => {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     assert.equal(agent?.name, 'architect', 'Initialize command must run the real CLI in the terminal.');
+    await vscode.commands.executeCommand('nexuside.runAgent', { agent: 'architect', task: 'Reply with the synthetic VS Code host verification.', demo: true });
+    const runs = path.join(workspace, '.nexus', 'runs');
+    let completed;
+    for (let i = 0; i < 200; i++) {
+      try {
+        for (const name of await fs.readdir(runs)) {
+          const run = JSON.parse(await fs.readFile(path.join(runs, name), 'utf8'));
+          if (run.status === 'completed' && run.messages?.some(message => message.content?.includes('synthetic VS Code host verification'))) completed = run;
+        }
+        if (completed) break;
+      } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.ok(completed, 'Run Agent command must complete a real CLI demo run.');
     report.verified = true;
-    report.checks = ['extension-activation', 'commands-registered', 'trusted-workspace-initialization', 'real-cli-terminal-launch'];
+    report.checks = ['extension-activation', 'commands-registered', 'trusted-workspace-initialization', 'real-cli-terminal-launch', 'interactive-run-agent-command', 'persisted-run-history'];
   } catch (error) { report.error = error.message; throw error; }
   finally {
     for (const terminal of vscode.window.terminals) terminal.dispose();

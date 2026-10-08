@@ -24,6 +24,7 @@
         <button data-tab="history">Run library</button>
         <button data-tab="memory">Memory</button>
         <button data-tab="settings">Connections</button>
+        <button data-tab="terminal">Terminal</button>
       </nav>
       <div class="header-actions"><span class="status-pill"><i></i>Local runtime</span></div>
     </div>
@@ -108,6 +109,11 @@
     <section id="settings" class="tab" hidden>
       <header class="page-heading"><h1>Connections</h1><p>Connect model providers and approved tool services.</p></header>
       <section class="workflow-section"><header class="section-heading"><span>01</span><div><h2>Model providers & MCP</h2><p>Use environment variable names for secrets. Tool services start only after approval.</p></div></header><textarea id="config-editor" rows="24" spellcheck="false" aria-label="Connection configuration"></textarea><div class="editor-actions"><button id="save-config" class="primary">Save connections</button></div></section>
+    </section>
+
+    <section id="terminal" class="tab" hidden>
+      <header class="page-heading"><h1>Workspace terminal</h1><p>A user-operated shell in this project.<br>Its output is not sent to agents or models.</p></header>
+      <section class="workflow-section"><header class="section-heading"><span>01</span><div><h2>Local shell</h2><p>Runs directly under your account. It is not an agent sandbox.</p></div><div class="terminal-actions"><button id="terminal-start" class="secondary">Start terminal</button><button id="terminal-stop" class="text-button">Stop</button></div></header><pre id="terminal-output" aria-live="polite">Terminal is stopped.</pre><form id="terminal-form"><label>Command input<input id="terminal-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type a command and press Enter"></label><button class="primary">Send</button></form></section>
     </section>
   </main>
   <footer class="site-footer"><div class="wrap"><span>NexusIDE · A clearer way to work with agents.</span><span id="project-path"></span></div></footer>

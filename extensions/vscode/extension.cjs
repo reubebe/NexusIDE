@@ -16,18 +16,19 @@ function activate(context) {
     const terminal = vscode.window.createTerminal({ name: 'NexusIDE', cwd: folder.uri.fsPath, shellPath: settings.get('nodePath') || 'node', shellArgs: [cli, command, ...args] });
     terminal.show();
   }
-  const register = (id, fn) => context.subscriptions.push(vscode.commands.registerCommand(id, async () => { try { await fn(); } catch (e) { vscode.window.showErrorMessage(e.message); } }));
+  const register = (id, fn) => context.subscriptions.push(vscode.commands.registerCommand(id, async (...args) => { try { await fn(...args); } catch (e) { vscode.window.showErrorMessage(e.message); } }));
   register('nexuside.init', () => launch('init'));
   register('nexuside.dashboard', () => launch('serve'));
-  register('nexuside.runAgent', async () => {
+  register('nexuside.runAgent', async (request = {}) => {
     if (!vscode.workspace.isTrusted) throw new Error('Trust the workspace first.');
     const folder = await chooseFolder();
     if (!folder) return;
     const files = await fs.readdir(path.join(folder.uri.fsPath, '.nexus', 'agents'));
-    const agent = await vscode.window.showQuickPick(files.filter(f => /^[a-z][a-z0-9-]*\.json$/.test(f)).map(f => f.slice(0, -5)), { placeHolder: 'Choose a NexusIDE agent' });
+    const available = files.filter(f => /^[a-z][a-z0-9-]*\.json$/.test(f)).map(f => f.slice(0, -5));
+    const agent = request.agent && available.includes(request.agent) ? request.agent : await vscode.window.showQuickPick(available, { placeHolder: 'Choose a NexusIDE agent' });
     if (!agent) return;
-    const task = await vscode.window.showInputBox({ prompt: 'What should this agent do?', ignoreFocusOut: true });
-    if (task?.trim()) await launch('run', [agent, task], folder);
+    const task = typeof request.task === 'string' ? request.task : await vscode.window.showInputBox({ prompt: 'What should this agent do?', ignoreFocusOut: true });
+    if (task?.trim()) await launch('run', [agent, task, ...(request.demo === true ? ['--demo'] : [])], folder);
   });
 }
 module.exports = { activate };

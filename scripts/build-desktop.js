@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { runProcess } from '../src/process.js';
 
 export const desktopBinary = fileURLToPath(new URL('../dist/NexusIDE-host', import.meta.url));
+export const desktopAppBinary = fileURLToPath(new URL('../dist/NexusIDE.app/Contents/MacOS/NexusIDE', import.meta.url));
 export async function buildDesktop() {
   if (process.platform !== 'darwin') throw new Error('The native desktop host currently requires macOS. Use nexus serve on other platforms.');
   await mkdir(fileURLToPath(new URL('../dist/', import.meta.url)), { recursive: true });
