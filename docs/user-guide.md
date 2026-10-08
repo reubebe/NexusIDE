@@ -123,7 +123,7 @@ npm start -- team run trading-research "Compare these supplied strategy hypothes
 npm start -- team run movie-studio "Create a production plan for a short film"
 ```
 
-Research Harness and the included research skills support evidence-oriented work. Trading and film teams can plan and analyze supplied materials. Connecting the separate TradingAgents or OpenMontage applications requires installing and configuring those runtimes; see [hobby application profiles](../integrations/hobbies.example.json). NexusIDE does not place trades or render videos by itself.
+Research Harness and the included research skills support evidence-oriented work. Install a managed hobby runtime with `nexus integration install tradingagents` or `nexus integration install openmontage`, then connect it with `nexus integration configure NAME`. Check both with `nexus integration status`. External launches require `--allow-commands` and interactive approval. NexusIDE does not place trades; OpenMontage rendering remains subject to its own provider, media, cost, and licensing requirements.
 
 ## 8. Configure MCP tools
 

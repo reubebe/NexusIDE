@@ -5,15 +5,15 @@
   "mcp": {},
   "applications": {
     "tradingagents": {
-      "command": "/ABSOLUTE/PATH/TradingAgents/.venv/bin/tradingagents",
-      "args": [],
+      "command": "/ABSOLUTE/PATH/TO/node",
+      "args": ["/ABSOLUTE/PATH/NexUS/src/integration-runner.js", "tradingagents", "/ABSOLUTE/PATH/TradingAgents"],
       "cwd": "/ABSOLUTE/PATH/TradingAgents",
-      "envKeys": ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ALPHA_VANTAGE_API_KEY", "TRADINGAGENTS_LLM_PROVIDER", "TRADINGAGENTS_QUICK_THINK_LLM", "TRADINGAGENTS_DEEP_THINK_LLM"],
+      "envKeys": ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ALPHA_VANTAGE_API_KEY", "OLLAMA_BASE_URL", "TRADINGAGENTS_LLM_PROVIDER", "TRADINGAGENTS_QUICK_THINK_LLM", "TRADINGAGENTS_DEEP_THINK_LLM", "TRADINGAGENTS_OUTPUT_LANGUAGE", "TRADINGAGENTS_MAX_DEBATE_ROUNDS", "TRADINGAGENTS_MAX_RISK_ROUNDS", "TRADINGAGENTS_MAX_TOOL_ROUNDS"],
       "timeoutMs": 1800000
     },
     "openmontage": {
-      "command": "/ABSOLUTE/PATH/OpenMontage/.venv/bin/python",
-      "args": [],
+      "command": "/ABSOLUTE/PATH/TO/node",
+      "args": ["/ABSOLUTE/PATH/NexUS/src/integration-runner.js", "openmontage", "/ABSOLUTE/PATH/OpenMontage"],
       "cwd": "/ABSOLUTE/PATH/OpenMontage",
       "envKeys": ["FAL_KEY", "PEXELS_API_KEY", "PIXABAY_API_KEY"],
       "timeoutMs": 3600000

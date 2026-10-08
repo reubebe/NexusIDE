@@ -111,7 +111,7 @@ Custom teams are JSON DAGs with `id`, `agent`, `task`, optional `dependsOn`, and
 - `trading-research`: market researcher → strategy analyst → risk reviewer.
 - `movie-studio`: story developer → production planner → film editor.
 
-The teams work with supplied content and their assigned tools. [Hobby application profiles](integrations/hobbies.example.json) connect separately installed TradingAgents and OpenMontage runtimes. Merge the profiles you need into your project configuration, set actual paths, assign the application name in the agent's `applications` array, and enable execution. Each application run shows the command, directory, credential-variable names and timeout for approval. No broker/order-placement API is built into NexusIDE.
+The teams work with supplied content and their assigned tools. [Hobby application profiles](integrations/hobbies.example.json) connect TradingAgents and OpenMontage. Install and configure their isolated managed runtimes with `nexus integration install tradingagents`, `nexus integration configure tradingagents`, and the equivalent `openmontage` commands. `nexus integration status` reports checked-out revisions and executable readiness. TradingAgents is limited to research CLI flags; OpenMontage is limited to preflight, named zero-key demos, Backlot, and its simulated run. Every launch still requires agent execution permission, `--allow-commands`, and explicit approval. No brokerage/order-placement API is built into NexusIDE.
 
 ## Memory, history and credentials
 

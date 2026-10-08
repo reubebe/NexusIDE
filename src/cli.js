@@ -53,6 +53,9 @@ const help = `NexusIDE · One runtime. Any agent. Any model.
   nexus acp [--demo]                       Editor Agent Client Protocol bridge
   nexus packs install                     Install research and hobby teams
   nexus integrations                      Show integration catalog
+  nexus integration status [name]         Check optional runtime installation
+  nexus integration install <name>        Install TradingAgents or OpenMontage
+  nexus integration configure <name>      Grant a runtime to its hobby agent
   nexus doctor                            Check local setup and connections
   nexus recover [lock-key-prefix]          Inspect locks or remove a confirmed stale lock
   nexus recover activity                   Inspect unfinished runs and workflows
@@ -92,6 +95,13 @@ async function main() {
   if (command === 'acp') { const { startAcp } = await import('./acp.js'); return startAcp({ demo: options.demo, allowCommands: options['allow-commands'] }); }
   if (command === 'packs' && args[0] === 'install') { const { installPacks } = await import('./packs.js'); return print(await installPacks(root)); }
   if (command === 'integrations') return print(await readFile(new URL('../integrations/catalog.json', import.meta.url), 'utf8'));
+  if (command === 'integration') {
+    const { configureIntegration, installIntegration, integrationStatus, listIntegrationStatus } = await import('./integrations.js');
+    if (args[0] === 'status') return print(JSON.stringify(args[1] ? await integrationStatus(args[1]) : await listIntegrationStatus(), null, 2));
+    if (args[0] === 'install' && args.length === 2) return print(JSON.stringify(await installIntegration(args[1]), null, 2));
+    if (args[0] === 'configure' && args.length === 2) return print(JSON.stringify(await configureIntegration(root, args[1]), null, 2));
+    throw new Error('Use nexus integration status [name], install <name>, or configure <name>.');
+  }
   if (command === 'doctor') { const { doctor } = await import('./doctor.js'); return print(JSON.stringify(await doctor(root), null, 2)); }
   if (command === 'recover') {
     if (args[0] === 'activity' && args.length === 1) return print(JSON.stringify(await inspectActivity(root), null, 2));
