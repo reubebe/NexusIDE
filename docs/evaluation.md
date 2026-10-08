@@ -12,7 +12,7 @@ The Research Harness receipt is present and uses an older timestamp-valued `veri
 
 This directory has no `.git` history. Its name ends with a space and configured MCP paths depend on that exact absolute location. Establish version control and migrate those paths deliberately before relocating the workspace. Local `.nexus` state, including imported agents and skills, is excluded by `.gitignore` and needs a separate private backup.
 
-The Chrome dashboard check covered desktop navigation, file edits, approval decline, cancellation, an offline task and run history. Task planning and responsive viewport checks remain. The configured local provider currently returns HTTP 404 because the reachable Ollama service reports no installed models; restore that model service before a real development task. Zed host checks and interactive VS Code flows remain open.
+The Chrome dashboard check covered desktop navigation, file edits, approval decline, cancellation, an offline task and run history. Task planning and responsive viewport checks remain. After Ollama was reinstalled, `gpt-oss:20b` and `nomic-embed-text` were restored and both live verification scripts passed again on 2026-10-08. Zed host checks and interactive VS Code flows remain open.
 
 ## Verified in this build
 
@@ -51,4 +51,4 @@ The Chrome dashboard check covered desktop navigation, file edits, approval decl
 
 Repeatable live-check scripts are `scripts/verify-local-model.js`, `scripts/verify-sandbox.js`, `scripts/verify-vscode.js`, `scripts/verify-semantic-memory.js`, and `scripts/verify-codegraph.js`. They use synthetic workspaces and store local receipts; inspect each receipt's scope and timestamp before making compatibility claims. The default `doctor` command does not itself perform live model or MCP calls.
 
-During the earlier live check, Ollama 0.11.4 rejected EmbeddingGemma. Its [model requirements](https://ollama.com/library/embeddinggemma) specify Ollama 0.11.10 or later, so the saved project configuration uses `nomic-embed-text`. The Ollama service reachable during the 2026-10-08 visual check reported no installed models; the historical receipt does not prove the current service is ready. The project index contains zero notes until the user or an approved agent saves memories.
+During the earlier live check, Ollama 0.11.4 rejected EmbeddingGemma. Its [model requirements](https://ollama.com/library/embeddinggemma) specify Ollama 0.11.10 or later, so the saved project configuration uses `nomic-embed-text`. The reinstalled Ollama 0.40.1 service now has both configured models and passed fresh synthetic model/tool and semantic-memory checks on 2026-10-08. The project index contains zero notes until the user or an approved agent saves memories.
