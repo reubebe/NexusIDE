@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "providers": {},
+  "routes": {},
+  "mcp": {
+    "hyper-extract": {
+      "command": "/ABSOLUTE/PATH/hyper-extract/.venv/bin/he-mcp",
+      "args": [],
+      "tools": ["list_templates", "info", "search", "ask"],
+      "envKeys": ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY"]
+    },
+    "rea": {
+      "command": "/ABSOLUTE/PATH/TO/node",
+      "args": ["/ABSOLUTE/PATH/NexUS/src/rea-mcp-runner.js"],
+      "tools": ["open_binary", "close_binary", "binary_overview", "list_strings", "search_strings", "list_procedures", "search_procedures", "procedure_info", "procedure_pseudo_code", "procedure_assembly", "procedure_callers", "procedure_callees", "get_call_graph", "xrefs", "get_evidence_bundle"],
+      "envKeys": []
+    }
+  }
+}

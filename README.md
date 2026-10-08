@@ -53,6 +53,8 @@ nexus run architect "Plan this change" --provider claude
 
 Provider profiles reference `keyEnv` or `keySecret`, never plaintext API keys. Routes map agent names to profiles, with an optional default route. If configured, input/output prices per million tokens produce **estimates**, not provider billing totals. Actual model identifiers, credentials, pricing and service compatibility belong to your provider.
 
+Optional advanced integrations include a restricted REA reverse-engineering MCP connection, a read/query Hyper-Extract MCP connection, and the CLI-Anything discovery skill. This workspace has all three configured. REA is assigned only to `reverse-engineer`, Hyper-Extract to `literature-researcher`, and CLI-Anything to the non-executing `cli-adapter-planner`. See [the advanced configuration template](integrations/advanced.example.json) and [integration review](docs/integrations.md).
+
 MCP connections support stdio and streamable HTTP. A server is contacted only if assigned in the agent's `mcp` list and approved by you. Its configured `tools` array is an explicit allowlist; an empty list exposes no tools. Every tool call requires approval, regardless of server annotations. See [integration review](docs/integrations.md).
 
 ## Agents and skills

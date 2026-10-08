@@ -58,6 +58,16 @@ The defensive [indirect prompt injection skill](https://github.com/mukul975/anth
 
 ## Other reviewed sources
 
+### Selected advanced integrations
+
+[REA](https://github.com/morluto/rea) is installed at revision `b5c2954ad67f0280732df043d5d9702f3d202819` with a private Node 24.11 runtime because its engine requirement rejects the system Node 22.18. Nexus completed a real MCP handshake and grants only fifteen selected static/evidence tools to the `reverse-engineer` agent. Target mutation and runtime/browser capture tools are not granted. Analyze only software the user owns or is authorized to inspect.
+
+[Hyper-Extract](https://github.com/yifanfeng97/Hyper-Extract) is installed at revision `0dc002bb1029fd34b21e47602e406ef7880c8673` in an isolated Python environment. Nexus completed a real MCP handshake and called `list_templates`; only `list_templates`, `info`, `search`, and `ask` are granted to `literature-researcher`. Export and filesystem-writing MCP tools are excluded. Creating knowledge abstracts remains a deliberate CLI workflow requiring provider configuration.
+
+[CLI-Anything](https://github.com/HKUDS/CLI-Anything) was reviewed at revision `34f519533bc175d2fe287ab8316b0dd99bb9cc43`. Its `cli-hub-meta-skill` passed the bounded Nexus static scan and is assigned to a non-executing `cli-adapter-planner`. The skill may propose scoped installs, but it cannot install a hub, matrix, or application without a separately approved execution-capable workflow.
+
+DeepSeek Harness and Prime Agent duplicate the central Nexus orchestration/runtime layer and are therefore references rather than nested workers. Understand Anything duplicates the installed codegraph and project semantic index. LongCat-Video is a large GPU model and is better evaluated later as an OpenMontage provider. Capacitor remains appropriate only when a mobile shell is prioritized. Project NOMAD is a separate Docker-based offline knowledge appliance, while OpenLive is a separate voice-agent desktop product; neither belongs in the core runtime today.
+
 [Claude Plugins Community](https://github.com/anthropics/claude-plugins-community) is a marketplace mirror. A selected plugin’s Markdown agents and standard skill directories can be imported; vendor hooks, binaries and lifecycle semantics are not automatically supported.
 
 [gstack](https://github.com/garrytan/gstack) provides product, design and QA workflows. Its instructions are candidates for selected skill imports; its browser/runtime setup requires separate review. [mini-swe-agent](https://github.com/SWE-agent/mini-swe-agent) is an optional independent command worker rather than a core runtime dependency. [Awesome Harness Engineering](https://github.com/walkinglabs/awesome-harness-engineering) is a reference collection.

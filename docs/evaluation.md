@@ -26,7 +26,7 @@ The Chrome dashboard check covered desktop navigation, file edits, approval decl
 | Code graph MCP | `.nexus/verification/codegraph.json` | Pinned codebase-memory-mcp v0.11.0: synthetic indexing, function search, caller tracing and index-root containment; read-only navigator profile configured; `.nexus/verification/codegraph-project.json` also verifies a query against the real `src/` index |
 | macOS desktop shell | `.nexus/verification/desktop.json` | Native compilation, URL checks, process launch, HTTP authentication and shutdown; visual interaction unverified |
 | Browser dashboard | `.nexus/verification/dashboard-visual.json` | Chrome desktop layout, navigation, file draft protection, offline task, history, approval decline and cancellation |
-| Imported skills | `nexus skills audit` and integrity regression tests | Six installed packages match saved resources/instructions; scanner limitations and findings documented in integrations.md |
+| Imported skills | `nexus skills audit` and integrity regression tests | Seven installed packages match saved resources/instructions; scanner limitations and findings documented in integrations.md |
 | Reviewed merges | `test/worktree-merge.test.js` | Fast-forward only, explicit approval, two workspace locks, revalidation, refusal of dirty/divergent/protected changes, no push |
 | Crash record recovery | `test/recovery.test.js` | Explicit confirmation, absent local owner, unchanged record, preserved history; no tool replay |
 | User instructions | `docs/user-guide.md` | Setup, local model, tasks, teams, skill audits, merges, recovery, MCP and hobby boundaries |
@@ -44,7 +44,7 @@ The Chrome dashboard check covered desktop navigation, file edits, approval decl
 
 - Responsive dashboard layouts and task planning passed Chrome checks; broader browser and assistive-technology coverage remains.
 - Manual VS Code dashboard-launch flow. VS Code 1.127.0 completed the extension's Run Agent command through the real CLI with persisted demo history; Zed 1.23.2 launched the custom NexusIDE ACP process and completed a demo prompt with persisted history.
-- Complete real research and movie/trading workflows with selected external runtimes and data. Installed instruction packs alone do not prove these integrations.
+- Expand real domain workflows beyond the completed Research Harness evidence check, OpenMontage zero-key render, and TradingAgents local-model analysis. Provider-backed media generation and reliable structured ratings remain open.
 - Broader code/document retrieval coverage. Native semantic note indexing and one code graph backend are implemented and live-verified within the documented scope.
 - Developer ID signing/notarization and additional platforms. The packaged macOS app passed native visual workspace/navigation checks; its authenticated embedded PTY executed and displayed a local command, and the app bundle/DMG use a verified ad-hoc local signature.
 - Broader live model checks, platform coverage and adversarial review of external dependencies.

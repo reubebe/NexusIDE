@@ -7,7 +7,7 @@ import { listSkills } from './skills.js';
 import { runProcess } from './process.js';
 import { readState } from './state.js';
 
-const verificationNames = ['local-model', 'docker', 'vscode', 'desktop', 'dashboard-visual', 'semantic-memory', 'codegraph', 'codegraph-project', 'research-harness', 'research-evidence', 'tradingagents', 'openmontage'];
+const verificationNames = ['local-model', 'docker', 'vscode', 'desktop', 'dashboard-visual', 'semantic-memory', 'codegraph', 'codegraph-project', 'research-harness', 'research-evidence', 'tradingagents', 'openmontage', 'rea', 'hyper-extract'];
 export async function verificationHistory(root) {
   return (await Promise.all(verificationNames.map(async name => {
     try {

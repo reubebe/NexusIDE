@@ -18,7 +18,7 @@ export async function connectMcp(root, agent, approve, signal, workspaceRoot = r
       for (const key of server.envKeys || []) { if (typeof key !== 'string' || !/^[A-Z_][A-Z0-9_]*$/.test(key)) throw new Error('Invalid MCP environment key.'); if (process.env[key]) env[key] = process.env[key]; }
       const transport = server.transport === 'http'
         ? new StreamableHTTPClientTransport(new URL(server.url), { requestInit: { headers: server.keyEnv && process.env[server.keyEnv] ? { Authorization: `Bearer ${process.env[server.keyEnv]}` } : {}, redirect: 'error' }, fetch: (url, init) => fetch(url, { ...init, redirect: 'error' }) })
-        : new StdioClientTransport({ command: server.command, args: server.args, cwd: workspaceRoot, env, stderr: 'pipe', maxBufferSize: 1000000 });
+        : new StdioClientTransport({ command: server.command, args: server.args, cwd: workspaceRoot, env, stderr: 'pipe', maxBufferSize: 10_000_000 });
       transport.stderr?.on('data', () => {});
       const client = new Client({ name: 'nexuside', version: '0.2.0' });
       clients.push(client);

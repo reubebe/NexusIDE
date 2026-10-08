@@ -193,8 +193,16 @@
       "id": "prime-agent",
       "source": "https://github.com/PrimeIntellect-ai/prime-agent",
       "role": "Alternative provider and agent runtime",
-      "status": "reviewed-adapter-candidate",
-      "note": "Evaluate provider/auth/tool behavior before considering adapter replacement; not installed."
+      "status": "deferred-overlapping-runtime",
+      "note": "Long-running coding/research harness overlaps Nexus orchestration, tools, memory and workers. Keep as an architecture reference rather than nesting an unsandboxed autonomous harness."
+    },
+    {
+      "id": "deepseek-harness",
+      "source": "https://github.com/deepseek-ai/deepseek-harness",
+      "role": "Alternative plugin-oriented agent harness",
+      "status": "deferred-overlapping-developer-preview",
+      "revisionReviewed": "5badb15009ae1756c3afe0ae0cef1faafc290ccc",
+      "note": "The supplied deepseek-harnesslong URL does not exist; the official deepseek-harness repository does. It duplicates Nexus's runtime and is a compatibility-breaking developer preview, so it is not nested into Nexus."
     },
     {
       "id": "book-to-skill",
@@ -226,8 +234,9 @@
       "id": "rea",
       "source": "https://github.com/morluto/rea",
       "role": "Reverse engineering tools",
-      "status": "reviewed-optional-runtime",
-      "note": "Separate native analysis dependencies and explicit tool grants required; not installed."
+      "status": "managed-runtime-mcp-verified",
+      "revision": "b5c2954ad67f0280732df043d5d9702f3d202819",
+      "note": "Installed with private Node 24.11. Real MCP handshake passed; fifteen static/evidence tools are explicitly granted to reverse-engineer. Target mutation and runtime capture tools are excluded."
     },
     {
       "id": "freebuff",
@@ -258,6 +267,38 @@
       "note": "Choose one graph backend alongside codebase-memory or CodeGraph to avoid duplicate indexes."
     },
     {
+      "id": "longcat-video",
+      "source": "https://github.com/meituan-longcat/LongCat-Video",
+      "role": "Large local video-generation backend",
+      "status": "deferred-openmontage-backend-candidate",
+      "revisionReviewed": "6b3f4b8582a8bc3f20f795735f5383716c4ba794",
+      "note": "Large GPU/model runtime is not a core agent integration. Evaluate later behind OpenMontage on suitable GPU hardware rather than bundling model weights into Nexus."
+    },
+    {
+      "id": "project-nomad",
+      "source": "https://github.com/Crosstalk-Solutions/project-nomad",
+      "role": "Offline knowledge appliance",
+      "status": "deferred-separate-product",
+      "revisionReviewed": "54ee30a44902e5c252b477f8685c26ec3064ab72",
+      "note": "Docker-heavy offline knowledge server overlaps retrieval while introducing independent ports, volumes and administration. Consider a future HTTP/MCP adapter only for a separately operated deployment."
+    },
+    {
+      "id": "openlive",
+      "source": "https://github.com/katipally/openlive",
+      "role": "Voice-agent desktop application",
+      "status": "deferred-separate-product",
+      "revisionReviewed": "c9121ebe6ed8217f5b8e7b77c78cb36620c1a252",
+      "note": "Separate cross-platform voice-agent desktop product. Revisit only when Nexus has a defined voice interface contract."
+    },
+    {
+      "id": "cli-anything",
+      "source": "https://github.com/HKUDS/CLI-Anything",
+      "role": "Discovery and design of agent-native CLI adapters",
+      "status": "meta-skill-imported-non-executing",
+      "revision": "34f519533bc175d2fe287ab8316b0dd99bb9cc43",
+      "note": "cli-hub-meta-skill passed bounded static intake and is assigned to cli-adapter-planner without execute permission. No hub, matrix or generated CLI is automatically installed."
+    },
+    {
       "id": "video-summarizer-ai",
       "source": "https://github.com/Muhammad-Abdullah-Waheed/video-summarizer-ai",
       "role": "Video summarization",
@@ -268,8 +309,9 @@
       "id": "hyper-extract",
       "source": "https://github.com/yifanfeng97/Hyper-Extract",
       "role": "Knowledge extraction and graph retrieval",
-      "status": "reviewed-optional-service",
-      "note": "Potential research backend; not required by the current core runtime."
+      "status": "managed-runtime-mcp-verified",
+      "revision": "0dc002bb1029fd34b21e47602e406ef7880c8673",
+      "note": "Isolated Python MCP runtime connected and list_templates called successfully. Four read/query tools are granted to literature-researcher; export tools are excluded."
     },
     {
       "id": "openvoice",
