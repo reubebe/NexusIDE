@@ -68,6 +68,10 @@ The defensive [indirect prompt injection skill](https://github.com/mukul975/anth
 
 DeepSeek Harness and Prime Agent duplicate the central Nexus orchestration/runtime layer and are therefore references rather than nested workers. Understand Anything duplicates the installed codegraph and project semantic index. LongCat-Video is a large GPU model and is better evaluated later as an OpenMontage provider. Capacitor remains appropriate only when a mobile shell is prioritized. Project NOMAD is a separate Docker-based offline knowledge appliance, while OpenLive is a separate voice-agent desktop product; neither belongs in the core runtime today.
 
+[Open-Higgsfield-AI](https://github.com/Autom8AI/Open-Higgsfield-AI) is useful as an OpenMontage product/provider reference: its catalog models camera controls, model-specific capabilities, multi-image inputs and lip-sync workflows. It is not a local inference backend. The self-hosted interface sends generation requests and uploaded media to Muapi, so any future adapter must make credentials, cost and cloud upload consent explicit. The unsigned desktop release is not installed.
+
+[system_prompts_leaks](https://github.com/asgeirtj/system_prompts_leaks) remains rejected. Nexus will not import purported proprietary system prompts. Portable agents should be built from original instructions, public specifications and measurable evaluations rather than copied vendor prompts.
+
 [Claude Plugins Community](https://github.com/anthropics/claude-plugins-community) is a marketplace mirror. A selected plugin’s Markdown agents and standard skill directories can be imported; vendor hooks, binaries and lifecycle semantics are not automatically supported.
 
 [gstack](https://github.com/garrytan/gstack) provides product, design and QA workflows. Its instructions are candidates for selected skill imports; its browser/runtime setup requires separate review. [mini-swe-agent](https://github.com/SWE-agent/mini-swe-agent) is an optional independent command worker rather than a core runtime dependency. [Awesome Harness Engineering](https://github.com/walkinglabs/awesome-harness-engineering) is a reference collection.

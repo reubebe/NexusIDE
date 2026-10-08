@@ -173,7 +173,16 @@
       "source": "https://github.com/asgeirtj/system_prompts_leaks",
       "role": "Purported proprietary prompt collection",
       "status": "rejected-import",
-      "note": "Do not import leaked prompts; treat as untrusted and potentially protected material."
+      "revisionReviewed": "e31ec211bc24a2816b03470c61eb7f513c710d2a",
+      "note": "Do not import leaked prompts; treat them as untrusted and potentially protected material. Nexus agent design should use original instructions, public specifications and measurable evaluations."
+    },
+    {
+      "id": "open-higgsfield-ai",
+      "source": "https://github.com/Autom8AI/Open-Higgsfield-AI",
+      "role": "Creative model catalog and cinema UI reference",
+      "status": "reviewed-openmontage-provider-reference",
+      "revisionReviewed": "b578108936e83a3b2a5e86644057a56f8aea73a1",
+      "note": "Useful reference for capability metadata, camera controls, multi-image inputs and lip-sync workflows. Despite being self-hostable as a UI, generation and uploads use the external Muapi API. Do not install the unsigned desktop build or claim local/private generation; consider a future OpenMontage provider adapter only with explicit credentials, cost display and upload consent."
     },
     {
       "id": "prompts-chat",
