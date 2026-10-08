@@ -15,10 +15,12 @@ guard let input = readLine(), let url = trustedURL(input) else {
 }
 if CommandLine.arguments.contains("--check-url") { print("accepted"); exit(0) }
 
-final class Desktop: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate {
+final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate {
     let url: URL
     var window: NSWindow!
     var web: WKWebView!
+    var allowExit = false
+    var checkingClose = false
     init(url: URL) { self.url = url }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -32,6 +34,7 @@ final class Desktop: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUI
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 850),
                           styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "NexusIDE"
+        window.delegate = self
         window.minSize = NSSize(width: 760, height: 560)
         window.contentView = web
         window.center()
@@ -60,6 +63,50 @@ final class Desktop: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUI
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+
+    func confirmDiscard(_ completion: @escaping (Bool) -> Void) {
+        web.evaluateJavaScript("window.nexusHasUnsavedChanges ? window.nexusHasUnsavedChanges() : false") { value, error in
+            if error == nil && (value as? Bool) != true { completion(true); return }
+            let alert = NSAlert()
+            alert.messageText = "Close NexusIDE?"
+            alert.informativeText = "Unsaved edits may be lost. Active tasks will be cancelled."
+            alert.addButton(withTitle: "Keep working")
+            alert.addButton(withTitle: "Discard and close")
+            alert.beginSheetModal(for: self.window) { completion($0 == .alertSecondButtonReturn) }
+        }
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if allowExit { return true }
+        if checkingClose { return false }
+        checkingClose = true
+        confirmDiscard { allowed in
+            self.checkingClose = false
+            if allowed { self.allowExit = true; sender.close() }
+        }
+        return false
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if allowExit { return .terminateNow }
+        if checkingClose { return .terminateCancel }
+        checkingClose = true
+        confirmDiscard { allowed in
+            self.checkingClose = false
+            self.allowExit = allowed
+            sender.reply(toApplicationShouldTerminate: allowed)
+        }
+        return .terminateLater
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Discard changes")
+        alert.beginSheetModal(for: window) { completionHandler($0 == .alertSecondButtonReturn) }
+    }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {

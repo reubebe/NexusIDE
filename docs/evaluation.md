@@ -4,15 +4,15 @@ This evaluation checks the supplied architecture against the local implementatio
 
 ## Resumption: 2026-10-08
 
-Validation after these changes: `npm test` passes all 60 tests with no skips or failures; changed JavaScript files pass syntax checks.
+The earlier resumption suite passed 60 tests. The subsequent [comprehensive workflow audit](audit-2026-10-08.md) adds regression coverage and records current validation; the notes below also preserve historical evidence.
 
 The starting suite passed all 51 tests. Dashboard source review found that saving followed by a fresh file read could overwrite a draft typed during the save, and selecting another file discarded unsaved edits. The editor now keeps the acknowledged saved snapshot separate from the draft, uses the write response's content hash for subsequent saves, blocks overlapping file requests and switching away from a dirty file, and offers explicit reload/discard. Closing the page with unsaved file edits uses the browser's unload warning. Regression tests cover in-flight edits, duplicate requests, conflicts, failed reloads and hash acknowledgements. Chrome visual interaction checks now cover the corrected editor states.
 
 The Research Harness receipt is present and uses an older timestamp-valued `verified` field. Doctor now recognizes that specific successful historical receipt format; the previous audit's claim that the receipt was empty was incorrect. Historical receipts are still not live checks.
 
-This directory has no `.git` history. Its name ends with a space and configured MCP paths depend on that exact absolute location. Establish version control and migrate those paths deliberately before relocating the workspace. Local `.nexus` state, including imported agents and skills, is excluded by `.gitignore` and needs a separate private backup.
+This directory now has Git history and a private `reubebe/NexusIDE` remote. Its name still ends with a space, and configured MCP paths depend on that exact location. No path migration was attempted during the audit. Local `.nexus` state, including imported agents and skills, is excluded by `.gitignore` and requires a separate private backup; pushing source does not back up that state.
 
-The Chrome dashboard check covered desktop navigation, file edits, approval decline, cancellation, an offline task and run history. A repeatable Chrome DevTools check now verifies the real layout viewport at 390×844 and 768×1024, captures screenshots, and rejects horizontal overflow or a clipped primary action. The dashboard planning control also produced and displayed a validated three-stage demo workflow. After Ollama was reinstalled, `gpt-oss:20b` and `nomic-embed-text` were restored and both live verification scripts passed again on 2026-10-08. Zed host checks and interactive VS Code flows remain open.
+The Chrome dashboard checks covered navigation, edits, approval decline, cancellation, offline tasks and history. Responsive checks cover 390×844 and 768×1024. The audit additionally exercised planning, stable team selection, approval and completion. After Ollama was reinstalled, `gpt-oss:20b` and `nomic-embed-text` passed live checks, repeated during this audit. Saved VS Code and Zed host receipts cover interactive demo prompts; broader editor workflows remain unverified.
 
 ## Verified in this build
 
@@ -24,7 +24,7 @@ The Chrome dashboard check covered desktop navigation, file edits, approval decl
 | Docker isolation | `.nexus/verification/docker.json` | Existing digest-pinned PostgreSQL Alpine image; writable mounted workspace, read-only root, zero effective capabilities, no-new-privileges, no active external network/routes, outside file absent |
 | VS Code bridge | `.nexus/verification/vscode.json` | Actual VS Code 1.127.0 extension activation, command registration and CLI initialization in a terminal; isolated user settings and workspace |
 | Code graph MCP | `.nexus/verification/codegraph.json` | Pinned codebase-memory-mcp v0.11.0: synthetic indexing, function search, caller tracing and index-root containment; read-only navigator profile configured; `.nexus/verification/codegraph-project.json` also verifies a query against the real `src/` index |
-| macOS desktop shell | `.nexus/verification/desktop.json` | Native compilation, URL checks, process launch, HTTP authentication and shutdown; visual interaction unverified |
+| macOS desktop shell | `.nexus/verification/desktop.json`, `native-visual.json`, and latest audit | Compilation, launch/authentication/shutdown, native visual navigation, discard/close protection and embedded terminal; not a standalone signed distribution |
 | Browser dashboard | `.nexus/verification/dashboard-visual.json` | Chrome desktop layout, navigation, file draft protection, offline task, history, approval decline and cancellation |
 | Imported skills | `nexus skills audit` and integrity regression tests | Seven installed packages match saved resources/instructions; scanner limitations and findings documented in integrations.md |
 | Reviewed merges | `test/worktree-merge.test.js` | Fast-forward only, explicit approval, two workspace locks, revalidation, refusal of dirty/divergent/protected changes, no push |

@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { access } from 'node:fs/promises';
+import { access, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { startServer } from './server.js';
 import { commandEnvironment } from './process.js';
@@ -8,7 +8,11 @@ import { desktopBinary, desktopAppBinary } from '../scripts/build-desktop.js';
 export async function launchDesktop(root, { onReady = () => {} } = {}) {
   if (process.platform !== 'darwin') throw new Error('Native desktop currently supports macOS. Use nexus serve on other platforms.');
   let executable = desktopAppBinary;
-  try { await access(executable, constants.X_OK); }
+  try {
+    await access(executable, constants.X_OK);
+    // A source rebuild must not silently launch an older packaged host.
+    try { if ((await stat(desktopBinary)).mtimeMs > (await stat(executable)).mtimeMs) executable = desktopBinary; } catch {}
+  }
   catch {
     executable = desktopBinary;
     try { await access(executable, constants.X_OK); }

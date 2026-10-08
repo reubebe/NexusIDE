@@ -5,7 +5,7 @@ import { constants } from 'node:fs';
 import { spawn } from 'node:child_process';
 
 const [name, root, ...args] = process.argv.slice(2);
-if (!['tradingagents', 'openmontage'].includes(name) || !path.isAbsolute(root) || root.includes('\0')) throw new Error('Invalid integration invocation.');
+if (!['tradingagents', 'openmontage'].includes(name) || typeof root !== 'string' || !path.isAbsolute(root) || root.includes('\0')) throw new Error('Invalid integration invocation.');
 await access(root, constants.R_OK);
 
 let command, argv;

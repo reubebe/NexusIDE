@@ -7,7 +7,7 @@ import { listSkills } from './skills.js';
 import { runProcess } from './process.js';
 import { readState } from './state.js';
 
-const verificationNames = ['local-model', 'docker', 'vscode', 'desktop', 'dashboard-visual', 'semantic-memory', 'codegraph', 'codegraph-project', 'research-harness', 'research-evidence', 'tradingagents', 'openmontage', 'rea', 'hyper-extract'];
+const verificationNames = ['workflow-audit', 'local-model', 'development', 'docker', 'vscode', 'zed', 'desktop', 'native-visual', 'dashboard-visual', 'responsive', 'semantic-memory', 'codegraph', 'codegraph-project', 'research-harness', 'research-evidence', 'tradingagents', 'openmontage', 'rea', 'hyper-extract'];
 export async function verificationHistory(root) {
   return (await Promise.all(verificationNames.map(async name => {
     try {
@@ -32,11 +32,10 @@ export async function doctor(root) {
   const config = await loadConfig(root), agents = await listAgents(root), skills = await listSkills(root);
   const connections = [];
   for (const [name, profile] of Object.entries(config.providers)) connections.push({ name, kind: 'provider', configured: true, credentialAvailable: profile.keySecret ? Boolean(process.env.NEXUS_VAULT_PASSWORD) : profile.keyEnv ? Boolean(process.env[profile.keyEnv]) : null, liveVerified: false });
-  for (const [name, profile] of Object.entries({ ...config.mcp, ...config.applications })) {
-    const application = Object.hasOwn(config.applications || {}, name);
+  for (const { name, profile, application } of [...Object.entries(config.mcp).map(([name, profile]) => ({ name, profile, application: false })), ...Object.entries(config.applications || {}).map(([name, profile]) => ({ name, profile, application: true }))]) {
     const granted = [...(profile.envKeys || []), ...(profile.keyEnv ? [profile.keyEnv] : [])];
     connections.push({ name, kind: application ? 'application' : 'mcp', ...(profile.transport === 'http' ? { endpoint: profile.url } : { executableAvailable: await executableAvailable(profile.command) }),
-      ...(application ? { availableEnvironment: granted.filter(k => process.env[k]) } : { missingEnvironment: granted.filter(k => !process.env[k]) }), liveVerified: false });
+      availableEnvironment: granted.filter(k => process.env[k]), unavailableEnvironment: granted.filter(k => !process.env[k]), liveVerified: false });
   }
   const missingSkills = agents.flatMap(a => (a.skills || []).filter(s => !skills.some(x => x.name === s)).map(skill => ({ agent: a.name, skill })));
   let docker = 'not-installed';

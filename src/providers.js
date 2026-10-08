@@ -59,7 +59,12 @@ export function createProvider(env = process.env) {
         throw new Error(`Provider returned HTTP ${response.status}. Check your model, endpoint, credentials, and quota.`);
       }
       const data = await readProviderJson(response);
-      if (kind === 'anthropic') return { usage: { input: data.usage?.input_tokens || 0, output: data.usage?.output_tokens || 0 }, text: data.content.filter(b => b.type === 'text').map(b => b.text).join('\n'), raw: data.content, calls: data.content.filter(b => b.type === 'tool_use').map(b => ({ id: b.id, name: b.name, args: b.input })) };
+      if (kind === 'anthropic') {
+        if (['max_tokens', 'pause_turn', 'refusal'].includes(data.stop_reason)) throw new Error(`Provider did not complete the response (${data.stop_reason}). Narrow the task or adjust the provider; no incomplete tool calls were executed.`);
+        if (!Array.isArray(data.content)) throw new Error('Provider returned no message content.');
+        return { usage: { input: data.usage?.input_tokens || 0, output: data.usage?.output_tokens || 0 }, text: data.content.filter(b => b.type === 'text').map(b => b.text).join('\n'), raw: data.content, calls: data.content.filter(b => b.type === 'tool_use').map(b => ({ id: b.id, name: b.name, args: b.input })) };
+      }
+      if (['length', 'content_filter'].includes(data.choices?.[0]?.finish_reason)) throw new Error(`Provider did not complete the response (${data.choices[0].finish_reason}). Narrow the task; no incomplete tool calls were executed.`);
       const message = data.choices?.[0]?.message;
       if (!message) throw new Error('Provider returned no message.');
       return { usage: { input: data.usage?.prompt_tokens || 0, output: data.usage?.completion_tokens || 0 }, text: message.content || '', calls: (message.tool_calls || []).map(c => ({ id: c.id, name: c.function.name, args: JSON.parse(c.function.arguments) })) };

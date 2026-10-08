@@ -39,4 +39,6 @@ The host uses Apple's [WKNavigationDelegate](https://developer.apple.com/documen
 
 `node scripts/verify-desktop.js` checks URL validation, native process launch, dashboard HTTP authentication and shutdown in a temporary workspace. Native visual checks also covered workspace rendering, navigation and an embedded terminal command in the packaged app.
 
-The build produces a standalone app wrapper and DMG, but still requires the local Node runtime. Developer ID signing/notarization, automatic updates, bundled Node and Windows/Linux hosts remain outstanding. `nexus serve` remains the browser interface on supported Node platforms.
+The build produces a native host bundle and DMG, not a self-contained Finder-launchable product. The host requires its session URL on stdin from `nexus desktop`, plus the local source installation and Node runtime. A Finder entry point/project picker, Developer ID signing/notarization, automatic updates, bundled Node and Windows/Linux hosts remain outstanding. `nexus serve` remains the browser interface on supported Node platforms.
+
+The audit added native discard confirmations and protection when closing or quitting with unsaved file edits. A newer source-built host is preferred over an older packaged copy. A forced process termination can still lose unsaved browser drafts.

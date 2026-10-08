@@ -1,7 +1,8 @@
 import { createFileEditor } from './file-editor.js';
+import { renderWhenChanged } from './render-cache.js';
 const $ = id => document.getElementById(id);
 const initialToken = location.hash.slice(1);
-if (initialToken) { sessionStorage.setItem('nexus-token', initialToken); history.replaceState(null, '', '/'); }
+if (/^[a-f0-9]{64}$/.test(initialToken)) { sessionStorage.setItem('nexus-token', initialToken); history.replaceState(null, '', '/'); }
 const token = sessionStorage.getItem('nexus-token') || '';
 let state, activeJob;
 const skillAudits = new Map();
@@ -16,6 +17,7 @@ semanticControls.append(indexButton, searchInput, searchButton);
 memoryPanel.append(semanticControls, searchResults);
 let currentDirectory = '.';
 const fileEditor = createFileEditor(api);
+window.nexusHasUnsavedChanges = () => fileEditor.dirty;
 const fileStatus = document.createElement('p');
 fileStatus.setAttribute('role', 'status');
 $('save-file').after(fileStatus);
@@ -55,7 +57,7 @@ let terminalCursor = 0, terminalTimer;
 const cleanTerminalOutput = value => value.replace(/[\u001b\u009b][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d\/#&.:=?%@~_]+)*)?\u0007)|(?:(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))/g, '');
 async function pollTerminal() {
   const result = await api(`terminal/output?cursor=${terminalCursor}`);
-  if (result.output) { const output = $('terminal-output'), clean = cleanTerminalOutput(result.output); output.textContent = output.textContent === 'Terminal is stopped.' ? clean : output.textContent + clean; output.scrollTop = output.scrollHeight; }
+  if (result.output) { const output = $('terminal-output'), clean = cleanTerminalOutput(result.output); output.textContent = (output.textContent === 'Terminal is stopped.' ? clean : output.textContent + clean).slice(-200000); output.scrollTop = output.scrollHeight; }
   terminalCursor = result.cursor;
   $('terminal-start').disabled = result.running; $('terminal-stop').disabled = !result.running; $('terminal-input').disabled = !result.running;
   if (result.running) terminalTimer = setTimeout(() => action(pollTerminal)(), 300);
@@ -68,10 +70,13 @@ function render() {
   $('project-path').textContent = state.root;
   $('stats').replaceChildren(...[[state.agents.length, 'AVAILABLE AGENTS'], [state.runs.length, 'RUN RECORDS'], [state.skills.length, 'INSTALLED SKILLS']].map(([count, label]) => { const n = node('div', undefined, 'stat'); n.append(node('strong', count), node('span', label)); return n; }));
   const selected = $('agent-select').value;
-  $('agent-select').replaceChildren(...state.agents.map(a => { const o = node('option', a.name); o.value = a.name; return o; }), ...state.teams.map(t => { const name = t.slice(0, -5), o = node('option', 'Team · ' + name); o.value = 'team:' + name; return o; }));
-  if ([...$('agent-select').options].some(o => o.value === selected)) $('agent-select').value = selected;
-  $('agent-cards').replaceChildren(...state.agents.map(a => { const card = node('button', undefined, 'agent-card'); card.append(node('h3', a.name), node('p', a.instructions.slice(0, 125)), node('small', Object.entries(a.permissions).filter(([,v]) => v).map(([k]) => k).join(' · '))); card.onclick = () => { $('agent-editor').value = JSON.stringify(a, null, 2); }; return card; }));
-  $('history-list').replaceChildren(...state.runs.map(r => { const row = node('div', undefined, 'row'), b = node('button', r.agent + ' · ' + r.status); b.onclick = action(async () => { const run = await api('runs/' + r.id); $('transcript').textContent = JSON.stringify(run, null, 2); }); row.append(b, node('small', new Date(r.started).toLocaleString())); return row; }));
+  const nextOptionsKey = JSON.stringify([state.agents.map(a => a.name), state.teams]);
+  renderWhenChanged($('agent-select'), nextOptionsKey, () => {
+    $('agent-select').replaceChildren(...state.agents.map(a => { const o = node('option', a.name); o.value = a.name; return o; }), ...state.teams.map(t => { const name = t.slice(0, -5), o = node('option', 'Team · ' + name); o.value = 'team:' + name; return o; }));
+    if ([...$('agent-select').options].some(o => o.value === selected)) $('agent-select').value = selected;
+  });
+  renderWhenChanged($('agent-cards'), JSON.stringify(state.agents), () => $('agent-cards').replaceChildren(...state.agents.map(a => { const card = node('button', undefined, 'agent-card'); card.append(node('h3', a.name), node('p', a.instructions.slice(0, 125)), node('small', Object.entries(a.permissions).filter(([,v]) => v).map(([k]) => k).join(' · '))); card.onclick = () => { $('agent-editor').value = JSON.stringify(a, null, 2); }; return card; })));
+  renderWhenChanged($('history-list'), JSON.stringify(state.runs), () => $('history-list').replaceChildren(...state.runs.map(r => { const row = node('div', undefined, 'row'), b = node('button', r.agent + ' · ' + r.status); b.onclick = action(async () => { const run = await api('runs/' + r.id); $('transcript').textContent = JSON.stringify(run, null, 2); }); row.append(b, node('small', new Date(r.started).toLocaleString())); return row; })));
   $('memories').replaceChildren(...state.memories.map(m => node('p', m.text, 'row')));
   $('skills').replaceChildren(...state.skills.map(s => {
     const n = node('div', undefined, 'row'), audit = node('button', 'Audit skill');
@@ -103,7 +108,7 @@ function render() {
     return n;
   }));
   const job = state.jobs.find(j => j.id === activeJob) || state.jobs.at(-1);
-  if (job) { activeJob = job.id; $('activity').textContent = job.events.map(e => e.type === 'text' ? e.text : e.type === 'tool-result' ? `${e.name}: ${e.content}` : `[${e.step || ''} ${e.type}] ${e.name || e.status || ''}`).join('\n\n') + (job.error ? '\nError: ' + job.error : '') + (job.plan ? '\nPlan saved. Select its team name to run it after review.\n' + JSON.stringify(job.plan, null, 2) : ''); }
+  if (job) { activeJob = job.id; $('activity').textContent = `Task status: ${job.status}\n\n` + job.events.map(e => e.type === 'text' ? e.text : e.type === 'tool-result' ? `${e.name}: ${e.content}` : `[${e.step || ''} ${e.type}] ${e.name || e.status || ''}`).join('\n\n') + (job.error ? '\nError: ' + job.error : '') + (job.plan ? '\nPlan saved. Select its team name to run it after review.\n' + JSON.stringify(job.plan, null, 2) : ''); }
   $('cancel').disabled = !job || job.status !== 'running';
   const lastEvent = job?.events.at(-1);
   if (job?.status === 'running' && lastEvent?.type === 'model-request') {
@@ -111,7 +116,11 @@ function render() {
     $('activity').textContent += `\n\nWaiting for ${lastEvent.model} · ${seconds}s elapsed. You can cancel this task.`;
   }
   $('run-form').querySelector('[type="submit"]').disabled = state.jobs.some(j => j.status === 'running');
-  $('approvals').replaceChildren(...state.approvals.map(a => { const panel = node('article', undefined, 'panel approval'); panel.append(node('h3', 'Your approval is needed'), node('pre', JSON.stringify(a.request, null, 2))); for (const [label, allow] of [['Approve', true], ['Decline', false]]) { const b = node('button', label); b.onclick = action(async () => { await api('approval', 'POST', { id: a.id, allow }); await refresh(); }); panel.append(b); } return panel; }));
+  planButton.disabled = state.jobs.some(j => j.status === 'running');
+  const nextApprovalsKey = JSON.stringify(state.approvals);
+  renderWhenChanged($('approvals'), nextApprovalsKey, () => {
+    $('approvals').replaceChildren(...state.approvals.map(a => { const panel = node('article', undefined, 'panel approval'); panel.append(node('h3', 'Your approval is needed'), node('pre', JSON.stringify(a.request, null, 2))); for (const [label, allow] of [['Approve', true], ['Decline', false]]) { const b = node('button', label); b.onclick = action(async () => { await api('approval', 'POST', { id: a.id, allow }); await refresh(); }); panel.append(b); } return panel; }));
+  });
 }
 async function refresh() { state = await api('state'); render(); }
 async function loadFiles() {

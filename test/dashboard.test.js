@@ -70,6 +70,9 @@ test('dashboard runs a provider tool cycle, approves once, and rejects stale fil
   const module = await fetch(origin + '/file-editor.js');
   assert.equal(module.status, 200);
   assert.match(module.headers.get('content-type'), /javascript/);
+  const renderCache = await fetch(origin + '/render-cache.js');
+  assert.equal(renderCache.status, 200);
+  assert.match(await renderCache.text(), /renderWhenChanged/);
 });
 
 

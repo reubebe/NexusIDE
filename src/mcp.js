@@ -14,6 +14,7 @@ export async function connectMcp(root, agent, approve, signal, workspaceRoot = r
       const server = Object.hasOwn(config.mcp, name) ? config.mcp[name] : undefined;
       if (!server) throw new Error(`Missing MCP configuration: ${name}`);
       if (!await approve({ type: 'mcp-connect', name, transport: server.transport || 'stdio', url: server.url, keyEnv: server.keyEnv, command: server.command, args: server.args, cwd: workspaceRoot, envKeys: server.envKeys || [] })) throw new Error(`MCP connection declined: ${name}`);
+      signal?.throwIfAborted();
       const env = commandEnvironment();
       for (const key of server.envKeys || []) { if (typeof key !== 'string' || !/^[A-Z_][A-Z0-9_]*$/.test(key)) throw new Error('Invalid MCP environment key.'); if (process.env[key]) env[key] = process.env[key]; }
       const transport = server.transport === 'http'
@@ -41,8 +42,10 @@ export async function connectMcp(root, agent, approve, signal, workspaceRoot = r
       const route = routes.get(alias);
       if (!route) throw new Error('MCP tool not granted.');
       if (!await approve({ type: 'mcp-call', server: route.server, tool: route.name, args })) return 'MCP call declined.';
+      signal?.throwIfAborted();
       const result = await route.client.callTool({ name: route.name, arguments: args }, undefined, { timeout: 60000, signal });
-      return JSON.stringify(result).slice(0, 100000);
+      const serialized = JSON.stringify(result);
+      return serialized.length <= 100000 ? serialized : JSON.stringify({ truncated: true, warning: 'MCP result exceeded 100000 characters; request a narrower result.', preview: serialized.slice(0, 90000) });
     } };
   } catch (e) { await close(); throw e; }
 }

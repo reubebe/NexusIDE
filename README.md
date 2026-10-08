@@ -4,6 +4,8 @@
 
 A local agent development workspace for software, scientific research, trading research, and movie-making. A shared Node.js runtime powers the terminal CLI and authenticated web dashboard. The current version is a working local prototype; see [implementation status](docs/architecture.md) for the exact boundaries.
 
+The latest [workflow audit](docs/audit-2026-10-08.md) records fixes, fresh checks and remaining release limitations.
+
 New users: start with the step-by-step [NexusIDE User Guide](docs/user-guide.md).
 
 ## Start
@@ -145,7 +147,7 @@ For optional encrypted secrets, set `NEXUS_VAULT_PASSWORD` (at least 12 characte
 
 The [VS Code extension](extensions/vscode) launches the same CLI in an integrated terminal and requires workspace trust. Set its `nexuside.cliPath` user setting to this installation's absolute `src/cli.js` path. Activation, command registration, real CLI initialization, the Run Agent command and persisted demo history were verified inside VS Code 1.127.0 using an isolated test workspace. Dashboard launch still needs a manual user-flow check.
 
-[Zed tasks](integrations/zed/tasks.json) launch the CLI/dashboard/terminal after `npm link`. Add these task entries to your project's existing `.zed/tasks.json`; preserve existing entries. NexusIDE also provides a native Agent Client Protocol (ACP) bridge: configure the absolute Node and `src/cli.js` paths from [the Zed agent settings example](integrations/zed/agent-settings.json) in Zed's `settings.json`. The bridge exposes project agents as selectable modes and uses NexusIDE's shared runtime and approvals. It is protocol-tested, but has not yet been exercised inside Zed itself. Editor-provided MCP servers and extra-directory grants are deliberately not accepted; configure approved NexusIDE MCP access in the project.
+[Zed tasks](integrations/zed/tasks.json) launch the CLI/dashboard/terminal after `npm link`. Add these task entries to your project's existing `.zed/tasks.json`; preserve existing entries. NexusIDE also provides an Agent Client Protocol (ACP) bridge: configure the absolute Node and `src/cli.js` paths from [the Zed agent settings example](integrations/zed/agent-settings.json). The bridge exposes project agents as selectable modes and uses the shared runtime and approvals. The saved Zed 1.23.2 host check completed an interactive demo prompt with persisted history; automated tests cover protocol exchange and cancellation. Editor-provided MCP servers and extra-directory grants are deliberately not accepted; configure approved NexusIDE MCP access in the project.
 
 ## Verify and understand the boundaries
 
@@ -166,3 +168,5 @@ The local build includes `codebase-navigator`, backed by the reviewed codebase-m
 Run `npm run desktop:build`, then `npm run desktop` to open the dashboard in a native window. It uses the same runtime and approvals. See [desktop setup and current limits](docs/desktop.md).
 
 Run `npm run desktop:package` to create an ad-hoc signed `NexusIDE.app` and compressed DMG for local installation. Public distribution still requires an Apple Developer identity and notarization.
+
+The current bundle is a native host launched by `nexus desktop`, not a self-contained Finder-launchable IDE. Node, the source installation and initialized project remain prerequisites.

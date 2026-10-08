@@ -4,7 +4,7 @@ The supplied architecture diagram remains the product target. This document dist
 
 ## Current build phase
 
-NexusIDE is in **Phase 1: terminal-first runtime and safety hardening**. The core local prototype is implemented. Current work is making imports reviewable, documenting actual workflows, and choosing a small number of integrations that add capabilities without turning the core into a bundle of unrelated runtimes. Phase 1 is not complete: editor-host verification and end-to-end research/media workflows remain open; local model tool use and Docker boundaries have passed live synthetic checks. Phase 2 is editor integration and selected optional services; a source-built macOS shell now wraps the dashboard; standalone distribution and mobile interfaces remain later work. See [the latest evaluation](evaluation.md) for verification results and resumption notes.
+NexusIDE is a working local prototype with a shared runtime, editor adapters and a macOS shell. Local model tool use, a small real-model coding workflow, selected editor-host demos, research evidence retrieval and a zero-key media render have verification evidence. These are bounded checks, not production certification. Standalone distribution, cloud-provider validation and broader real-world workloads remain open. See the [workflow audit](audit-2026-10-08.md) and [evaluation](evaluation.md) for scope and evidence.
 
 The user-facing setup steps are in the [User Guide](user-guide.md). The concrete adaptation decisions for the supplied repositories are in [Integration review](integrations.md) and [the machine-readable catalog](../integrations/catalog.json).
 
@@ -31,7 +31,7 @@ flowchart TD
 
 | Layer | Working implementation | Boundaries |
 |---|---|---|
-| Interfaces | CLI; user PTY; packaged macOS WebKit app; authenticated local dashboard with task activity, approvals, agent editor, project file editor and embedded PTY; ACP bridge with selectable agents/modes and cancellation | The browser dashboard passed desktop, 390 px mobile, 768 px tablet and task-planning checks in Chrome. VS Code activation and terminal initialization passed a real host check; interactive agent selection is pending. Zed 1.23.2 launched the custom ACP process and completed a persisted demo prompt. The macOS app passed native visual workspace/navigation and embedded-terminal checks plus reproducible app/DMG packaging with ad-hoc signing; Developer ID signing and notarization remain pending. |
+| Interfaces | CLI; user PTY; packaged macOS WebKit host; authenticated local dashboard with task activity, approvals, agent editor, project file editor and embedded PTY; ACP bridge with selectable agents/modes and cancellation | Chrome desktop, 390 px mobile, 768 px tablet and plan-to-run checks passed. Saved VS Code and Zed host checks completed demo prompts with persisted history. Native discard/close protection and terminal output were visually rechecked during the audit. The app/DMG is an ad-hoc signed host that still needs the CLI and Node; Finder launch, Developer ID signing and notarization remain release work. |
 | Agent runtime | Persistent definitions, explicit read/write/execute permissions, native JSON and foreign Markdown imports, skill resources and provenance, scoped memory | Imported vendor hooks and runtime-specific behavior are not emulated. |
 | Orchestration | Model-assisted plan creation, role routing, sequential/parallel DAG stages, approval gates, structured report handoffs, bounded context, cancellation | Planner output must validate. Isolated stage worktrees exchange reports, not automatically merged files. No autonomous recursive delegation. |
 | Tools and execution | File tools, bounded code search, protected Git diff/status, approved commands, user PTY, Docker command adapter, MCP transports, application profiles | Docker boundaries verified with a pinned local image in a synthetic workspace. Browser/database/codegraph capabilities depend on explicitly connected MCP services. |
@@ -41,11 +41,11 @@ flowchart TD
 
 ## Integration progress
 
-This workspace has the default development agents (including a read-only UI reviewer), research/trading/movie packs, five imported Agency Agents, six imported skills, and a `harness-researcher` connected to an empty Research Harness test project. The `no-ai-slop` skill is assigned to the optional `writing-editor` agent only. A native ACP bridge shares the same runtime with editor clients and exposes configured agents as session modes. A bounded static skill scanner now records findings during skill import and is available as a pre-import CLI check.
+This workspace has development agents, research/trading/movie packs, selected imported Agency Agents and seven imported skills. Advanced connections include Research Harness, code graph, REA and Hyper-Extract; definitions and grants remain private local `.nexus` state, not bundled source. CLI-Anything is imported as an instruction skill for the non-executing planner. A bounded static scanner records skill findings; scan results and hashes are not a safety certificate.
 
-Research Harness was installed in a project-local Python environment and its four granted evidence readers were discovered through the real MCP connection; `list_sources` returned the expected empty result. Its receipt is in `.nexus/verification/research-harness.json`. This proves the local connection and tool call, not a completed research workflow.
+Research Harness first passed a connection/read check, then a real-abstract evidence retrieval and local-model summary check. See `.nexus/verification/research-harness.json` and `research-evidence.json`. This does not validate an entire research study or its conclusions.
 
-Other requested projects have reviewed compatibility assessments and configuration paths in [integrations.md](integrations.md). TradingAgents and OpenMontage have named application profiles and hobby teams. Their full runtimes and model/media/data credentials are not yet configured here. VS Code activation/initialization and Docker isolation passed live synthetic checks. Zed verification remains outstanding.
+Other projects have compatibility assessments in [integrations.md](integrations.md). TradingAgents and OpenMontage have installed isolated runtimes, restricted launchers and explicit grants. Historical checks cover local-model market research with a structured-output failure requiring manual review, and a zero-key OpenMontage demo render. Cloud generation and reliable structured trading ratings are not validated. Managed installers now pin reviewed revisions, check origin/HEAD and preserve existing environments.
 
 ## Validation
 
@@ -58,7 +58,7 @@ After Ollama was reinstalled, `gpt-oss:20b` again completed the live synthetic t
 1. Validate selected cloud models and manually check the VS Code dashboard-launch flow. VS Code's Run Agent command and Zed's ACP bridge have completed real host-level demo prompts with persisted history.
 2. Extend live provider and container checks to real development tasks and additional supported models.
 3. Validate browser services and connect real research projects. Semantic note retrieval and codebase-memory-mcp now have live synthetic checks; extend their scope beyond notes and source-only indexing.
-4. Complete separate TradingAgents/OpenMontage environments and end-to-end hobby workflows once their provider/data/media setup is selected.
+4. Expand TradingAgents/OpenMontage beyond their existing smoke workflows after provider/data/media choices, cost limits and successful structured-output checks.
 5. Evaluate a larger vector/database backend and richer terminal emulation. Bounded local code/document retrieval, an authenticated embedded PTY, and macOS app/DMG packaging are implemented. Reviewed fast-forward merges and explicit run/workflow crash-status recovery are implemented and tested. Stale writer locks can be inspected and cleared with `nexus recover` after the owning process is confirmed absent.
 
 These remaining items are not represented as completed features.

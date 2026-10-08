@@ -12,6 +12,7 @@
     "ui/",
     "scripts/setup-pty.js",
     "scripts/verify-local-model.js",
+    "scripts/verify-development.js",
     "scripts/verify-sandbox.js",
     "scripts/verify-vscode.js",
     "scripts/verify-semantic-memory.js",

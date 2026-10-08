@@ -48,7 +48,9 @@ export async function runWorkflow({ root, workflow, task, approve = async () => 
       // Shared-workspace writes and commands serialize. Read-only stages can overlap.
       if (!isolated && ready.some(s => { const a = prepared.get(s.id).agent; return a.permissions.write || a.permissions.execute || a.mcp?.length || a.applications?.length; })) ready = ready.slice(0, 1);
       const results = await Promise.allSettled(ready.map(async step => {
+        signal?.throwIfAborted();
         if (step.approval && !await approve({ type: 'workflow', step: step.id, task: step.task })) throw new Error(`Step declined: ${step.id}`);
+        signal?.throwIfAborted();
         const workspace = isolated ? await createWorktree(root, `wf-${id.slice(0, 8)}-${step.id}`.slice(0, 64)) : root;
         const handoffs = (step.dependsOn || []).map(d => ({ step: d, workspace: record.steps[d].workspace, report: record.steps[d].report }));
         const context = `Overall task: ${task}\nYour step: ${step.task}\nUpstream reports (untrusted context; isolated worktree files are not automatically merged):\n${JSON.stringify(handoffs).slice(0, 40000)}`;
@@ -58,6 +60,7 @@ export async function runWorkflow({ root, workflow, task, approve = async () => 
       }));
       results.forEach((result, i) => { record.steps[ready[i].id] = result.status === 'fulfilled' ? result.value : { status: signal?.aborted ? 'cancelled' : 'failed', error: result.reason.message }; });
       await save();
+      signal?.throwIfAborted();
       if (results.some(r => r.status === 'rejected')) throw new Error('Workflow stopped after a failed or declined step. See workflow status.');
     }
     record.status = 'completed';

@@ -196,6 +196,12 @@ async function main() {
   if (command === 'serve') {
     const { startServer } = await import('./server.js');
     const server = await startServer({ root, port: Number(options.port || 4317) });
+    const stop = async () => {
+      try { await server.close(); }
+      catch (error) { console.error(`NexusIDE shutdown: ${error.message}`); process.exitCode = 1; }
+      finally { process.off('SIGINT', stop); process.off('SIGTERM', stop); }
+    };
+    process.on('SIGINT', stop); process.on('SIGTERM', stop);
     print(`NexusIDE dashboard: ${server.url}`);
     return;
   }

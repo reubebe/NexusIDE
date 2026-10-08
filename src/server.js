@@ -17,18 +17,27 @@ import { planTask } from './planner.js';
 import { rebuildMemoryIndex, semanticRecall } from './semantic-memory.js';
 import { commandEnvironment } from './process.js';
 
+export async function readJsonBody(req) {
+  if (!req.headers['content-type']?.startsWith('application/json')) throw new Error('Expected JSON.');
+  const chunks = []; let bytes = 0;
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    bytes += buffer.length;
+    if (bytes > 200000) throw new Error('Request too large.');
+    chunks.push(buffer);
+  }
+  return JSON.parse(Buffer.concat(chunks, bytes).toString('utf8') || '{}');
+}
+
 export async function startServer({ root, port = 4317 }) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid port.');
   const token = randomBytes(32).toString('hex');
   const jobs = new Map(), approvals = new Map();
   let terminal;
-  let origin, launching = false;
-  async function body(req) {
-    if (!req.headers['content-type']?.startsWith('application/json')) throw new Error('Expected JSON.');
-    let text = '';
-    for await (const chunk of req) { text += chunk; if (text.length > 200000) throw new Error('Request too large.'); }
-    return JSON.parse(text || '{}');
-  }
+  let origin, launching = false, terminalStarting = false, closing = false;
+  const executions = new Set();
+  let terminalStart;
+  const body = readJsonBody;
   const send = (res, status, value) => { res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value)); };
   async function summary(folder) {
     const records = await Promise.all((await listState(root, folder)).map(f => readState(root, folder, f)));
@@ -40,12 +49,13 @@ export async function startServer({ root, port = 4317 }) {
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     try {
+      if (closing) return send(res, 503, { error: 'Dashboard is shutting down.' });
       if (req.headers.host !== new URL(origin).host) return send(res, 403, { error: 'Invalid host.' });
       if (req.headers.origin && req.headers.origin !== origin) return send(res, 403, { error: 'Invalid origin.' });
       const url = new URL(req.url, origin);
       const pathname = url.pathname;
       if (!pathname.startsWith('/api/')) {
-        const assets = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/file-editor.js': ['file-editor.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
+        const assets = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/file-editor.js': ['file-editor.js', 'text/javascript'], '/render-cache.js': ['render-cache.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
         const asset = assets[pathname];
         if (req.method !== 'GET' || !asset) return send(res, 404, { error: 'Not found.' });
         const data = await readFile(fileURLToPath(new URL(`../ui/${asset[0]}`, import.meta.url)));
@@ -82,14 +92,21 @@ export async function startServer({ root, port = 4317 }) {
       if (req.method === 'POST' && pathname === '/api/memory/index') return send(res, 200, await rebuildMemoryIndex(root));
       if (req.method === 'POST' && pathname === '/api/memory/search') { const data = await body(req); return send(res, 200, await semanticRecall(root, data.query)); }
       if (req.method === 'POST' && pathname === '/api/terminal/start') {
-        if (terminal) return send(res, 409, { error: 'Terminal is already running.' });
+        if (terminalStarting || terminal?.exitCode === null) return send(res, 409, { error: 'Terminal is already running.' });
+        terminalStarting = true;
+        let finishStart;
+        terminalStart = new Promise(resolve => { finishStart = resolve; });
+        try {
         const pty = await import('node-pty');
+        if (closing) throw new Error('Dashboard is shutting down.');
         const shell = process.platform === 'win32' ? 'powershell.exe' : process.env.SHELL || '/bin/bash';
         const processPty = pty.spawn(shell, [], { name: 'xterm-256color', cwd: root, cols: 100, rows: 30, env: { ...commandEnvironment(), TERM: 'xterm-256color', NEXUS_WORKSPACE: root } });
-        terminal = { process: processPty, output: '', cursor: 0, exitCode: null };
-        processPty.onData(data => { if (!terminal) return; terminal.output += data; if (terminal.output.length > 200000) { const cut = terminal.output.length - 150000; terminal.output = terminal.output.slice(cut); terminal.cursor += cut; } });
-        processPty.onExit(({ exitCode }) => { if (terminal) terminal.exitCode = exitCode; });
+        const session = { process: processPty, output: '', cursor: 0, exitCode: null };
+        terminal = session;
+        processPty.onData(data => { if (terminal !== session) return; session.output += data; if (session.output.length > 200000) { const cut = session.output.length - 150000; session.output = session.output.slice(cut); session.cursor += cut; } });
+        processPty.onExit(({ exitCode }) => { session.exitCode = exitCode; });
         return send(res, 201, { running: true });
+        } finally { terminalStarting = false; finishStart(); }
       }
       if (req.method === 'POST' && pathname === '/api/terminal/input') {
         if (!terminal || terminal.exitCode !== null) return send(res, 409, { error: 'Terminal is not running.' });
@@ -103,6 +120,7 @@ export async function startServer({ root, port = 4317 }) {
         return send(res, 200, { running: terminal.exitCode === null, output: terminal.output.slice(start - terminal.cursor), cursor: terminal.cursor + terminal.output.length, exitCode: terminal.exitCode });
       }
       if (req.method === 'POST' && pathname === '/api/terminal/stop') {
+        await terminalStart;
         if (terminal?.exitCode === null) terminal.process.kill(); terminal = undefined; return send(res, 200, { stopped: true });
       }
       if (req.method === 'POST' && pathname === '/api/approval') {
@@ -145,8 +163,11 @@ export async function startServer({ root, port = 4317 }) {
           const workspace = data.worktree ? await resolveWorktree(root, data.worktree) : root;
           execute = () => runAgent({ ...options, root: workspace, stateRoot: root, agent, provider, resume: data.resume, maxSteps: config.limits?.maxSteps || 20, maxContextChars: config.limits?.maxContextChars || 160000 });
         }
+        if (closing) throw new Error('Dashboard is shutting down.');
         jobs.set(id, job);
-        void execute().then(result => { job.status = result.status; job.result = result.id; if (result.workflow) job.plan = result.workflow; }).catch(error => { job.status = controller.signal.aborted ? 'cancelled' : 'failed'; job.error = error.message; });
+        const execution = execute().then(result => { job.status = result.status; job.result = result.id; if (result.workflow) job.plan = result.workflow; }).catch(error => { job.status = controller.signal.aborted ? 'cancelled' : 'failed'; job.error = error.message; });
+        executions.add(execution);
+        void execution.finally(() => executions.delete(execution));
         return send(res, 202, { id });
         } finally { launching = false; }
       }
@@ -157,5 +178,19 @@ export async function startServer({ root, port = 4317 }) {
   server.headersTimeout = 10000;
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
   origin = `http://127.0.0.1:${server.address().port}`;
-  return { server, token, url: `${origin}/#${token}`, async close() { terminal?.process.kill(); for (const job of jobs.values()) job.controller.abort(); for (const approval of approvals.values()) approval.resolve(false); await new Promise(resolve => server.close(resolve)); } };
+  let closePromise;
+  return { server, token, url: `${origin}/#${token}`, close() {
+    return closePromise ||= (async () => {
+      closing = true;
+      for (const job of jobs.values()) job.controller.abort();
+      for (const approval of approvals.values()) approval.resolve(false);
+      await terminalStart;
+      if (terminal?.exitCode === null) terminal.process.kill();
+      terminal = undefined;
+      await new Promise(resolve => server.close(resolve));
+      // Drain requests that were preparing an execution when shutdown began.
+      for (const job of jobs.values()) job.controller.abort();
+      await Promise.allSettled([...executions]);
+    })();
+  } };
 }

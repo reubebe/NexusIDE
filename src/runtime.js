@@ -13,6 +13,7 @@ import { loadConfig } from './config.js';
 
 const object = properties => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false });
 export async function runAgent({ root, stateRoot = root, agent, task, provider, approve = async () => false, onEvent = () => {}, maxSteps = 20, maxContextChars = 160000, signal, resume, commandMode = 'host', sandboxImage }) {
+  signal?.throwIfAborted();
   const id = randomUUID();
   const redact = redactor(provider.sensitiveValues);
   if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 100 || !Number.isInteger(maxContextChars) || maxContextChars < 1000 || maxContextChars > 2000000) throw new Error('Invalid run limits.');
@@ -44,6 +45,7 @@ export async function runAgent({ root, stateRoot = root, agent, task, provider, 
     const auditedApproval = async request => {
       signal?.throwIfAborted();
       const allowed = await approve(request);
+      signal?.throwIfAborted();
       emit({ type: 'approval', action: request.type || 'write', allowed, target: request.path || request.tool || request.command });
       await save();
       return allowed;

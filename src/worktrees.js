@@ -5,9 +5,11 @@ import path from 'node:path';
 import { runProcess } from './process.js';
 import { resolveProjectPath, executeTool } from './tools.js';
 import { acquireWorkspace } from './locks.js';
+import { boundedRead } from './bounded-read.js';
+import { runGit } from './git.js';
 
 async function git(root, args) {
-  const result = await runProcess('git', ['-c', 'core.hooksPath=/dev/null', ...args], { cwd: root });
+  const result = await runGit(root, args);
   if (result.code !== 0 || result.stopped) throw new Error(`Git failed: ${result.output.trim() || result.stopped}`);
   return result.output.replace(/\r?\n$/, '');
 }
@@ -77,12 +79,12 @@ export async function inspectWorktree(root, name) {
   for (const relative of files.slice(0, 30)) {
     try {
       const file = await resolveProjectPath(target, relative);
-      const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+      const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
       try {
         const stat = await handle.stat();
         if (!stat.isFile() || stat.nlink !== 1) continue;
         if (stat.size > 100_000 || total + stat.size > 1_000_000) { previews.push(`+++ ${relative} (omitted: inspection size limit)`); continue; }
-        const content = await handle.readFile();
+        const content = await boundedRead(handle, 100_000);
         if (content.includes(0) || !Buffer.from(content.toString('utf8'), 'utf8').equals(content)) { previews.push(`+++ ${relative} (omitted: binary or invalid UTF-8)`); continue; }
         total += content.length;
         previews.push(`+++ ${relative}\n${content.toString('utf8')}`);
