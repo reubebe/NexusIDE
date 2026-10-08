@@ -120,6 +120,8 @@ nexus memory add "Use Python for numerical analysis"
 nexus memory add "Prefer concise reviews" --agent reviewer
 nexus memory search "analysis"
 nexus memory forget MEMORY_ID
+nexus project index
+nexus project semantic "where is accessibility handled?"
 nexus status
 nexus recover
 nexus recover activity
@@ -128,6 +130,8 @@ nexus run architect "Continue with this refinement" --resume RUN_ID
 ```
 
 Memory is project-scoped or agent-scoped and searched lexically. Agents with `memory: true` receive relevant notes and can propose new notes for approval. Optional semantic note retrieval uses a configured local Ollama embedding model. Run `nexus memory index` to rebuild and `nexus memory semantic "query"` to search; see the [user guide](docs/user-guide.md#9-save-and-inspect-memory). Continuations carry prior conversation prose into a new run; unfinished tool calls are not replayed. Default limits are 20 model steps and 160,000 serialized context characters.
+
+Project retrieval is separate from agent memory. `nexus project index` embeds bounded chunks from supported source and documentation files while excluding protected directories, links, binary files, files over 100 KB, and more than 5 MB or 500 files per build. `nexus project semantic` returns ranked paths and bounded excerpts. Rebuild after source changes; the local JSON index is intentionally capped for prototype-scale projects.
 
 If a crash leaves a workspace lock, `nexus recover` lists lock keys and whether the recorded process is present. `nexus recover <key-prefix>` asks for confirmation before removing a unique stale lock. Inspect the process and workspace before approving; run history and workspace changes remain available afterward.
 

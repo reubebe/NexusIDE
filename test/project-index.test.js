@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { defaultConfig, saveConfig } from '../src/config.js';
+import { rebuildProjectIndex, semanticProjectSearch } from '../src/project-index.js';
+
+test('project index searches code and docs while excluding unsafe inputs', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'nexus-project-index-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(path.join(root, 'docs')); await mkdir(path.join(root, '.nexus'));
+  await writeFile(path.join(root, 'docs', 'accessibility.md'), 'Keyboard navigation and screen reader support.');
+  await writeFile(path.join(root, 'service.js'), 'export function calculateInvoice() { return 42; }');
+  await writeFile(path.join(root, '.env'), 'SECRET=never-index-this');
+  await writeFile(path.join(root, '.nexus', 'private.txt'), 'private runtime content');
+  await writeFile(path.join(root, 'binary.txt'), Buffer.from([0, 1, 2]));
+  await writeFile(path.join(root, 'large.md'), 'x'.repeat(100001));
+  await symlink(path.join(root, 'docs', 'accessibility.md'), path.join(root, 'linked.md'));
+  const server = http.createServer(async (req, res) => {
+    let body = ''; for await (const chunk of req) body += chunk;
+    const { input } = JSON.parse(body);
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ embeddings: input.map(text => /keyboard|accessible/i.test(text) ? [1, 0] : [0, 1]) }));
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  await saveConfig(root, { ...structuredClone(defaultConfig), embeddings: { model: 'fixture', url: `http://127.0.0.1:${server.address().port}/api/embed` } });
+  const built = await rebuildProjectIndex(root);
+  assert.equal(built.files, 2); assert.equal(built.indexed, 2);
+  const result = await semanticProjectSearch(root, 'accessible keyboard interface');
+  assert.equal(result.matches[0].path, 'docs/accessibility.md');
+  assert.ok(result.matches.every(match => !match.path.startsWith('.nexus') && match.path !== '.env' && match.path !== 'linked.md'));
+  assert.equal('vector' in result.matches[0], false);
+  await writeFile(path.join(root, 'docs', 'accessibility.md'), 'Changed after indexing.');
+  const stale = await semanticProjectSearch(root, 'accessible keyboard interface');
+  assert.ok(stale.stale >= 1);
+  assert.ok(stale.matches.every(match => match.path !== 'docs/accessibility.md'));
+});

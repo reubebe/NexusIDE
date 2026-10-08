@@ -15,6 +15,7 @@ import { setSecret, listSecrets } from './vault.js';
 import { inspectWorkspaceLocks, removeStaleWorkspaceLock } from './locks.js';
 import { inspectActivity, recoverActivity } from './recovery.js';
 import { rebuildMemoryIndex, semanticRecall } from './semantic-memory.js';
+import { rebuildProjectIndex, semanticProjectSearch } from './project-index.js';
 
 const help = `NexusIDE · One runtime. Any agent. Any model.
 
@@ -39,6 +40,8 @@ const help = `NexusIDE · One runtime. Any agent. Any model.
   nexus memory index                      Rebuild embeddings for local notes
   nexus memory semantic "query"           Semantic search [--agent name]
   nexus memory forget <id>                Delete memory
+  nexus project index                     Index bounded project code and documents
+  nexus project semantic "query"          Search indexed project content by meaning
   nexus config show                       Show provider/MCP configuration
   nexus config import <file.json>          Configure profiles and routes
   nexus worktree create|diff <name>        Create or inspect worktree
@@ -157,6 +160,10 @@ async function main() {
     if (args[0] === 'add') return print(JSON.stringify(await remember(root, { text: args.slice(1).join(' '), scope: options.agent ? 'agent' : 'project', agent: options.agent }), null, 2));
     if (args[0] === 'search') return print(JSON.stringify(await recall(root, args.slice(1).join(' '), options.agent), null, 2));
     if (args[0] === 'forget') { await forget(root, args[1]); return print('Memory deleted.'); }
+  }
+  if (command === 'project') {
+    if (args[0] === 'index') return print(JSON.stringify(await rebuildProjectIndex(root), null, 2));
+    if (args[0] === 'semantic') return print(JSON.stringify(await semanticProjectSearch(root, args.slice(1).join(' ')), null, 2));
   }
   if (command === 'worktree') {
     if (args[0] === 'merge') return print(JSON.stringify(await mergeWorktree(root, args[1], terminalApproval()), null, 2));

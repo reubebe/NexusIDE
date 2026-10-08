@@ -178,6 +178,8 @@ The VS Code extension passed activation and terminal initialization checks insid
 
 The local `codebase-navigator` agent uses the installed codebase-memory-mcp backend to find functions and trace callers, then checks original source. It has read-only query grants. See [code graph setup and index refresh](codegraph.md) for its source-only scope, commands and verification.
 
+For local semantic retrieval across both code and documentation, run `nexus project index`, followed by `nexus project semantic "your question"`. The index excludes protected paths, links, binaries and oversized files, uses bounded storage, and filters changed or deleted source from results until the next rebuild.
+
 ## Health and verification history
 
 Run `npm start -- doctor` to inspect configured connections, missing skill references, Docker availability and local verification receipts. `verificationHistory` records past checks, their timestamps and scope; it does not imply that today’s configuration was retested. The command makes no model API calls and starts no external MCP services.
