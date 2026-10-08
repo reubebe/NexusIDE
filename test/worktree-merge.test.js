@@ -70,3 +70,15 @@ test('worktree merge refuses divergent histories', async t => {
   await git(root, 'add', 'other.txt'); await git(root, 'commit', '-m', 'divergent work');
   await assert.rejects(mergeWorktree(root, 'change', async () => true), /diverged/);
 });
+test('worktree merge ignores configured filters that do not apply to reviewed files', async t => {
+  const { root } = await fixture(t);
+  await git(root, 'config', 'filter.lfs.clean', 'git-lfs clean -- %f');
+  const result = await mergeWorktree(root, 'change', async () => true);
+  assert.equal(result.branch, 'main');
+});
+test('worktree merge refuses a content filter applied to a reviewed file', async t => {
+  const { root, target } = await fixture(t);
+  await writeFile(path.join(target, '.gitattributes'), 'app.txt filter=custom\n');
+  await git(target, 'add', '.gitattributes'); await git(target, 'commit', '-m', 'apply content filter');
+  await assert.rejects(mergeWorktree(root, 'change', async () => true), /content filters/);
+});

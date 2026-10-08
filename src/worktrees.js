@@ -11,6 +11,17 @@ async function git(root, args) {
   if (result.code !== 0 || result.stopped) throw new Error(`Git failed: ${result.output.trim() || result.stopped}`);
   return result.output.replace(/\r?\n$/, '');
 }
+async function hasActiveContentFilter(root, paths) {
+  if (!paths.length) return false;
+  const result = await runProcess('git', ['check-attr', '-z', 'filter', '--', ...paths], { cwd: root, maxBytes: 2_000_000 });
+  if (result.code !== 0 || result.stopped) throw new Error('Could not inspect Git content filters.');
+  const fields = result.output.split('\0');
+  for (let index = 0; index + 2 < fields.length; index += 3) {
+    const value = fields[index + 2];
+    if (value && value !== 'unspecified' && value !== 'unset') return true;
+  }
+  return false;
+}
 function checkName(name) {
   if (!/^[a-z][a-z0-9-]{0,63}$/.test(name ?? '')) throw new Error('Worktree names must use lowercase letters, digits, and hyphens.');
 }
@@ -89,9 +100,6 @@ async function mergeReview(root, target, name) {
   for (const directory of [root, target]) {
     const status = await git(directory, ['status', '--porcelain', '--untracked-files=all', '--', '.', ':(exclude,top).nexus']);
     if (status) throw new Error('Both source and destination must be clean. Review and commit worktree changes first.');
-    const filters = await runProcess('git', ['config', '--get-regexp', '^filter\\..*\\.(clean|smudge|process)$'], { cwd: directory });
-    if (filters.stopped || ![0, 1].includes(filters.code)) throw new Error('Could not inspect Git content filters.');
-    if (filters.code === 0) throw new Error('Configured Git content filters require a manual merge.');
   }
   const before = await git(root, ['rev-parse', 'HEAD']);
   const after = await git(target, ['rev-parse', 'HEAD']);
@@ -100,6 +108,9 @@ async function mergeReview(root, target, name) {
   if (ancestor.code !== 0 || ancestor.stopped) throw new Error('Destination has diverged or ancestry could not be verified. Reconcile the branches manually.');
   const paths = (await git(root, ['diff', '--no-renames', '--name-only', '-z', before, after, '--'])).split('\0').filter(Boolean);
   if (paths.length > 500) throw new Error('Merge exceeds the 500-file review limit.');
+  for (const directory of [root, target]) {
+    if (await hasActiveContentFilter(directory, paths)) throw new Error('Active Git content filters require a manual merge.');
+  }
   for (const relative of paths) {
     for (const directory of [root, target]) {
       const candidate = await resolveProjectPath(directory, relative);

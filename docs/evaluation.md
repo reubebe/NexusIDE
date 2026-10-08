@@ -4,7 +4,7 @@ This evaluation checks the supplied architecture against the local implementatio
 
 ## Resumption: 2026-10-08
 
-Validation after these changes: `npm test` passes all 54 tests with no skips or failures; changed JavaScript files pass syntax checks.
+Validation after these changes: `npm test` passes all 58 tests with no skips or failures; changed JavaScript files pass syntax checks.
 
 The starting suite passed all 51 tests. Dashboard source review found that saving followed by a fresh file read could overwrite a draft typed during the save, and selecting another file discarded unsaved edits. The editor now keeps the acknowledged saved snapshot separate from the draft, uses the write response's content hash for subsequent saves, blocks overlapping file requests and switching away from a dirty file, and offers explicit reload/discard. Closing the page with unsaved file edits uses the browser's unload warning. Regression tests cover in-flight edits, duplicate requests, conflicts, failed reloads and hash acknowledgements. Chrome visual interaction checks now cover the corrected editor states.
 
