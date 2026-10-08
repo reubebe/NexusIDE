@@ -16,6 +16,7 @@
     "scripts/verify-vscode.js",
     "scripts/verify-semantic-memory.js",
     "scripts/verify-codegraph.js",
+    "scripts/verify-responsive.js",
     "README.md",
     "SECURITY.md",
     "docs/",
@@ -23,6 +24,7 @@
     "examples/",
     "extensions/vscode/",
     "scripts/build-desktop.js",
+    "scripts/package-desktop.js",
     "desktop/",
     "scripts/verify-desktop.js",
     "scripts/verify-research-evidence.js"
@@ -32,7 +34,8 @@
     "test": "node --test",
     "postinstall": "node scripts/setup-pty.js",
     "desktop:build": "node scripts/build-desktop.js",
-    "desktop": "node src/cli.js desktop"
+    "desktop": "node src/cli.js desktop",
+    "desktop:package": "node scripts/package-desktop.js"
   },
   "engines": {
     "node": ">=22"

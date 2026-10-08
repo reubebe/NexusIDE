@@ -11,6 +11,14 @@ npm run desktop:build
 npm run desktop
 ```
 
+Create a locally signed application bundle and installable disk image:
+
+```sh
+npm run desktop:package
+```
+
+This produces `dist/NexusIDE.app` and `dist/NexusIDE-0.2.0.dmg`. By default the app uses an ad-hoc local signature, which is suitable for local verification but not public distribution. Set `NEXUS_CODESIGN_IDENTITY` to an installed Apple Developer identity for a distributable signature; notarization remains a separate release step.
+
 After linking the CLI, run `nexus desktop` from another initialized project to open that project's workspace. Build the host again after changing `desktop/macos/NexusDesktop.swift`. The compiled executable lives at `dist/NexusIDE-host`.
 
 The window provides the dashboard's agents, task activity, approvals, file editor, memory, skills, history and connections. The terminal wrapper remains available through `nexus terminal`; an embedded desktop terminal is not implemented yet.

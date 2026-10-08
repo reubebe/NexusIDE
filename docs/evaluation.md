@@ -12,7 +12,7 @@ The Research Harness receipt is present and uses an older timestamp-valued `veri
 
 This directory has no `.git` history. Its name ends with a space and configured MCP paths depend on that exact absolute location. Establish version control and migrate those paths deliberately before relocating the workspace. Local `.nexus` state, including imported agents and skills, is excluded by `.gitignore` and needs a separate private backup.
 
-The Chrome dashboard check covered desktop navigation, file edits, approval decline, cancellation, an offline task and run history. Task planning and responsive viewport checks remain. After Ollama was reinstalled, `gpt-oss:20b` and `nomic-embed-text` were restored and both live verification scripts passed again on 2026-10-08. Zed host checks and interactive VS Code flows remain open.
+The Chrome dashboard check covered desktop navigation, file edits, approval decline, cancellation, an offline task and run history. A repeatable Chrome DevTools check now verifies the real layout viewport at 390×844 and 768×1024, captures screenshots, and rejects horizontal overflow or a clipped primary action. The dashboard planning control also produced and displayed a validated three-stage demo workflow. After Ollama was reinstalled, `gpt-oss:20b` and `nomic-embed-text` were restored and both live verification scripts passed again on 2026-10-08. Zed host checks and interactive VS Code flows remain open.
 
 ## Verified in this build
 
@@ -42,11 +42,11 @@ The Chrome dashboard check covered desktop navigation, file edits, approval decl
 
 ## Still required
 
-- Responsive dashboard layouts and task planning remain to be exercised; desktop Chrome interaction passed.
+- Responsive dashboard layouts and task planning passed Chrome checks; broader browser and assistive-technology coverage remains.
 - Zed host validation and interactive VS Code run-agent/dashboard flows.
 - Complete real research and movie/trading workflows with selected external runtimes and data. Installed instruction packs alone do not prove these integrations.
 - Broader code/document retrieval coverage. Native semantic note indexing and one code graph backend are implemented and live-verified within the documented scope.
-- Desktop visual validation, embedded terminal, standalone distribution packaging, signing and additional platforms. The macOS source-built shell is implemented.
+- Desktop visual validation, embedded terminal, Developer ID signing/notarization and additional platforms. A standalone macOS app bundle and DMG are now produced with a verified ad-hoc local signature.
 - Broader live model checks, platform coverage and adversarial review of external dependencies.
 
 Repeatable live-check scripts are `scripts/verify-local-model.js`, `scripts/verify-sandbox.js`, `scripts/verify-vscode.js`, `scripts/verify-semantic-memory.js`, and `scripts/verify-codegraph.js`. They use synthetic workspaces and store local receipts; inspect each receipt's scope and timestamp before making compatibility claims. The default `doctor` command does not itself perform live model or MCP calls.

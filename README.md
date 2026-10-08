@@ -158,3 +158,5 @@ The local build includes `codebase-navigator`, backed by the reviewed codebase-m
 ### Native macOS shell
 
 Run `npm run desktop:build`, then `npm run desktop` to open the dashboard in a native window. It uses the same runtime and approvals. See [desktop setup and current limits](docs/desktop.md).
+
+Run `npm run desktop:package` to create an ad-hoc signed `NexusIDE.app` and compressed DMG for local installation. Public distribution still requires an Apple Developer identity and notarization.
