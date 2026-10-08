@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>NexusIDE · Agent workspace</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Skip to workspace</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="/" aria-label="NexusIDE home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 36 36"><path d="M10 26V10l16 16V10"/><path class="node-link" d="M10 10h7m2 16h7"/><circle cx="10" cy="10" r="2.4"/><circle cx="10" cy="26" r="2.4"/><circle cx="26" cy="10" r="2.4"/><circle cx="26" cy="26" r="2.4"/></svg>
+        </span>
+        <strong>Nexus<span>IDE</span></strong><span class="brand-context">Agent workspace</span>
+      </a>
+      <nav aria-label="Workspace">
+        <button class="active" data-tab="workspace">Workspace</button>
+        <button data-tab="agents">Agents</button>
+        <button data-tab="history">Run library</button>
+        <button data-tab="memory">Memory</button>
+        <button data-tab="settings">Connections</button>
+      </nav>
+      <div class="header-actions"><span class="status-pill"><i></i>Local runtime</span></div>
+    </div>
+  </header>
+  <div class="wrap breadcrumb"><span>Workspace</span><span>/</span><span id="page-title">Tasks</span><span class="privacy-pill">Local to this computer</span></div>
+
+  <main class="wrap">
+    <div id="notice" role="status"></div>
+    <section id="workspace" class="tab">
+      <header class="page-heading">
+        <h1>Agent workspace</h1>
+        <p>Describe the work, choose who should handle it, and review every step.<br>Everything you need, in one workspace.</p>
+      </header>
+      <div class="workspace-grid">
+        <div class="workspace-content">
+          <section class="workflow-section">
+            <header class="section-heading"><span>01</span><div><h2>Task setup</h2><p>Choose an agent or team and give it one clear job.</p></div></header>
+            <form id="run-form">
+              <div class="form-grid">
+                <label>Agent or team<select id="agent-select"></select><small>The selected role controls tools, permissions, and instructions.</small></label>
+                <label class="task-field">Task<textarea id="task" rows="6" placeholder="Describe the outcome you want…" required></textarea><small>Be specific about the result. You can review actions before they happen.</small></label>
+              </div>
+              <div class="task-controls">
+                <div class="checks"><label><input id="demo" type="checkbox" checked> Offline demo</label><label><input id="commands" type="checkbox"> Allow command requests</label></div>
+                <button class="primary" type="submit">Run task <span>→</span></button>
+              </div>
+            </form>
+          </section>
+          <section class="workflow-section activity-section">
+            <header class="section-heading"><span>02</span><div><h2>Task activity</h2><p>Follow model requests, tool use, approvals, and the final response.</p></div><button id="cancel" class="text-button">Cancel task</button></header>
+            <pre id="activity">Ready. Start an offline task to explore the workspace.</pre>
+          </section>
+          <div id="approvals"></div>
+        </div>
+        <aside class="run-panel" aria-label="Workspace overview">
+          <div id="stats" class="stats"></div>
+          <section class="context-panel">
+            <h2>Task record</h2>
+            <dl>
+              <div><dt>Workspace</dt><dd>Current project</dd></div>
+              <div><dt>Execution</dt><dd>Review before action</dd></div>
+              <div><dt>Data location</dt><dd><span class="soft-pill">Local to this computer</span></dd></div>
+            </dl>
+          </section>
+          <ol class="run-path" aria-label="Task progress">
+            <li class="active"><span>1</span>Describe the task</li>
+            <li><span>2</span>Review agent activity</li>
+            <li><span>3</span>Review the record</li>
+          </ol>
+        </aside>
+      </div>
+    </section>
+
+    <section id="files" class="tab" hidden>
+      <header class="page-heading"><h1>Project files</h1><p>Open and edit files in this workspace.<br>Protected paths stay unavailable.</p></header>
+      <div class="split-layout">
+        <aside class="file-browser"><div class="section-heading compact"><span>01</span><div><h2>Workspace files</h2><p id="folder-path">.</p></div></div><button id="parent-folder" class="text-button">← Parent folder</button><div id="file-list"></div></aside>
+        <section class="file-editor"><div class="section-heading compact"><span>02</span><div><h2 id="file-title">Select a file</h2><p>Saves check for changes made elsewhere.</p></div></div><textarea id="file-content" rows="25" spellcheck="false" aria-label="File content"></textarea><div class="editor-actions"><button class="primary" id="save-file">Save file</button></div></section>
+      </div>
+    </section>
+
+    <section id="agents" class="tab" hidden>
+      <header class="page-heading"><h1>Your agents</h1><p>Persistent roles with explicit tools and permissions.<br>Select one to review its definition.</p></header>
+      <div class="section-heading"><span>01</span><div><h2>Agent library</h2><p>Choose the right role for the work.</p></div></div>
+      <div class="agent-grid" id="agent-cards"></div>
+      <section class="workflow-section"><header class="section-heading"><span>02</span><div><h2>Agent definition</h2><p>Edit instructions, skills, provider profile, and permissions.</p></div></header><textarea id="agent-editor" rows="18" spellcheck="false" aria-label="Agent definition"></textarea><div class="editor-actions"><button id="save-agent" class="primary">Save agent</button></div></section>
+    </section>
+
+    <section id="history" class="tab" hidden>
+      <header class="page-heading"><h1>Your run library</h1><p>A clear record of each task and the work behind it.</p></header>
+      <div class="library-layout"><div id="history-list"></div><section class="record-panel"><div class="section-heading compact"><span>RECORD</span><div><h2>Task transcript</h2><p>Messages, tool calls, status, and usage.</p></div></div><pre id="transcript">Select a completed run to review its record.</pre></section></div>
+    </section>
+
+    <section id="memory" class="tab" hidden>
+      <header class="page-heading"><h1>Project memory</h1><p>Keep decisions close to the work and review the skills agents can use.</p></header>
+      <div class="split-layout">
+        <section><div class="section-heading compact"><span>01</span><div><h2>Saved context</h2><p>Add a project decision worth remembering.</p></div></div><form id="memory-form"><textarea id="memory-text" rows="4" required placeholder="A project decision worth remembering…"></textarea><button class="primary">Save memory</button></form><div id="memories"></div></section>
+        <section><div class="section-heading compact"><span>02</span><div><h2>Installed skills</h2><p>Review saved instructions and their integrity checks.</p></div></div><div id="skills"></div></section>
+      </div>
+    </section>
+
+    <section id="settings" class="tab" hidden>
+      <header class="page-heading"><h1>Connections</h1><p>Connect model providers and approved tool services.</p></header>
+      <section class="workflow-section"><header class="section-heading"><span>01</span><div><h2>Model providers & MCP</h2><p>Use environment variable names for secrets. Tool services start only after approval.</p></div></header><textarea id="config-editor" rows="24" spellcheck="false" aria-label="Connection configuration"></textarea><div class="editor-actions"><button id="save-config" class="primary">Save connections</button></div></section>
+    </section>
+  </main>
+  <footer class="site-footer"><div class="wrap"><span>NexusIDE · A clearer way to work with agents.</span><span id="project-path"></span></div></footer>
+</body>
+</html>

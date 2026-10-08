@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "providers": {},
+  "routes": {},
+  "mcp": {},
+  "applications": {
+    "tradingagents": {
+      "command": "/ABSOLUTE/PATH/TradingAgents/.venv/bin/tradingagents",
+      "args": [],
+      "cwd": "/ABSOLUTE/PATH/TradingAgents",
+      "envKeys": ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ALPHA_VANTAGE_API_KEY", "TRADINGAGENTS_LLM_PROVIDER", "TRADINGAGENTS_QUICK_THINK_LLM", "TRADINGAGENTS_DEEP_THINK_LLM"],
+      "timeoutMs": 1800000
+    },
+    "openmontage": {
+      "command": "/ABSOLUTE/PATH/OpenMontage/.venv/bin/python",
+      "args": [],
+      "cwd": "/ABSOLUTE/PATH/OpenMontage",
+      "envKeys": ["FAL_KEY", "PEXELS_API_KEY", "PIXABAY_API_KEY"],
+      "timeoutMs": 3600000
+    }
+  }
+}

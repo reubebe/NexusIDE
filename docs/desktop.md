@@ -1,0 +1,34 @@
+# Native macOS workspace
+
+The native shell opens the existing NexusIDE dashboard in a macOS window. It shares the CLI's project state, agents, workflows, providers and approval system.
+
+## Build and open
+
+Requires macOS, Node 22 or later, project dependencies, and Xcode Command Line Tools with a matching macOS SDK.
+
+```sh
+npm run desktop:build
+npm run desktop
+```
+
+After linking the CLI, run `nexus desktop` from another initialized project to open that project's workspace. Build the host again after changing `desktop/macos/NexusDesktop.swift`. The compiled executable lives at `dist/NexusIDE-host`.
+
+The window provides the dashboard's agents, task activity, approvals, file editor, memory, skills, history and connections. The terminal wrapper remains available through `nexus terminal`; an embedded desktop terminal is not implemented yet.
+
+Closing the window or choosing **Quit NexusIDE** closes its server and cancels active jobs and pending approvals. Save edits first. Run records remain in the project's `.nexus` directory. The launcher also handles Ctrl-C and SIGTERM.
+
+## Boundaries
+
+- Each launch starts an authenticated server on a free loopback port.
+- The token travels to the native host over stdin, not command arguments or environment variables.
+- The WebKit session uses nonpersistent storage. It has no JavaScript-to-native command bridge.
+- Top-level navigation is restricted to the same loopback origin; new browser windows are refused. The dashboard's CSP remains in force.
+- The local runtime still runs as your user. This shell is not an OS sandbox.
+
+The host uses Apple's [WKNavigationDelegate](https://developer.apple.com/documentation/webkit/wknavigationdelegate) to restrict navigation.
+
+## Verification and limits
+
+`node scripts/verify-desktop.js` checks URL validation, native process launch, dashboard HTTP authentication and shutdown in a temporary workspace. It records `.nexus/verification/desktop.json`. The current receipt does **not** verify visual layout or interaction.
+
+This is a source-built macOS shell. A standalone `.app` containing a runtime, code signing/notarization, an installer, automatic updates, and Windows/Linux hosts are still outstanding. `nexus serve` remains the browser interface on supported Node platforms.

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "providers": {
+    "local": { "kind": "compatible", "model": "YOUR_INSTALLED_TOOL_CAPABLE_MODEL", "baseUrl": "http://localhost:11434/v1" },
+    "claude": { "kind": "anthropic", "model": "YOUR_CLAUDE_MODEL_ID", "keyEnv": "ANTHROPIC_API_KEY" },
+    "openai": { "kind": "compatible", "model": "YOUR_OPENAI_MODEL_ID", "keyEnv": "OPENAI_API_KEY" }
+  },
+  "routes": { "default": "local", "architect": "claude", "coder": "openai" },
+  "limits": { "maxSteps": 20, "maxContextChars": 160000 },
+  "mcp": {
+    "research-harness": {
+      "command": "/ABSOLUTE/PATH/research-harness/.venv/bin/python",
+      "args": ["-m", "research_harness.mcp_server", "--project", "/ABSOLUTE/PATH/paper-project", "--role", "writer"],
+      "tools": ["list_sources", "read_source", "get_record", "search_sources"],
+      "envKeys": []
+    },
+    "codebase-memory": { "command": "codebase-memory-mcp", "args": [], "tools": ["index_repository", "search_code"], "envKeys": ["CBM_ALLOWED_ROOT"] },
+    "codegraph": { "command": "codegraph", "args": ["serve", "--mcp"], "tools": ["codegraph_explore"], "envKeys": [] },
+    "browser-use": { "command": "browser-use", "args": ["--mcp"], "tools": [], "envKeys": [] }
+  }
+}

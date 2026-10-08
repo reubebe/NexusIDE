@@ -1,0 +1,6 @@
+[
+  { "label": "NexusIDE: Initialize project", "command": "nexus", "args": ["init"], "cwd": "$ZED_WORKTREE_ROOT", "use_new_terminal": true },
+  { "label": "NexusIDE: Agent workspace", "command": "nexus", "args": ["serve"], "cwd": "$ZED_WORKTREE_ROOT", "use_new_terminal": true },
+  { "label": "NexusIDE: Architect demo", "command": "nexus", "args": ["run", "architect", "Inspect this project", "--demo"], "cwd": "$ZED_WORKTREE_ROOT", "use_new_terminal": true },
+  { "label": "NexusIDE: Terminal", "command": "nexus", "args": ["terminal"], "cwd": "$ZED_WORKTREE_ROOT", "use_new_terminal": true }
+]

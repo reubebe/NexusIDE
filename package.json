@@ -1,0 +1,46 @@
+{
+  "name": "nexuside",
+  "version": "0.2.0",
+  "private": true,
+  "description": "One runtime. Any agent. Any model.",
+  "type": "module",
+  "bin": {
+    "nexus": "./src/cli.js"
+  },
+  "files": [
+    "src/",
+    "ui/",
+    "scripts/setup-pty.js",
+    "scripts/verify-local-model.js",
+    "scripts/verify-sandbox.js",
+    "scripts/verify-vscode.js",
+    "scripts/verify-semantic-memory.js",
+    "scripts/verify-codegraph.js",
+    "README.md",
+    "SECURITY.md",
+    "docs/",
+    "integrations/",
+    "examples/",
+    "extensions/vscode/",
+    "scripts/build-desktop.js",
+    "desktop/",
+    "scripts/verify-desktop.js",
+    "scripts/verify-research-evidence.js"
+  ],
+  "scripts": {
+    "start": "node src/cli.js",
+    "test": "node --test",
+    "postinstall": "node scripts/setup-pty.js",
+    "desktop:build": "node scripts/build-desktop.js",
+    "desktop": "node src/cli.js desktop"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "1.7.0",
+    "@modelcontextprotocol/sdk": "1.32.0",
+    "node-pty": "1.1.0",
+    "yaml": "2.9.1"
+  }
+}

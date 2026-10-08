@@ -1,0 +1,294 @@
+{
+  "version": 1,
+  "reviewed": "2026-10-07",
+  "policy": "Imports preserve provenance and do not execute installers, hooks, or scripts. External services require explicit configuration and grants.",
+  "integrations": [
+    {
+      "id": "agency-agents",
+      "source": "https://github.com/msitarzewski/agency-agents",
+      "role": "Engineering agent definitions",
+      "status": "five-agents-imported",
+      "adapter": "Markdown frontmatter import",
+      "selected": [
+        "software-architect",
+        "frontend-developer",
+        "code-reviewer",
+        "multi-agent-systems-architect",
+        "data-engineer"
+      ]
+    },
+    {
+      "id": "scientific-agent-skills",
+      "source": "https://github.com/k-dense-ai/scientific-agent-skills",
+      "role": "Scientific research",
+      "status": "selected-skills-imported",
+      "selected": [
+        "statistical-analysis",
+        "literature-review",
+        "peer-review"
+      ],
+      "adapter": "SKILL.md resource import"
+    },
+    {
+      "id": "cybersecurity-skills",
+      "source": "https://github.com/mukul975/anthropic-cybersecurity-skills",
+      "role": "Defensive security guidance",
+      "status": "selected-skill-imported",
+      "selected": [
+        "detecting-indirect-prompt-injection"
+      ],
+      "note": "Detection-model scripts are not installed or executed. Skill guidance does not enforce security."
+    },
+    {
+      "id": "security-review",
+      "source": "https://github.com/anthropics/claude-code-security-review",
+      "role": "Security review methodology",
+      "status": "reviewed-reference",
+      "note": "Upstream warns it is not hardened against prompt injection. CI integration is optional and not enabled."
+    },
+    {
+      "id": "diagram-design",
+      "source": "https://github.com/cathrynlavery/diagram-design",
+      "role": "Architecture and production diagrams",
+      "status": "skill-imported",
+      "adapter": "SKILL.md resource import"
+    },
+    {
+      "id": "research-harness",
+      "source": "https://github.com/reubebe/research-harness",
+      "role": "Evidence provenance and research workflows",
+      "status": "local-mcp-connection-verified",
+      "note": "Project-local Python MCP runtime connected; four granted evidence readers discovered; list_sources verified against an empty synthetic project. This is not a completed real research workflow. Receipt: .nexus/verification/research-harness.json."
+    },
+    {
+      "id": "codebase-memory",
+      "source": "https://github.com/DeusData/codebase-memory-mcp",
+      "role": "Persistent code intelligence",
+      "status": "local-mcp-verified",
+      "note": "macOS arm64 release installed with checksum and GitHub build-attestation verification. Synthetic MCP indexing, function search, caller trace and index-root containment passed. Read-only codebase-navigator configured; real src-only index queried successfully. See docs/codegraph.md.",
+      "revision": "v0.11.0"
+    },
+    {
+      "id": "codegraph",
+      "source": "https://github.com/colbymchenry/codegraph",
+      "role": "Alternative code graph",
+      "status": "mcp-config-template",
+      "note": "Use as an alternative to codebase-memory to avoid duplicate indexes."
+    },
+    {
+      "id": "browser-use",
+      "source": "https://github.com/browser-use/browser-use",
+      "role": "Web research and browser automation",
+      "status": "mcp-config-template",
+      "note": "Requires separate browser profile, installed runtime and explicit tool grants."
+    },
+    {
+      "id": "agentmemory",
+      "source": "https://www.agent-memory.dev",
+      "role": "Optional semantic memory backend",
+      "status": "reviewed-optional-service",
+      "note": "Native scoped lexical memory works now. External memory runtime is not installed."
+    },
+    {
+      "id": "openviking",
+      "source": "https://github.com/volcengine/OpenViking",
+      "role": "Optional context database",
+      "status": "reviewed-optional-service",
+      "note": "Separate service rather than vendored core. Review component licenses before distribution."
+    },
+    {
+      "id": "mini-swe-agent",
+      "source": "https://github.com/SWE-agent/mini-swe-agent",
+      "role": "Optional independent coding worker",
+      "status": "reviewed-command-adapter-candidate",
+      "note": "Existing command tool can run an installed worker with approval; no nested worker permissions are implied."
+    },
+    {
+      "id": "harness-engineering",
+      "source": "https://github.com/walkinglabs/awesome-harness-engineering",
+      "role": "Engineering reference collection",
+      "status": "reviewed-reference",
+      "note": "Reference catalog, not an executable agent package."
+    },
+    {
+      "id": "ecc-tools",
+      "source": "https://github.com/ECC-Tools",
+      "role": "Organization discovery",
+      "status": "no-implementation-selected",
+      "note": "Public organization API returned only .github at review time; no executable repository was specified."
+    },
+    {
+      "id": "openmontage",
+      "source": "https://github.com/calesthio/OpenMontage",
+      "role": "Movie-making hobby",
+      "status": "movie-team-installed-external-runtime-pending",
+      "note": "Separate video production application with media dependencies and optional paid providers. Preserve AGPL licensing boundaries."
+    },
+    {
+      "id": "tradingagents",
+      "source": "https://github.com/tauricresearch/tradingagents",
+      "role": "Trading research hobby",
+      "status": "research-team-installed-external-runtime-pending",
+      "note": "Separate analysis runtime with market data and model credentials. No broker/order execution is provided by NexusIDE."
+    },
+    {
+      "id": "agent-reach",
+      "source": "https://github.com/Panniantong/agent-reach",
+      "role": "Optional broader web sources",
+      "status": "reviewed-command-adapter-candidate",
+      "note": "Requires multiple external tools and sometimes authenticated accounts; no global installer executed."
+    },
+    {
+      "id": "claude-plugins-community",
+      "source": "https://github.com/anthropics/claude-plugins-community",
+      "role": "Plugin discovery",
+      "status": "reviewed-catalog",
+      "note": "Marketplace mirror, not one universal agent. Import selected skills/agents; hooks and vendor-specific runtimes require separate adapters."
+    },
+    {
+      "id": "gstack",
+      "source": "https://github.com/garrytan/gstack",
+      "role": "Optional product, QA and design workflows",
+      "status": "reviewed-skill-adapter-candidate",
+      "note": "Skill instructions can be imported; browser binaries, hooks and workflow semantics are not automatically portable."
+    },
+    {
+      "id": "ui-skills",
+      "source": "https://github.com/ibelick/ui-skills",
+      "role": "Optional UI design skills",
+      "status": "reviewed-skill-candidate",
+      "note": "Import individual MIT-licensed skills only after scanning the complete package and inspecting referenced resources."
+    },
+    {
+      "id": "skillspector",
+      "source": "https://github.com/NVIDIA/skillspector",
+      "role": "Third-party skill risk analysis",
+      "status": "reviewed-security-reference",
+      "note": "NexusIDE includes a narrower native static indicator scanner; SkillSpector is not installed and its scanner is not claimed equivalent."
+    },
+    {
+      "id": "system-prompts-leaks",
+      "source": "https://github.com/asgeirtj/system_prompts_leaks",
+      "role": "Purported proprietary prompt collection",
+      "status": "rejected-import",
+      "note": "Do not import leaked prompts; treat as untrusted and potentially protected material."
+    },
+    {
+      "id": "prompts-chat",
+      "source": "https://github.com/f/prompts.chat",
+      "role": "Prompt catalog",
+      "status": "reviewed-prompt-catalog",
+      "note": "Future user-curated prompt discovery only; review provenance and license for individual prompt content."
+    },
+    {
+      "id": "garden-skills",
+      "source": "https://github.com/ConardLi/garden-skills",
+      "role": "Optional community skills",
+      "status": "reviewed-skill-candidate",
+      "note": "MIT-licensed collection; select individual relevant skills and scan them rather than bulk importing."
+    },
+    {
+      "id": "prime-agent",
+      "source": "https://github.com/PrimeIntellect-ai/prime-agent",
+      "role": "Alternative provider and agent runtime",
+      "status": "reviewed-adapter-candidate",
+      "note": "Evaluate provider/auth/tool behavior before considering adapter replacement; not installed."
+    },
+    {
+      "id": "book-to-skill",
+      "source": "https://github.com/virgiliojr94/book-to-skill",
+      "role": "Generate skills from user-provided books and documents",
+      "status": "reviewed-workflow-candidate",
+      "note": "Review extractor helpers and dependencies before execution; user-provided source material remains subject to its rights."
+    },
+    {
+      "id": "no-ai-slop",
+      "source": "https://github.com/petergyang/no-ai-slop",
+      "role": "Opt-in writing and editing skill",
+      "status": "skill-imported-and-assigned",
+      "note": "Imported with eval.md and license provenance; assigned only to writing-editor, whose file writes require approval.",
+      "selected": [
+        "no-ai-slop"
+      ],
+      "revision": "000650b156983f5159695b441477f4e63b25dc85",
+      "license": "MIT"
+    },
+    {
+      "id": "ml-ai-projects",
+      "source": "https://github.com/pablorod11/ML-AI-Projects",
+      "role": "ML learning examples",
+      "status": "reviewed-reference-candidate",
+      "note": "Not an agent package; inspect notebooks, data and dependencies before running selected examples."
+    },
+    {
+      "id": "rea",
+      "source": "https://github.com/morluto/rea",
+      "role": "Reverse engineering tools",
+      "status": "reviewed-optional-runtime",
+      "note": "Separate native analysis dependencies and explicit tool grants required; not installed."
+    },
+    {
+      "id": "freebuff",
+      "source": "https://github.com/CodebuffAI/freebuff",
+      "role": "Alternative coding agent",
+      "status": "reviewed-external-worker",
+      "note": "Keep optional as an external worker; review data handling and its runtime before connecting."
+    },
+    {
+      "id": "voicebox",
+      "source": "https://github.com/jamiepine/voicebox",
+      "role": "Local voice interface for film hobby",
+      "status": "reviewed-optional-application",
+      "note": "Large separate desktop/model runtime; no code or model downloaded."
+    },
+    {
+      "id": "voicestudio",
+      "source": "https://github.com/debpalash/VoiceStudio",
+      "role": "Local voice cloning and dubbing for film hobby",
+      "status": "reviewed-optional-application",
+      "note": "Separate application with distinct license and dependencies; not bundled or installed."
+    },
+    {
+      "id": "understand-anything",
+      "source": "https://github.com/Egonex-AI/Understand-Anything",
+      "role": "Codebase knowledge graph",
+      "status": "reviewed-code-graph-alternative",
+      "note": "Choose one graph backend alongside codebase-memory or CodeGraph to avoid duplicate indexes."
+    },
+    {
+      "id": "video-summarizer-ai",
+      "source": "https://github.com/Muhammad-Abdullah-Waheed/video-summarizer-ai",
+      "role": "Video summarization",
+      "status": "unverified-candidate",
+      "note": "Repository details were not verified; defer integration pending source review."
+    },
+    {
+      "id": "hyper-extract",
+      "source": "https://github.com/yifanfeng97/Hyper-Extract",
+      "role": "Knowledge extraction and graph retrieval",
+      "status": "reviewed-optional-service",
+      "note": "Potential research backend; not required by the current core runtime."
+    },
+    {
+      "id": "openvoice",
+      "source": "https://github.com/myshell-ai/OpenVoice",
+      "role": "Voice generation backend",
+      "status": "reviewed-optional-runtime",
+      "note": "Separate model backend for film workflows; not installed or bundled."
+    },
+    {
+      "id": "nexu-io",
+      "source": "https://github.com/nexu-io",
+      "role": "Organization project discovery",
+      "status": "review-individual-repositories",
+      "note": "Organization URL represents multiple projects; review a specific repository before selecting an integration."
+    },
+    {
+      "id": "capacitor",
+      "source": "https://github.com/ionic-team/capacitor",
+      "role": "Potential mobile dashboard shell",
+      "status": "reviewed-future-interface",
+      "note": "Consider after the dashboard UX stabilizes; does not provide agent runtime capabilities."
+    }
+  ]
+}

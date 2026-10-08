@@ -1,0 +1,9 @@
+node_modules/
+.nexus/
+.research/
+dist/
+*.vsix
+.env
+.env.*
+!.env.example
+.DS_Store

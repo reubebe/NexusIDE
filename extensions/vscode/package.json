@@ -1,0 +1,22 @@
+{
+  "name": "nexuside-bridge",
+  "displayName": "NexusIDE",
+  "description": "Run your NexusIDE agents from VS Code's integrated terminal.",
+  "version": "0.2.0",
+  "publisher": "nexuside-local",
+  "engines": { "vscode": "^1.90.0" },
+  "main": "./extension.cjs",
+  "categories": ["Other"],
+  "capabilities": { "untrustedWorkspaces": { "supported": false } },
+  "contributes": {
+    "commands": [
+      { "command": "nexuside.runAgent", "title": "NexusIDE: Run Agent" },
+      { "command": "nexuside.dashboard", "title": "NexusIDE: Start Dashboard" },
+      { "command": "nexuside.init", "title": "NexusIDE: Initialize Project" }
+    ],
+    "configuration": { "title": "NexusIDE", "properties": {
+      "nexuside.cliPath": { "type": "string", "default": "", "scope": "application", "description": "Absolute path to the installed NexusIDE src/cli.js." },
+      "nexuside.nodePath": { "type": "string", "default": "node", "scope": "application", "description": "Node.js 22+ executable." }
+    } }
+  }
+}

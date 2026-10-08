@@ -1,0 +1,48 @@
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { commandEnvironment } from './process.js';
+import { loadConfig } from './config.js';
+
+export async function connectMcp(root, agent, approve, signal, workspaceRoot = root) {
+  const config = await loadConfig(root);
+  const clients = [], tools = [], routes = new Map();
+  const close = async () => { await Promise.allSettled(clients.map(c => c.close())); };
+  try {
+    for (const name of agent.mcp || []) {
+      signal?.throwIfAborted();
+      const server = Object.hasOwn(config.mcp, name) ? config.mcp[name] : undefined;
+      if (!server) throw new Error(`Missing MCP configuration: ${name}`);
+      if (!await approve({ type: 'mcp-connect', name, transport: server.transport || 'stdio', url: server.url, keyEnv: server.keyEnv, command: server.command, args: server.args, cwd: workspaceRoot, envKeys: server.envKeys || [] })) throw new Error(`MCP connection declined: ${name}`);
+      const env = commandEnvironment();
+      for (const key of server.envKeys || []) { if (typeof key !== 'string' || !/^[A-Z_][A-Z0-9_]*$/.test(key)) throw new Error('Invalid MCP environment key.'); if (process.env[key]) env[key] = process.env[key]; }
+      const transport = server.transport === 'http'
+        ? new StreamableHTTPClientTransport(new URL(server.url), { requestInit: { headers: server.keyEnv && process.env[server.keyEnv] ? { Authorization: `Bearer ${process.env[server.keyEnv]}` } : {}, redirect: 'error' }, fetch: (url, init) => fetch(url, { ...init, redirect: 'error' }) })
+        : new StdioClientTransport({ command: server.command, args: server.args, cwd: workspaceRoot, env, stderr: 'pipe', maxBufferSize: 1000000 });
+      transport.stderr?.on('data', () => {});
+      const client = new Client({ name: 'nexuside', version: '0.2.0' });
+      clients.push(client);
+      await client.connect(transport, { timeout: 15000, signal });
+      let cursor;
+      for (let page = 0; page < 10; page++) {
+        const list = await client.listTools(cursor ? { cursor } : {}, { timeout: 15000, signal });
+        for (const tool of list.tools) {
+          if (!server.tools.includes(tool.name)) continue;
+          if (tools.length >= 64) throw new Error('Too many granted MCP tools; limit each run to 64.');
+          const alias = `mcp_${name.replaceAll('-', '_').slice(0, 48)}_${tools.length}`;
+          tools.push({ name: alias, description: `[${name}/${tool.name}] ${tool.description || ''}`.slice(0, 2000), parameters: tool.inputSchema });
+          routes.set(alias, { client, server: name, name: tool.name });
+        }
+        cursor = list.nextCursor;
+        if (!cursor) break;
+      }
+    }
+    return { tools, close, async call(alias, args) {
+      const route = routes.get(alias);
+      if (!route) throw new Error('MCP tool not granted.');
+      if (!await approve({ type: 'mcp-call', server: route.server, tool: route.name, args })) return 'MCP call declined.';
+      const result = await route.client.callTool({ name: route.name, arguments: args }, undefined, { timeout: 60000, signal });
+      return JSON.stringify(result).slice(0, 100000);
+    } };
+  } catch (e) { await close(); throw e; }
+}

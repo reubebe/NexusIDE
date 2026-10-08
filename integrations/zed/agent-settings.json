@@ -1,0 +1,10 @@
+{
+  "agent_servers": {
+    "NexusIDE": {
+      "type": "custom",
+      "command": "/ABSOLUTE/PATH/TO/node",
+      "args": ["/ABSOLUTE/PATH/TO/NexusIDE/src/cli.js", "acp"],
+      "env": {}
+    }
+  }
+}
