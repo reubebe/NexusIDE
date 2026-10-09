@@ -21,3 +21,7 @@ jobs:
       - run: npm audit --omit=dev --audit-level=high
       - if: runner.os == 'macOS'
         run: npm run desktop:build
+      - if: runner.os == 'macOS'
+        run: npm run desktop:package
+      - if: runner.os == 'macOS'
+        run: npm run desktop:verify-bundle

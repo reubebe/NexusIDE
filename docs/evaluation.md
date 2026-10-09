@@ -2,6 +2,14 @@
 
 This evaluation checks the supplied architecture against the local implementation. The full product is not complete. Passing automated tests is evidence for the exercised paths, not proof of complete functionality or security.
 
+## Lifecycle and bundled desktop phases: 2026-10-09
+
+The suite now passes 189 tests. Managed-integration fixtures exercise staged install/upgrade, cancellation/failure preservation, rollback, recoverable disablement, stale/live-owner recovery, tracked-source tamper detection and reversible grant journals. Existing TradingAgents/OpenMontage checkouts passed the stronger read-only source verification without reinstalling or running paid workflows.
+
+The Apple Silicon app/DMG now includes Node and locked production JavaScript dependencies. A copied/moved bundle with minimal PATH passed native-owned bootstrap/shutdown, a bundled offline agent, SQLite history, authenticated dashboard and real PTY checks. Native UI checks covered the first-run project picker, default initialization, completed offline task, visible terminal command output, cancelling project selection without losing the session, and unsaved-edit protection on project switch/quit. Local evidence is in `bundled-desktop.json`, `integration-lifecycle.json` and `bundled-native-visual.json` under `.nexus/verification`.
+
+This is an ad-hoc development distribution, not a Developer ID signed/notarized or clean-machine-certified release. External tools/models are separate, and integration source pins do not attest the entire dependency environment. See [integration lifecycle](integration-lifecycle.md) and [desktop distribution](desktop-distribution.md). Older notes below describe earlier builds and remain historical evidence.
+
 ## Provider phase: 2026-10-09
 
 The suite now passes 164 tests, including adapter contracts, loopback runtime conversations, cancellation/timeouts, credential isolation, sanitized errors, usage accounting, and synthetic probe receipts. Selected live checks passed for Ollama `gpt-oss:20b` (five requests) and OpenAI `gpt-4.1-mini-2025-04-14` (four requests). Both returned text, observed lookup-tool values and the requested JSON object; OpenAI also emitted multiple calls in one reply. No project content was sent. Exact scope, options and untested targets are in [provider compatibility](providers.md). Anthropic and Gemini have no live validation yet. Earlier evidence below is preserved as historical, not expanded by these probes.

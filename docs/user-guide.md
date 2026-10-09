@@ -127,6 +127,8 @@ npm start -- team run movie-studio "Create a production plan for a short film"
 
 Research Harness and the included research skills support evidence-oriented work. Install a managed hobby runtime with `nexus integration install tradingagents` or `nexus integration install openmontage`, then connect it with `nexus integration configure NAME`. Check both with `nexus integration status`. External launches require `--allow-commands` and interactive approval. NexusIDE does not place trades; OpenMontage rendering remains subject to its own provider, media, cost, and licensing requirements.
 
+Managed runtimes support `upgrade`, `rollback`, `recover`, `unconfigure`, and `uninstall`. Upgrades stage the reviewed pin without moving existing environments; uninstall disables while retaining files. Configuration and lifecycle changes require confirmation. See [integration lifecycle](integration-lifecycle.md) before changing grants or recovering a failed installation.
+
 ## 8. Configure MCP tools
 
 Review [the example provider and MCP configuration](../integrations/providers.example.json), then import a project-specific JSON file:
@@ -189,3 +191,5 @@ Run `npm start -- doctor` to inspect configured connections, missing skill refer
 ## Desktop window
 
 On macOS, run `npm run desktop:build` followed by `npm run desktop`. For another initialized project, use `nexus desktop` after linking the CLI. Closing the window cancels active jobs. See [desktop setup](desktop.md) for requirements, verification and distribution limits.
+
+For Finder launch, build with `npm run desktop:package`, open `dist/NexusIDE.app`, and choose your project. Node and the core runtime are included. Existing `.nexus` state is kept, and missing defaults are initialized without model calls. Use **File → Open Project…** to switch projects. This remains an ad-hoc development build, not a notarized public release; see [distribution details](desktop-distribution.md).

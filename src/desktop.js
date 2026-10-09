@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { access, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { startServer } from './server.js';
 import { commandEnvironment } from './process.js';
 import { desktopBinary, desktopAppBinary } from '../scripts/build-desktop.js';
@@ -8,10 +9,13 @@ import { desktopBinary, desktopAppBinary } from '../scripts/build-desktop.js';
 export async function launchDesktop(root, { onReady = () => {} } = {}) {
   if (process.platform !== 'darwin') throw new Error('Native desktop currently supports macOS. Use nexus serve on other platforms.');
   let executable = desktopAppBinary;
+  const bundledHost = fileURLToPath(new URL('../../../MacOS/NexusIDE', import.meta.url));
+  let bundled = false;
+  try { await access(new URL('../../build-manifest.json', import.meta.url)); await access(bundledHost, constants.X_OK); executable = bundledHost; bundled = true; } catch {}
   try {
     await access(executable, constants.X_OK);
     // A source rebuild must not silently launch an older packaged host.
-    try { if ((await stat(desktopBinary)).mtimeMs > (await stat(executable)).mtimeMs) executable = desktopBinary; } catch {}
+    try { if (!bundled && (await stat(desktopBinary)).mtimeMs > (await stat(executable)).mtimeMs) executable = desktopBinary; } catch {}
   }
   catch {
     executable = desktopBinary;
@@ -22,7 +26,7 @@ export async function launchDesktop(root, { onReady = () => {} } = {}) {
   let child;
   const stop = () => child?.kill('SIGTERM');
   try {
-    child = spawn(executable, [], { cwd: root, env: commandEnvironment(), stdio: ['pipe', 'ignore', 'inherit'] });
+    child = spawn(executable, ['--session-stdin'], { cwd: root, env: commandEnvironment(), stdio: ['pipe', 'ignore', 'inherit'] });
     process.once('SIGINT', stop); process.once('SIGTERM', stop);
     // Keep the bearer token out of command arguments and inherited environment.
     child.stdin.on('error', () => {});

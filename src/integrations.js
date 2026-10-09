@@ -1,14 +1,12 @@
 import os from 'node:os';
 import path from 'node:path';
-import { access, mkdir, realpath, lstat } from 'node:fs/promises';
-import { constants } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, saveConfig } from './config.js';
 import { loadAgent } from './agents.js';
-import { writeState } from './state.js';
-import { runProcess } from './process.js';
+import { writeState, readState, deleteState } from './state.js';
 import { acquireWorkspace } from './locks.js';
 import { randomUUID } from 'node:crypto';
+import { createIntegrationLifecycle } from './integration-lifecycle.js';
 
 const runner = fileURLToPath(new URL('./integration-runner.js', import.meta.url));
 const catalog = {
@@ -19,6 +17,7 @@ const catalog = {
     executable: root => path.join(root, '.venv', 'bin', 'tradingagents'),
     envKeys: ['OPENAI_API_KEY', 'GOOGLE_API_KEY', 'ANTHROPIC_API_KEY', 'XAI_API_KEY', 'DEEPSEEK_API_KEY', 'DASHSCOPE_API_KEY', 'ZHIPU_API_KEY', 'OPENROUTER_API_KEY', 'ALPHA_VANTAGE_API_KEY', 'OLLAMA_BASE_URL', 'TRADINGAGENTS_LLM_PROVIDER', 'TRADINGAGENTS_QUICK_THINK_LLM', 'TRADINGAGENTS_DEEP_THINK_LLM', 'TRADINGAGENTS_OUTPUT_LANGUAGE', 'TRADINGAGENTS_MAX_DEBATE_ROUNDS', 'TRADINGAGENTS_MAX_RISK_ROUNDS', 'TRADINGAGENTS_MAX_TOOL_ROUNDS'],
     timeoutMs: 1_800_000,
+    steps: [['uv', ['venv', '--python', '3.13', '.venv']], ['uv', ['pip', 'install', '--python', '.venv/bin/python', '.']]],
   },
   openmontage: {
     source: 'https://github.com/calesthio/OpenMontage.git',
@@ -27,6 +26,7 @@ const catalog = {
     executable: root => path.join(root, '.venv', 'bin', 'python'),
     envKeys: ['FAL_KEY', 'PEXELS_API_KEY', 'PIXABAY_API_KEY', 'OPENAI_API_KEY', 'ELEVENLABS_API_KEY', 'GOOGLE_API_KEY'],
     timeoutMs: 3_600_000,
+    steps: [['make', ['setup', 'PYTHON_VERSION=3.13']]],
   },
 };
 
@@ -40,84 +40,110 @@ export function integrationRoot(name) {
   return path.join(data, 'NexusIDE', 'runtimes', name);
 }
 
-async function exists(file, mode = constants.F_OK) { try { await access(file, mode); return true; } catch { return false; } }
-
-export async function integrationStatus(name, { runtimeRoot } = {}) {
-  const definition = Object.hasOwn(catalog, name) && catalog[name];
-  if (!definition) throw new Error(`Unknown integration: ${name}`);
-  const root = runtimeRoot || integrationRoot(name);
-  let revision = null, origin = null;
-  for (const entry of [root, path.join(root, '.git'), path.join(root, '.venv')]) {
-    try { if ((await lstat(entry)).isSymbolicLink()) throw new Error('Managed runtime directories cannot be symbolic links.'); }
-    catch (error) { if (error.code !== 'ENOENT') throw error; }
-  }
-  if (await exists(path.join(root, '.git'))) {
-    const result = await runProcess('git', ['rev-parse', 'HEAD'], { cwd: root, timeoutMs: 10_000 });
-    if (result.code === 0) revision = result.output.trim();
-    const remote = await runProcess('git', ['remote', 'get-url', 'origin'], { cwd: root, timeoutMs: 10_000 });
-    if (remote.code === 0) origin = remote.output.trim();
-  }
-  const sourceVerified = origin === definition.source && revision === definition.revision;
-  const executableAvailable = await exists(definition.executable(root), constants.X_OK);
-  return { name, root, source: definition.source, cloned: Boolean(revision), revision, expectedRevision: definition.revision, origin, sourceVerified, executableAvailable, ready: process.platform !== 'win32' && sourceVerified && executableAvailable, executable: definition.executable(root), liveVerified: false };
+const lifecycle = createIntegrationLifecycle({ definitions: catalog, rootFor: integrationRoot });
+export async function integrationStatus(name, options) {
+  const status = await lifecycle.status(name, options);
+  const definition = catalog[name];
+  return { ...status, requestedGrants: { agent: definition.agent, execute: true, environmentKeys: definition.envKeys } };
 }
+export const installIntegration = lifecycle.install;
+export const upgradeIntegration = lifecycle.upgrade;
+export const rollbackIntegration = lifecycle.rollback;
+export const uninstallIntegration = lifecycle.uninstall;
+export const recoverIntegration = lifecycle.recover;
+export const withIntegrationRuntime = lifecycle.run;
 
 export async function listIntegrationStatus() {
-  return Promise.all(Object.keys(catalog).map(integrationStatus));
+  return Promise.all(Object.keys(catalog).map(name => integrationStatus(name)));
 }
 
-export async function installIntegration(name) {
-  const definition = Object.hasOwn(catalog, name) && catalog[name];
+// Internal injectable boundary for isolated grant transaction tests; public
+// commands always use the reviewed catalog and verified lifecycle above.
+export function createIntegrationConfigurator({ definitions = catalog, statusFor = integrationStatus } = {}) {
+async function configureIntegration(projectRoot, name, options = {}) {
+  const definition = Object.hasOwn(definitions, name) && definitions[name];
   if (!definition) throw new Error(`Unknown integration: ${name}`);
-  if (process.platform === 'win32') throw new Error('Managed runtime installation currently supports macOS/Linux only.');
-  const root = integrationRoot(name);
-  const existing = await integrationStatus(name);
-  if (existing.cloned && !existing.sourceVerified) throw new Error('Existing runtime source/revision differs from the reviewed pin. It was left unchanged; inspect it manually.');
-  if (existing.ready) return existing;
-  await mkdir(path.dirname(root), { recursive: true });
-  if (!await exists(path.join(root, '.git'))) {
-    const clone = await runProcess('git', ['clone', '--no-checkout', '--filter=blob:none', definition.source, root], { cwd: path.dirname(root), timeoutMs: 300_000, maxBytes: 1_000_000 });
-    if (clone.code !== 0 || clone.stopped) throw new Error(`Clone failed: ${clone.output.trim() || clone.stopped}`);
-    const checkout = await runProcess('git', ['-c', 'core.hooksPath=/dev/null', 'checkout', '--detach', definition.revision], { cwd: root, timeoutMs: 300_000, maxBytes: 1_000_000 });
-    if (checkout.code !== 0 || checkout.stopped) throw new Error('Could not check out the reviewed runtime revision. No installer was run.');
-  }
-  if (!(await integrationStatus(name)).sourceVerified) throw new Error('Runtime source verification failed. No installer was run.');
-  if (await exists(path.join(root, '.venv'))) throw new Error('An incomplete environment already exists. It was left unchanged; inspect/repair it manually rather than reinstalling over it.');
-  const steps = name === 'tradingagents'
-    ? [['uv', ['venv', '--python', '3.13', '.venv']], ['uv', ['pip', 'install', '--python', '.venv/bin/python', '.']]]
-    : [['make', ['setup', 'PYTHON_VERSION=3.13']]];
-  for (const [command, args] of steps) {
-    const result = await runProcess(command, args, { cwd: root, timeoutMs: 3_600_000, maxBytes: 2_000_000 });
-    if (result.code !== 0 || result.stopped) throw new Error(`Setup failed: ${result.output.trim() || result.stopped}`);
-  }
-  return integrationStatus(name);
-}
-
-export async function configureIntegration(projectRoot, name, options = {}) {
-  const definition = Object.hasOwn(catalog, name) && catalog[name];
-  if (!definition) throw new Error(`Unknown integration: ${name}`);
-  const status = await integrationStatus(name, options);
-  if (!status.ready) throw new Error(`${name} is not installed. Run nexus integration install ${name}.`);
+  const status = await statusFor(name, options);
+  if (!status.ready) throw new Error(`${name} is not installed or verified. ${status.diagnostic}`);
+  if (options.confirm !== true) throw new Error('Configuration requires explicit confirmation: the agent receives execution access and the application may receive its listed environment credentials.');
   const release = await acquireWorkspace(projectRoot, projectRoot, randomUUID());
   try {
   const config = await loadConfig(projectRoot);
   const agent = await loadAgent(projectRoot, definition.agent);
   const before = structuredClone(config);
+  const beforeAgent = structuredClone(agent);
+  const receipt = await readState(projectRoot, 'integration-grants', `${name}.json`, null);
+  if (receipt && receipt.state !== 'configured') throw new Error('An incomplete integration grant exists. Run nexus integration unconfigure to revoke it safely before configuring again.');
   config.applications ||= {};
   const profile = {
     command: process.execPath,
-    args: [runner, name, await realpath(status.root)],
-    cwd: await realpath(status.root),
+    args: [runner, name, status.managedRoot],
+    // The launcher resolves the active immutable version. Its bootstrap cwd
+    // must exist even when the legacy root was never installed or is disabled.
+    cwd: path.dirname(status.managedRoot),
     envKeys: definition.envKeys,
     timeoutMs: definition.timeoutMs,
   };
-  if (Object.hasOwn(config.applications, name) && JSON.stringify(config.applications[name]) !== JSON.stringify(profile)) throw new Error('An application profile with this name already exists. Review it manually; it was not overwritten.');
+  const old = config.applications[name];
+  const same = value => JSON.stringify(value) === JSON.stringify(profile);
+  const legacyManaged = old?.command === process.execPath && old.args?.length === 3 && old.args[0] === runner && old.args[1] === name && old.args[2] === status.managedRoot && old.cwd === status.managedRoot && JSON.stringify(old.envKeys) === JSON.stringify(definition.envKeys) && old.timeoutMs === definition.timeoutMs;
+  if (old && !same(old) && !legacyManaged && JSON.stringify(old) !== JSON.stringify(receipt?.profile)) throw new Error('An application profile with this name already exists or was modified. Review it manually; it was not overwritten.');
+  const grant = { version: 1, name, state: 'preparing', agent: agent.name, profile, previousExecute: receipt ? receipt.previousExecute : agent.permissions.execute ?? null, executionGranted: receipt ? receipt.executionGranted : agent.permissions.execute !== true };
+  await writeState(projectRoot, 'integration-grants', `${name}.json`, grant);
   config.applications[name] = profile;
-  await saveConfig(projectRoot, config);
   agent.permissions.execute = true;
   agent.applications = [...new Set([...(agent.applications || []), name])];
-  try { await writeState(projectRoot, 'agents', `${agent.name}.json`, agent); }
-  catch (error) { await saveConfig(projectRoot, before); throw error; }
-  return { ...status, configured: true, agent: agent.name };
+  try {
+    await saveConfig(projectRoot, config);
+    await writeState(projectRoot, 'agents', `${agent.name}.json`, agent);
+    await writeState(projectRoot, 'integration-grants', `${name}.json`, { ...grant, state: 'configured' });
+  } catch (error) {
+    await saveConfig(projectRoot, before);
+    await writeState(projectRoot, 'agents', `${agent.name}.json`, beforeAgent);
+    if (receipt) await writeState(projectRoot, 'integration-grants', `${name}.json`, receipt);
+    else await deleteState(projectRoot, 'integration-grants', `${name}.json`);
+    throw error;
+  }
+  return { ...status, configured: true, agent: agent.name, grants: { execute: true, application: name, environmentKeys: definition.envKeys }, note: 'Application invocations still require the existing execution approval. Credential values were not copied into configuration.' };
   } finally { await release(); }
 }
+
+async function unconfigureIntegration(projectRoot, name, options = {}) {
+  const definition = Object.hasOwn(definitions, name) && definitions[name];
+  if (!definition) throw new Error(`Unknown integration: ${name}`);
+  if (options.confirm !== true) throw new Error('Unconfiguration requires explicit confirmation.');
+  const release = await acquireWorkspace(projectRoot, projectRoot, randomUUID());
+  try {
+    const config = await loadConfig(projectRoot), agent = await loadAgent(projectRoot, definition.agent);
+    const receipt = await readState(projectRoot, 'integration-grants', `${name}.json`, null);
+    const existing = config.applications?.[name];
+    if (receipt && (receipt.version !== 1 || receipt.name !== name || receipt.agent !== definition.agent || !['preparing', 'configured', 'revoking'].includes(receipt.state) || typeof receipt.executionGranted !== 'boolean' || ![true, false, null].includes(receipt.previousExecute))) throw new Error('Invalid integration grant receipt; no configuration was changed.');
+    const managed = existing?.args?.length === 3 && existing.args[0] === runner && existing.args[1] === name && path.isAbsolute(existing.args[2]) && existing.command === process.execPath;
+    if (existing && !(receipt ? JSON.stringify(existing) === JSON.stringify(receipt.profile) : managed)) throw new Error('Application profile changed since configuration; no user configuration was removed.');
+    const before = structuredClone(config), beforeAgent = structuredClone(agent);
+    const journal = receipt || { version: 1, name, agent: agent.name, profile: existing ?? null, executionGranted: false, previousExecute: agent.permissions.execute ?? null };
+    await writeState(projectRoot, 'integration-grants', `${name}.json`, { ...journal, state: 'revoking' });
+    if (config.applications) delete config.applications[name];
+    agent.applications = (agent.applications || []).filter(value => value !== name);
+    let executionRestored = false;
+    if (journal.executionGranted && agent.permissions.execute === true && agent.applications.length === 0) {
+      if (journal.previousExecute === null) delete agent.permissions.execute;
+      else agent.permissions.execute = journal.previousExecute;
+      executionRestored = true;
+    }
+    try {
+      await saveConfig(projectRoot, config);
+      await writeState(projectRoot, 'agents', `${agent.name}.json`, agent);
+      await deleteState(projectRoot, 'integration-grants', `${name}.json`);
+    } catch (error) {
+      await saveConfig(projectRoot, before); await writeState(projectRoot, 'agents', `${agent.name}.json`, beforeAgent);
+      if (receipt) await writeState(projectRoot, 'integration-grants', `${name}.json`, receipt);
+      else await deleteState(projectRoot, 'integration-grants', `${name}.json`).catch(() => {});
+      throw error;
+    }
+    return { name, configured: false, agent: agent.name, executionRestored, note: 'Named application and agent membership removed. Other applications, credentials and runtime files were preserved.' };
+  } finally { await release(); }
+}
+return { configureIntegration, unconfigureIntegration };
+}
+export const { configureIntegration, unconfigureIntegration } = createIntegrationConfigurator();

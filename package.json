@@ -26,6 +26,8 @@
     "extensions/vscode/",
     "scripts/build-desktop.js",
     "scripts/package-desktop.js",
+    "scripts/desktop-package-utils.js",
+    "scripts/verify-bundled-desktop.js",
     "desktop/",
     "scripts/verify-desktop.js",
     "scripts/verify-research-evidence.js",
@@ -37,7 +39,8 @@
     "postinstall": "node scripts/setup-pty.js",
     "desktop:build": "node scripts/build-desktop.js",
     "desktop": "node src/cli.js desktop",
-    "desktop:package": "node scripts/package-desktop.js"
+    "desktop:package": "node scripts/package-desktop.js",
+    "desktop:verify-bundle": "node scripts/verify-bundled-desktop.js"
   },
   "engines": {
     "node": ">=22.18.0"

@@ -171,6 +171,8 @@ The local build includes `codebase-navigator`, backed by the reviewed codebase-m
 
 Run `npm run desktop:build`, then `npm run desktop` to open the dashboard in a native window. It uses the same runtime and approvals. See [desktop setup and current limits](docs/desktop.md).
 
-Run `npm run desktop:package` to create an ad-hoc signed `NexusIDE.app` and compressed DMG for local installation. Public distribution still requires an Apple Developer identity and notarization.
+Run `npm run desktop:package` to create a self-contained, ad-hoc signed `NexusIDE.app` and architecture-specific compressed DMG. It bundles Node and production dependencies and opens from Finder with a project picker. `npm run desktop:verify-bundle` tests a relocated copy with a minimal PATH, an offline agent, SQLite and the embedded PTY. See [distribution details](docs/desktop-distribution.md).
 
-The current bundle is a native host launched by `nexus desktop`, not a self-contained Finder-launchable IDE. Node, the source installation and initialized project remain prerequisites.
+Node/npm and this source checkout are not needed to launch the bundled app. Existing project state stays in `.nexus`; first launch creates only missing defaults. External tools/models remain separate. Public distribution still requires Developer ID signing/notarization and clean-machine testing.
+
+Managed TradingAgents/OpenMontage installations now support staged upgrades, verified rollback, interrupted-setup recovery and recoverable disablement without moving existing virtual environments. Use `nexus integration status` and see [integration lifecycle](docs/integration-lifecycle.md) for commands, grants and remaining dependency boundaries.

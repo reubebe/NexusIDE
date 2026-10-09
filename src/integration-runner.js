@@ -3,10 +3,10 @@ import path from 'node:path';
 import { access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { spawn } from 'node:child_process';
+import { withIntegrationRuntime } from './integrations.js';
 
 const [name, root, ...args] = process.argv.slice(2);
 if (!['tradingagents', 'openmontage'].includes(name) || typeof root !== 'string' || !path.isAbsolute(root) || root.includes('\0')) throw new Error('Invalid integration invocation.');
-await access(root, constants.R_OK);
 
 let command, argv;
 if (name === 'tradingagents') {
@@ -27,6 +27,23 @@ if (name === 'tradingagents') {
   else throw new Error('OpenMontage actions: preflight, demo-list, demo <name>, backlot [project-id], simulate.');
 }
 
-const child = spawn(command, argv, { cwd: root, env: process.env, shell: false, stdio: 'inherit' });
-child.on('error', error => { throw error; });
-child.on('exit', (code, signal) => process.exit(signal ? 1 : (code ?? 1)));
+// Argument validation above is deliberately before runtime discovery. The lease
+// prevents upgrades/uninstall while an approved invocation uses the active version.
+const result = await withIntegrationRuntime(name, { runtimeRoot: root }, async (status, trackChild) => {
+  command = path.join(status.root, '.venv', 'bin', name === 'tradingagents' ? 'tradingagents' : 'python');
+  await access(command, constants.X_OK);
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, argv, { cwd: status.root, env: process.env, shell: false, stdio: 'inherit' });
+    let registration = Promise.resolve(), failure;
+    const stop = () => child.kill('SIGTERM');
+    process.once('SIGTERM', stop); process.once('SIGINT', stop);
+    child.once('spawn', () => { registration = trackChild(child.pid).catch(error => { failure = error; stop(); }); });
+    child.once('error', error => { failure = error; });
+    child.once('close', async (code, signal) => {
+      process.off('SIGTERM', stop); process.off('SIGINT', stop);
+      await registration;
+      if (failure) reject(failure); else resolve(signal ? 1 : (code ?? 1));
+    });
+  });
+});
+process.exitCode = result;

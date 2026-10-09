@@ -5,11 +5,11 @@ export function commandEnvironment() {
   return Object.fromEntries(['PATH', 'HOME', 'USER', 'TMPDIR', 'LANG', 'LC_ALL', 'SYSTEMROOT'].filter(k => process.env[k]).map(k => [k, process.env[k]]));
 }
 
-export function runProcess(command, args, { cwd, signal, timeoutMs = 60_000, maxBytes = 100_000, env = commandEnvironment() } = {}) {
+export function runProcess(command, args, { cwd, signal, timeoutMs = 60_000, maxBytes = 100_000, env = commandEnvironment(), onSpawn } = {}) {
   signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { cwd, env, shell: false, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
-    let output = '', bytes = 0, stopped = null;
+    let output = '', bytes = 0, stopped = null, registration = Promise.resolve(), registrationError;
     const stop = reason => {
       if (stopped) return;
       stopped = reason;
@@ -30,8 +30,11 @@ export function runProcess(command, args, { cwd, signal, timeoutMs = 60_000, max
     };
     child.stdout.on('data', collect);
     child.stderr.on('data', collect);
+    child.once('spawn', () => {
+      registration = Promise.resolve().then(() => onSpawn?.(child.pid)).catch(error => { registrationError = error; stop('registration-failed'); });
+    });
     const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort', abort); };
     child.on('error', e => { cleanup(); reject(e); });
-    child.on('close', (code, exitSignal) => { cleanup(); resolve({ code, signal: exitSignal, stopped, output }); });
+    child.on('close', async (code, exitSignal) => { cleanup(); await registration; if (registrationError) reject(registrationError); else resolve({ code, signal: exitSignal, stopped, output }); });
   });
 }
