@@ -14,6 +14,20 @@
       "tools": ["list_sources", "read_source", "get_record", "search_sources"],
       "envKeys": []
     },
+    "research-harness-agent": {
+      "command": "/ABSOLUTE/PATH/research-harness/.venv/bin/python",
+      "args": ["-m", "research_harness.agent_server", "--project", "/ABSOLUTE/PATH/paper-project", "--role", "researcher"],
+      "tools": [
+        "list_sources", "read_source", "get_record", "journal_requirements", "read_guideline",
+        "validate_candidate", "search_sources", "semantic_search", "read_span", "methods_reference",
+        "read_study_matrix", "read_task_output", "recall_procedural_lessons", "search_reranked",
+        "review_analysis_design", "review_figure_design", "read_source_context", "review_methods_critique",
+        "get_project_writing_profile", "inspect_writing", "workflow_status", "read_candidate",
+        "research_artifacts", "inspect_exploratory_plot", "inspect_figure", "check_example_overlap",
+        "check_writing_revision"
+      ],
+      "envKeys": []
+    },
     "codebase-memory": { "command": "codebase-memory-mcp", "args": [], "tools": ["index_repository", "search_code"], "envKeys": ["CBM_ALLOWED_ROOT"] },
     "codegraph": { "command": "codegraph", "args": ["serve", "--mcp"], "tools": ["codegraph_explore"], "envKeys": [] },
     "browser-use": { "command": "browser-use", "args": ["--mcp"], "tools": [], "envKeys": [] }
