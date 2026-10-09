@@ -55,6 +55,8 @@ nexus run architect "Plan this change" --provider claude
 
 Provider profiles reference `keyEnv` or `keySecret`, never plaintext API keys. Routes map agent names to profiles, with an optional default route. If configured, input/output prices per million tokens produce **estimates**, not provider billing totals. Actual model identifiers, credentials, pricing and service compatibility belong to your provider.
 
+Run `nexus providers` to inspect saved compatibility evidence, or `nexus providers check NAME` for a bounded synthetic check of a configured profile (remote requests may incur charges). Profiles support output-token caps and timeouts. Selected Ollama and OpenAI models have passed live checks; Anthropic and Gemini are not yet live-validated. See [provider compatibility](docs/providers.md) for exact models, results, options and limits.
+
 Optional advanced integrations include a restricted REA reverse-engineering MCP connection, a read/query Hyper-Extract MCP connection, and the CLI-Anything discovery skill. This workspace has all three configured. REA is assigned only to `reverse-engineer`, Hyper-Extract to `literature-researcher`, and CLI-Anything to the non-executing `cli-adapter-planner`. See [the advanced configuration template](integrations/advanced.example.json) and [integration review](docs/integrations.md).
 
 MCP connections support stdio and streamable HTTP. A server is contacted only if assigned in the agent's `mcp` list and approved by you. Its configured `tools` array is an explicit allowlist; an empty list exposes no tools. Every tool call requires approval, regardless of server annotations. See [integration review](docs/integrations.md).
@@ -159,7 +161,7 @@ npm audit --omit=dev
 npm start -- doctor
 ```
 
-Tests exercise provider conversion, approvals, cancellation, file restrictions, import fidelity, memory scope, workspace locks, real local MCP protocol exchange, HTTP authentication/origin checks, vault encryption, and workflow scheduling. Provider tests use mocks; no paid model API calls are made. [Security boundaries](SECURITY.md) and [architecture status](docs/architecture.md) identify what remains unverified.
+Tests exercise provider contracts, approvals, cancellation, file restrictions, import fidelity, memory scope, workspace locks, real local MCP protocol exchange, HTTP authentication/origin checks, vault encryption, and workflow scheduling. The automated suite uses synthetic fixtures and loopback model servers; it makes no paid model API calls. Separate opt-in live results are recorded in the [provider matrix](docs/providers.md). [Security boundaries](SECURITY.md) and [architecture status](docs/architecture.md) identify what remains unverified.
 
 ### Code graph navigator
 

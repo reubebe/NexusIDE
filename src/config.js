@@ -1,5 +1,5 @@
 import { readState, writeState, safeName } from './state.js';
-import { createProvider } from './providers.js';
+import { createProvider, validateProviderOptions } from './providers.js';
 import { getSecret } from './vault.js';
 import { validateEmbedding } from './embedding-config.js';
 
@@ -15,9 +15,15 @@ export function validateConfig(config) {
   for (const [name, p] of Object.entries(config.providers)) {
     safeName(name);
     if (!object(p) || !['anthropic', 'compatible', 'demo'].includes(p.kind) || typeof p.model !== 'string' || !p.model.trim()) throw new Error(`Invalid provider ${name}`);
-    if (Object.keys(p).some(k => !['kind', 'model', 'baseUrl', 'keyEnv', 'keySecret', 'inputCostPerMillion', 'outputCostPerMillion'].includes(k))) throw new Error('Provider configuration contains unsupported fields. Store keys in environment variables or the vault.');
+    if (Object.keys(p).some(k => !['kind', 'model', 'baseUrl', 'keyEnv', 'keySecret', 'inputCostPerMillion', 'outputCostPerMillion', 'timeoutMs', 'maxOutputTokens', 'tokenLimitField'].includes(k))) throw new Error('Provider configuration contains unsupported fields. Store keys in environment variables or the vault.');
+    validateProviderOptions(Object.fromEntries(['timeoutMs', 'maxOutputTokens', 'tokenLimitField'].filter(k => p[k] !== undefined).map(k => [k, p[k]])));
+    if (p.baseUrl !== undefined) {
+      if (typeof p.baseUrl !== 'string') throw new Error('Provider baseUrl must be a URL.');
+      const url = new URL(p.baseUrl);
+      if (url.username || url.password || url.search || url.hash || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))) throw new Error('Provider endpoint must use HTTPS or local HTTP without credentials, query or fragment.');
+    }
     if (p.keySecret) { safeName(p.keySecret); if (p.keyEnv) throw new Error('Choose keyEnv or keySecret, not both.'); }
-    if (p.keyEnv && !/^[A-Z_][A-Z0-9_]*$/.test(p.keyEnv)) throw new Error('Invalid key environment variable.');
+    if (p.keyEnv !== undefined && (typeof p.keyEnv !== 'string' || !/^[A-Z_][A-Z0-9_]*$/.test(p.keyEnv))) throw new Error('Invalid key environment variable.');
     for (const key of ['inputCostPerMillion', 'outputCostPerMillion']) if (p[key] !== undefined && (!Number.isFinite(p[key]) || p[key] < 0)) throw new Error('Invalid token rate.');
   }
   for (const [name, m] of Object.entries(config.mcp)) {
@@ -53,7 +59,8 @@ export async function routeProvider(root, agent, { demo = false, providerName, e
   if (!selected) return createProvider(env);
   const p = config.providers[selected];
   if (!p) throw new Error(`Unknown provider profile: ${selected}`);
-  const provider = createProvider({ NEXUS_PROVIDER: p.kind, NEXUS_MODEL: p.model, NEXUS_BASE_URL: p.baseUrl, NEXUS_API_KEY: p.keySecret ? await getSecret(root, p.keySecret, env.NEXUS_VAULT_PASSWORD) : p.keyEnv ? env[p.keyEnv] : undefined });
+  if (p.keyEnv && !env[p.keyEnv]) throw new Error(`Provider credential is unavailable: ${p.keyEnv}`);
+  const provider = createProvider({ NEXUS_PROVIDER: p.kind, NEXUS_MODEL: p.model, NEXUS_BASE_URL: p.baseUrl, NEXUS_API_KEY: p.keySecret ? await getSecret(root, p.keySecret, env.NEXUS_VAULT_PASSWORD) : p.keyEnv ? env[p.keyEnv] : undefined }, Object.fromEntries(['timeoutMs', 'maxOutputTokens', 'tokenLimitField'].filter(k => p[k] !== undefined).map(k => [k, p[k]])));
   provider.profile = selected;
   provider.rates = { input: p.inputCostPerMillion, output: p.outputCostPerMillion };
   return provider;

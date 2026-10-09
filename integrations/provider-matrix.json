@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "protocolSuite": "nexus-provider-contract-v1",
+  "reviewed": "2026-10-09",
+  "scope": "Non-streaming text and client function tools. Adapter fixture coverage does not establish live model compatibility.",
+  "adapters": [
+    {
+      "kind": "compatible",
+      "protocol": "Chat Completions",
+      "fixtures": ["test/provider-contract.test.js", "test/provider-runtime.test.js"],
+      "features": ["text", "tool-round-trip", "multiple-tool-calls", "json-schema-request", "usage", "cancellation", "timeout", "http-errors", "malformed-response-rejection", "response-size-limit"],
+      "notImplemented": ["streaming", "vision", "audio", "Responses API", "server-hosted tools", "automatic retries"]
+    },
+    {
+      "kind": "anthropic",
+      "protocol": "Messages",
+      "fixtures": ["test/provider-contract.test.js", "test/provider-runtime.test.js"],
+      "features": ["text", "tool-round-trip", "multiple-tool-calls", "grouped-tool-results", "json-schema-request", "usage", "cancellation", "timeout", "http-errors", "malformed-response-rejection", "response-size-limit"],
+      "notImplemented": ["streaming", "vision", "audio", "server-hosted tools", "automatic retries"]
+    }
+  ],
+  "targets": [
+    { "id": "ollama", "adapter": "compatible", "baseUrl": "http://127.0.0.1:11434/v1", "model": "gpt-oss:20b", "evidence": "live-check-passed", "checkedAt": "2026-10-09T12:53:27.583Z", "tokenLimitField": "max_tokens", "maxOutputTokens": 4096, "text": "passed", "toolRoundTrip": "passed", "multipleToolCalls": "not-observed", "structuredOutput": "passed", "requests": 5, "inputTokens": 930, "outputTokens": 982, "receipt": ".nexus/provider-checks/local-ollama.json" },
+    { "id": "openai", "adapter": "compatible", "baseUrl": "https://api.openai.com/v1", "model": "gpt-4.1-mini-2025-04-14", "evidence": "live-check-passed", "checkedAt": "2026-10-09T12:53:40.330Z", "tokenLimitField": "max_completion_tokens", "maxOutputTokens": 512, "text": "passed", "toolRoundTrip": "passed", "multipleToolCalls": "observed", "structuredOutput": "passed", "requests": 4, "inputTokens": 453, "outputTokens": 138, "receipt": ".nexus/provider-checks/environment-bda755a08fe32d82.json" },
+    { "id": "anthropic", "adapter": "anthropic", "baseUrl": "https://api.anthropic.com/v1", "model": null, "evidence": "fixture-only", "liveBlocker": "No configured profile or available Anthropic credential" },
+    { "id": "gemini", "adapter": "compatible", "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai", "model": null, "evidence": "fixture-only", "liveBlocker": "No configured profile or available Google credential; compatibility endpoint only" },
+    { "id": "other-compatible", "adapter": "compatible", "model": null, "evidence": "fixture-only", "liveBlocker": "No endpoint/model selected" }
+  ]
+}

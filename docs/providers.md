@@ -1,0 +1,74 @@
+# Provider compatibility
+
+Phase 2 checks the existing Anthropic Messages and compatible Chat Completions adapters with protocol fixtures and small live model conversations. The machine-readable [matrix](../integrations/provider-matrix.json) separates adapter coverage, historical live results, and targets without live evidence. These checks establish particular protocol behaviors; they do not measure coding quality or establish that every model from a provider works.
+
+## Observed model results
+
+Checked on 2026-10-09. Each live check sends synthetic prompts, uses an in-memory lookup tool and validates a small JSON result; it does not send project files, research data, notes or agent instructions.
+
+| Exact target | Text | Tool round trip | Multiple calls in one reply | JSON schema request/result | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Ollama `gpt-oss:20b`, local `/v1/chat/completions` | Passed | Passed | Not observed; two sequential calls worked | Passed | 5 live requests; 930 input / 982 output tokens reported |
+| OpenAI `gpt-4.1-mini-2025-04-14`, Chat Completions | Passed | Passed | Observed | Passed | 4 live requests; 453 input / 138 output tokens reported |
+| Anthropic Messages | Fixture coverage | Fixture coverage | Grouped results verified with fixtures | Request mapping verified with fixtures | No live model selected or Anthropic credential available |
+| Gemini through its OpenAI compatibility endpoint | Shared adapter fixture coverage | Shared adapter fixture coverage | Unverified live | Shared adapter request mapping only | No live model selected or Google credential available |
+| Other compatible services | Shared adapter fixture coverage | Shared adapter fixture coverage | Unverified live | Model-dependent | Select and check an exact endpoint/model |
+
+“Not observed” is not evidence that the model cannot emit multiple calls. Nexus executes client tools sequentially even when a model returns several calls together. Anthropic result blocks are grouped into the next user message as its protocol requires. A structured-output pass means the probe received the requested two-field JSON object; it does not certify every schema. The workflow planner still parses and validates its own JSON proposal separately.
+
+## Repeat a check
+
+```sh
+nexus providers
+nexus providers check local-ollama
+nexus doctor
+```
+
+`providers` and `doctor` only read saved evidence; they make no model calls. `providers check NAME` explicitly invokes a configured profile, up to six requests with no automatic retries. Remote providers may charge for those requests. Ctrl+C cancels the request and saves the check outcome. No default routes are changed.
+
+Receipts live in `.nexus/provider-checks`. They include the exact model/endpoint, request options, pass/fail checks, usage and timestamp; no API keys, model output or synthetic tool values are saved. Earlier receipts may omit request options; the tracked matrix records the settings used for the initial checks. Changing a profile's model, URL, limits, credential reference or rates marks its old receipt stale. Changing the credential value or a model behind an unchanged alias is not detectable; rerun the check. Saved evidence is historical, not a health check.
+
+For an explicit environment-only check without adding a profile:
+
+```sh
+NEXUS_PROVIDER=compatible \
+NEXUS_MODEL=gpt-4.1-mini-2025-04-14 \
+NEXUS_BASE_URL=https://api.openai.com/v1 \
+NEXUS_CHECK_MAX_TOKENS=512 \
+NEXUS_CHECK_TOKEN_FIELD=max_completion_tokens \
+nexus providers check-env
+```
+
+The example uses an already-exported `OPENAI_API_KEY`. For Anthropic use `NEXUS_PROVIDER=anthropic`, the intended model ID, `https://api.anthropic.com/v1` and `ANTHROPIC_API_KEY`. Other services use an explicit `NEXUS_API_KEY`; ambient OpenAI/Anthropic keys are used only at the corresponding official origin. Do not paste credentials into configuration files or commit receipts containing private endpoint information.
+
+## Profile settings
+
+The [configuration example](../integrations/providers.example.json) includes OpenAI, Anthropic, local and Gemini-compatible profiles. Model availability depends on the account; placeholders must be replaced before use. A real OpenAI baseline was tested without making it this workspace's default.
+
+```json
+{
+  "kind": "compatible",
+  "model": "gpt-4.1-mini-2025-04-14",
+  "baseUrl": "https://api.openai.com/v1",
+  "keyEnv": "OPENAI_API_KEY",
+  "maxOutputTokens": 4096,
+  "tokenLimitField": "max_completion_tokens",
+  "timeoutMs": 120000
+}
+```
+
+`maxOutputTokens` is 1–32,768 and defaults to 4,096. `timeoutMs` is 100–120,000 and defaults to 120,000. `tokenLimitField` selects `max_tokens` (default for compatible servers) or `max_completion_tokens`; Anthropic always sends `max_tokens`. Use the parameter supported by the chosen endpoint/model. Reaching the token limit fails the response before executing tools. The limit may include reasoning tokens, depending on the service. Missing explicitly referenced credentials fail before a request; profiles do not borrow unrelated environment keys.
+
+Low-level `provider.complete(messages, tools, {signal, responseSchema: {name, schema}})` maps a JSON schema to compatible `response_format` or Anthropic `output_config.format`. Services may reject unsupported features. Nexus does not automatically retry with the schema removed, and callers must validate returned data for their task. Streaming, multimodal input, provider-hosted tools, native Gemini API and the OpenAI Responses API are not implemented in these adapters.
+
+## Errors and accounting
+
+Adapters validate the entire returned tool batch before any call reaches the runtime: object arguments, valid unique call IDs, bounded count, usable text, completion state and nonnegative token counts. Truncation, refusal, blank output and malformed JSON fail explicitly. Some compatible servers omit completion reasons; a reason is inferred only for an otherwise valid response. Unknown or explicitly null reasons are rejected. The response body remains bounded to 4 MiB.
+
+HTTP failures expose sanitized status and categories: authentication, rate limit, quota, missing model, context limit, timeout or other HTTP error. Cancellation and connection failures are separate. Error bodies and credentials are not echoed. Checks and runs do not retry automatically, preventing hidden repeated model charges.
+
+Usage sums reported common input/output tokens. Missing/partial usage leaves `reported: false` and `estimatedCost: null`; failed provider requests also leave cost unknown in checks and runs, including after an earlier successful request. Optional `inputCostPerMillion` and `outputCostPerMillion` are user-supplied estimates. Provider-specific cache, batch, service-tier and other charges are not reproduced; provider billing is authoritative. No monetary estimate was claimed for the initial live checks because rates were not configured.
+
+Fixture coverage includes both adapters' serialization, multiple calls/results, structured requests, refusal/truncation, malformed responses, HTTP classification, cancellation/timeouts, response limits, credential isolation, persisted failed/cancelled runs and usage totals. Tests use loopback HTTP servers and synthetic secrets; normal CI does not contact model providers. Anthropic/Google live validation remains outstanding until exact models and credentials are available.
+
+Protocol references used for the adapters: [OpenAI Chat Completions](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create), [Anthropic parallel tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use), [Anthropic structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs), [Gemini OpenAI compatibility](https://ai.google.dev/gemini-api/docs/openai), [Ollama OpenAI compatibility](https://docs.ollama.com/api/openai-compatibility).

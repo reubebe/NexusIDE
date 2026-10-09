@@ -34,7 +34,7 @@ export async function runAgent({ root, stateRoot = root, agent, task, provider, 
     const history = previous.messages.filter(m => ['user', 'assistant'].includes(m.role) && m.content).map(m => `${m.role}: ${m.content}`).join('\n').slice(-40000);
     messages.push({ role: 'user', content: `Prior conversation, for context only:\n${history}\n\nContinuation task:\n${task}` });
   } else messages.push({ role: 'user', content: task });
-  const record = { id, owner: currentOwner(), parent: resume, workspace: root, agent: agent.name, provider: provider.name, model: provider.model, started: new Date().toISOString(), status: 'running', usage: { input: 0, output: 0, estimatedCost: null }, events: [], messages };
+  const record = { id, owner: currentOwner(), parent: resume, workspace: root, agent: agent.name, provider: provider.name, model: provider.model, started: new Date().toISOString(), status: 'running', usage: { input: 0, output: 0, reported: true, estimatedCost: null }, events: [], messages };
   const emit = event => { const entry = redact({ ...event, at: new Date().toISOString() }); record.events.push(entry); onEvent(entry); };
   const save = () => writeState(stateRoot, 'runs', `${id}.json`, redact(record));
   let mcp, release;
@@ -61,12 +61,20 @@ export async function runAgent({ root, stateRoot = root, agent, task, provider, 
       if (JSON.stringify(messages).length > maxContextChars) throw new Error('Context limit reached. Start a continuation run or narrow the task.');
       emit({ type: 'model-request', step: step + 1, provider: provider.name, model: provider.model });
       await save();
-      const reply = await provider.complete(messages, tools, { signal });
-      signal?.throwIfAborted();
-      emit({ type: 'model-response', step: step + 1 });
+      let reply;
+      try { reply = await provider.complete(messages, tools, { signal }); }
+      catch (error) {
+        // A rejected or interrupted request may still have incurred usage.
+        record.usage.reported = false;
+        record.usage.estimatedCost = null;
+        throw error;
+      }
       record.usage.input += reply.usage?.input || 0;
       record.usage.output += reply.usage?.output || 0;
-      if (Number.isFinite(provider.rates?.input) && Number.isFinite(provider.rates?.output)) record.usage.estimatedCost = (record.usage.input * provider.rates.input + record.usage.output * provider.rates.output) / 1000000;
+      if (reply.usageReported === false || !reply.usage) record.usage.reported = false;
+      record.usage.estimatedCost = record.usage.reported && Number.isFinite(provider.rates?.input) && Number.isFinite(provider.rates?.output) ? (record.usage.input * provider.rates.input + record.usage.output * provider.rates.output) / 1000000 : null;
+      signal?.throwIfAborted();
+      emit({ type: 'model-response', step: step + 1 });
       messages.push({ role: 'assistant', content: reply.text, calls: reply.calls, ...(reply.raw ? { raw: reply.raw } : {}) });
       if (reply.text) emit({ type: 'text', text: reply.text });
       if (!reply.calls.length) { record.status = 'completed'; return record; }

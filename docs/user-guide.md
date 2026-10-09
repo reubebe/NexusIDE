@@ -49,6 +49,8 @@ The compatible Chat Completions option uses `NEXUS_PROVIDER=compatible`, `NEXUS_
 
 This workspace now has a verified `local-ollama` profile using the already-installed `gpt-oss:20b` model. It is the default route here. With Ollama running, try `npm start -- run architect "Inspect the project structure"` without `--demo`. This configuration is local workspace state, so a fresh installation still needs its own provider setup.
 
+Inspect saved compatibility evidence with `nexus providers`. To test your exact profile, run `nexus providers check NAME`; this sends only synthetic prompts and tool results, up to six requests, and may incur provider charges. It does not change your default route. Profiles can set `maxOutputTokens`, `timeoutMs`, and the compatible endpoint's `tokenLimitField`. See [provider compatibility](providers.md) for configuration, historical live results, credential isolation and untested targets.
+
 ## 4. Run an agent
 
 ```sh
@@ -172,7 +174,7 @@ For an unfinished run whose recorded process has exited, use `npm start -- recov
 
 ## Current limits
 
-The VS Code extension passed activation, terminal initialization and Run Agent checks inside VS Code 1.127.0 with persisted demo history. Zed 1.23.2 launched the NexusIDE ACP process and completed a demo prompt with persisted history. Docker is optional; its configured restrictions have now passed a live synthetic check on this machine. The local Ollama model has passed a live tool-use check. Additional provider APIs, MCP servers, browser automation, trading runtime, and video tooling require separate setup. See [architecture status](architecture.md) and [integration review](integrations.md) for what has actually been exercised.
+The VS Code extension passed activation, terminal initialization and Run Agent checks inside VS Code 1.127.0 with persisted demo history. Zed 1.23.2 launched the NexusIDE ACP process and completed a demo prompt with persisted history. Docker is optional; its configured restrictions have now passed a live synthetic check on this machine. Selected Ollama and OpenAI models have passed synthetic text, tool-round-trip and structured-output checks. Other models, MCP servers, browser automation, trading runtime, and video tooling require separate setup and validation. See [architecture status](architecture.md), [provider compatibility](providers.md), and [integration review](integrations.md) for what has actually been exercised.
 
 ## Codebase navigation
 

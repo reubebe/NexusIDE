@@ -2,6 +2,10 @@
 
 This evaluation checks the supplied architecture against the local implementation. The full product is not complete. Passing automated tests is evidence for the exercised paths, not proof of complete functionality or security.
 
+## Provider phase: 2026-10-09
+
+The suite now passes 164 tests, including adapter contracts, loopback runtime conversations, cancellation/timeouts, credential isolation, sanitized errors, usage accounting, and synthetic probe receipts. Selected live checks passed for Ollama `gpt-oss:20b` (five requests) and OpenAI `gpt-4.1-mini-2025-04-14` (four requests). Both returned text, observed lookup-tool values and the requested JSON object; OpenAI also emitted multiple calls in one reply. No project content was sent. Exact scope, options and untested targets are in [provider compatibility](providers.md). Anthropic and Gemini have no live validation yet. Earlier evidence below is preserved as historical, not expanded by these probes.
+
 ## Resumption: 2026-10-08
 
 The earlier resumption suite passed 60 tests. The subsequent [comprehensive workflow audit](audit-2026-10-08.md) adds regression coverage and records current validation; the notes below also preserve historical evidence.

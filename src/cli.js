@@ -47,6 +47,9 @@ const help = `NexusIDE · One runtime. Any agent. Any model.
   nexus storage backup <file.sqlite>      Save a consistent SQLite snapshot
   nexus config show                       Show provider/MCP configuration
   nexus config import <file.json>          Configure profiles and routes
+  nexus providers                         Show provider compatibility evidence
+  nexus providers check <profile>         Run bounded synthetic model checks
+  nexus providers check-env               Check an explicit environment model
   nexus worktree create|diff <name>        Create or inspect worktree
   nexus worktree list                      List worktrees
   nexus worktree merge <name>              Review and approve a fast-forward merge
@@ -106,6 +109,21 @@ async function main() {
     throw new Error('Use nexus integration status [name], install <name>, or configure <name>.');
   }
   if (command === 'doctor') { const { doctor } = await import('./doctor.js'); return print(JSON.stringify(await doctor(root), null, 2)); }
+  if (command === 'providers') {
+    const { providerMatrix, verifyProvider, verifyEnvironmentProvider } = await import('./provider-verification.js');
+    if (!args.length) return print(JSON.stringify(await providerMatrix(root), null, 2));
+    const controller = new AbortController();
+    const cancel = () => controller.abort(new Error('Provider check cancelled.'));
+    process.on('SIGINT', cancel); process.on('SIGTERM', cancel);
+    try {
+      let result;
+      if (args[0] === 'check' && args.length === 2) result = await verifyProvider(root, args[1], { signal: controller.signal });
+      else if (args[0] === 'check-env' && args.length === 1) result = await verifyEnvironmentProvider(root, { signal: controller.signal });
+      else throw new Error('Use nexus providers, providers check <profile>, or providers check-env.');
+      if (!result.verified) process.exitCode = 1;
+      return print(JSON.stringify(result, null, 2));
+    } finally { process.off('SIGINT', cancel); process.off('SIGTERM', cancel); }
+  }
   if (command === 'storage') {
     const { storageStatus, migrateStorage, backupStorage } = await import('./storage-maintenance.js');
     if (args[0] === 'status' && args.length === 1) return print(JSON.stringify(await storageStatus(root), null, 2));

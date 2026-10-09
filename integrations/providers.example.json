@@ -3,7 +3,8 @@
   "providers": {
     "local": { "kind": "compatible", "model": "YOUR_INSTALLED_TOOL_CAPABLE_MODEL", "baseUrl": "http://localhost:11434/v1" },
     "claude": { "kind": "anthropic", "model": "YOUR_CLAUDE_MODEL_ID", "keyEnv": "ANTHROPIC_API_KEY" },
-    "openai": { "kind": "compatible", "model": "YOUR_OPENAI_MODEL_ID", "keyEnv": "OPENAI_API_KEY" }
+    "openai": { "kind": "compatible", "model": "YOUR_OPENAI_MODEL_ID", "keyEnv": "OPENAI_API_KEY", "tokenLimitField": "max_completion_tokens", "maxOutputTokens": 4096 },
+    "gemini": { "kind": "compatible", "model": "YOUR_GEMINI_MODEL_ID", "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai", "keyEnv": "GEMINI_API_KEY", "maxOutputTokens": 4096 }
   },
   "routes": { "default": "local", "architect": "claude", "coder": "openai" },
   "limits": { "maxSteps": 20, "maxContextChars": 160000 },

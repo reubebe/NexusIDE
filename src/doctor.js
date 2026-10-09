@@ -6,6 +6,7 @@ import { listAgents } from './agents.js';
 import { listSkills } from './skills.js';
 import { runProcess } from './process.js';
 import { readState } from './state.js';
+import { providerMatrix } from './provider-verification.js';
 
 const verificationNames = ['workflow-audit', 'storage-scale', 'local-model', 'development', 'docker', 'vscode', 'zed', 'desktop', 'native-visual', 'dashboard-visual', 'responsive', 'semantic-memory', 'codegraph', 'codegraph-project', 'research-harness', 'research-evidence', 'tradingagents', 'openmontage', 'rea', 'hyper-extract'];
 export async function verificationHistory(root) {
@@ -41,6 +42,7 @@ export async function doctor(root) {
   let docker = 'not-installed';
   if (await executableAvailable('docker')) { const result = await runProcess('docker', ['info', '--format', '{{.ServerVersion}}'], { cwd: root, timeoutMs: 3000 }); docker = result.code === 0 && /^\d+\.\d+\.\d+[\w.+-]*$/.test(result.output.trim()) ? `running: ${result.output.trim()}` : 'daemon-unavailable'; }
   return { node: process.version, root, agents: agents.length, skills: skills.length, missingSkills, docker, connections,
+    providerCompatibility: (await providerMatrix(root)).profiles.map(({ name, evidence, lastChecked, receipt }) => ({ name, evidence, lastChecked, receipt })),
     embeddings: config.embeddings ? { configured: true, model: config.embeddings.model, liveVerified: false } : { configured: false },
     verificationHistory: await verificationHistory(root),
     notes: ['Executable availability does not prove integration compatibility.', 'Doctor does not call model APIs or start external MCP/application servers.', 'Verification history is locally recorded evidence from earlier checks, not a fresh check or proof that current configuration is unchanged.'] };
