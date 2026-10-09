@@ -17,6 +17,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: node scripts/verify-storage-scale.js
       - run: npm audit --omit=dev --audit-level=high
       - if: runner.os == 'macOS'
         run: npm run desktop:build

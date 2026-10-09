@@ -28,7 +28,8 @@
     "scripts/package-desktop.js",
     "desktop/",
     "scripts/verify-desktop.js",
-    "scripts/verify-research-evidence.js"
+    "scripts/verify-research-evidence.js",
+    "scripts/verify-storage-scale.js"
   ],
   "scripts": {
     "start": "node src/cli.js",
@@ -39,7 +40,7 @@
     "desktop:package": "node scripts/package-desktop.js"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.18.0"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.7.0",

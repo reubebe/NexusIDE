@@ -1,66 +1,65 @@
-import { createHash } from 'node:crypto';
 import { loadConfig } from './config.js';
+import { setImmediate } from 'node:timers/promises';
 import { validateEmbedding } from './embedding-config.js';
 export { validateEmbedding } from './embedding-config.js';
-import { listState, readState, writeState } from './state.js';
-import { readProviderJson } from './providers.js';
+export { embed } from './embeddings.js';
+import { embed } from './embeddings.js';
+import { ensureSqliteFolder } from './state.js';
+import { openDatabase } from './sqlite.js';
+import { digest, updateIndex, openIndex, decodeVector, keepBest } from './index-store.js';
 
-const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const noteDigest = note => digest(JSON.stringify(note));
 
-function vector(value) {
-  if (!Array.isArray(value) || !value.length || value.length > 8192 || value.some(x => !Number.isFinite(x))) throw new Error('Invalid embedding vector.');
-  const norm = Math.hypot(...value);
-  if (!Number.isFinite(norm) || !norm) throw new Error('Invalid embedding vector norm.');
-  return value.map(x => x / norm);
+async function* noteSources(root, signal) {
+  const db = await openDatabase(root);
+  try {
+    db.exec('BEGIN');
+    for (const { data } of db.prepare("SELECT data FROM state_records WHERE folder='memory' ORDER BY name").iterate()) {
+      signal?.throwIfAborted();
+      const note = JSON.parse(data);
+      if (typeof note.id !== 'string' || typeof note.text !== 'string' || !note.text.trim() || note.text.length > 16000) throw new Error('Invalid stored memory.');
+      yield { key: note.id, digest: noteDigest(note), bytes: Buffer.byteLength(note.text),
+        metadata: { scope: note.scope, agent: note.agent },
+        chunks: [{ start: 0, end: note.text.length, content: note.text }] };
+    }
+  } finally { db.close(); }
 }
-export async function embed(config, input, signal) {
-  validateEmbedding(config);
-  const response = await fetch(config.url, { method: 'POST', redirect: 'error', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: config.model, input, truncate: false }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120000)]) : AbortSignal.timeout(120000) });
-  if (!response.ok) { await response.body?.cancel(); throw new Error(`Embedding endpoint returned HTTP ${response.status}.`); }
-  const body = await readProviderJson(response);
-  if (!Array.isArray(body.embeddings) || body.embeddings.length !== input.length) throw new Error('Embedding response count mismatch.');
-  return body.embeddings.map(vector);
-}
-async function memories(root) {
-  const files = await listState(root, 'memory');
-  if (files.length > 1000) throw new Error('Semantic index is limited to 1000 notes.');
-  return Promise.all(files.map(f => readState(root, 'memory', f)));
-}
-export async function rebuildMemoryIndex(root, { signal } = {}) {
+
+export async function rebuildMemoryIndex(root, { signal, force = false } = {}) {
   const config = validateEmbedding((await loadConfig(root)).embeddings);
-  const notes = await memories(root), entries = [];
-  let dimensions;
-  for (let offset = 0; offset < notes.length; offset += 8) {
-    signal?.throwIfAborted();
-    const batch = notes.slice(offset, offset + 8);
-    const vectors = await embed(config, batch.map(n => n.text), signal);
-    vectors.forEach((v, i) => {
-      dimensions ??= v.length;
-      if (v.length !== dimensions) throw new Error('Embedding dimensions changed during indexing.');
-      entries.push({ id: batch[i].id, digest: hash(batch[i]), vector: v });
-    });
-  }
-  const index = { version: 1, config, built: new Date().toISOString(), dimensions: dimensions || 0, entries };
-  if (Buffer.byteLength(JSON.stringify(index, null, 2)) > 18_000_000) throw new Error('Semantic index exceeds storage limit; reduce note count or embedding dimensions.');
-  await writeState(root, 'indexes', 'memory.json', index);
-  return { indexed: entries.length, dimensions: index.dimensions, model: config.model, built: index.built };
+  await ensureSqliteFolder(root, 'memory');
+  return updateIndex(root, 'memory', config, noteSources(root, signal), { signal, force });
 }
+
 export async function semanticRecall(root, query, agent, { signal } = {}) {
   if (typeof query !== 'string' || !query.trim() || query.length > 16000) throw new Error('Semantic query must contain 1–16000 characters.');
   const config = validateEmbedding((await loadConfig(root)).embeddings);
-  const index = await readState(root, 'indexes', 'memory.json', null);
-  if (!index || index.version !== 1 || hash(index.config) !== hash(config)) throw new Error('Rebuild the memory index for the configured embedding model.');
-  const notes = (await memories(root)).filter(n => n.scope === 'project' || (n.scope === 'agent' && agent && n.agent === agent));
-  const entries = new Map(index.entries.map(e => [e.id, e]));
-  const current = notes.filter(n => entries.get(n.id)?.digest === hash(n));
-  const stale = notes.length - current.length;
-  if (!current.length) return { matches: [], stale, indexed: 0, built: index.built };
-  const [needle] = await embed(config, [query], signal);
-  if (needle.length !== index.dimensions) throw new Error('Embedding dimensions changed; rebuild the memory index.');
-  const matches = current.map(note => {
-    const value = vector(entries.get(note.id).vector);
-    if (value.length !== needle.length) throw new Error('Corrupt memory vector dimensions.');
-    return { ...note, score: value.reduce((sum, x, i) => sum + x * needle[i], 0) };
-  }).sort((a, b) => b.score - a.score).slice(0, 20);
-  return { matches, stale, indexed: current.length, built: index.built };
+  await ensureSqliteFolder(root, 'memory');
+  const index = await openIndex(root, 'memory', config);
+  try {
+    const { db, meta } = index;
+    const scoped = db.prepare(`SELECT r.data, s.digest, c.vector FROM state_records r
+      LEFT JOIN index_sources s ON s.kind='memory' AND s.key=substr(r.name,1,length(r.name)-5)
+      LEFT JOIN index_chunks c ON c.kind=s.kind AND c.source_key=s.key
+      WHERE r.folder='memory' AND (r.scope='project' OR (r.scope='agent' AND r.agent=?))`);
+    let stale = 0, indexed = 0, visited = 0;
+    for (const row of scoped.iterate(agent ?? null)) {
+      if (++visited % 128 === 0) { await setImmediate(); signal?.throwIfAborted(); }
+      if (!row.vector || row.digest !== noteDigest(JSON.parse(row.data))) stale++;
+      else indexed++;
+    }
+    if (!indexed) return { matches: [], stale, indexed, built: meta.built };
+    const [needle] = await embed(config, [query], signal);
+    if (needle.length !== meta.dimensions) throw new Error('Embedding dimensions changed; rebuild the memory index.');
+    const matches = [];
+    for (const row of scoped.iterate(agent ?? null)) {
+      if (++visited % 128 === 0) await setImmediate();
+      signal?.throwIfAborted();
+      const note = JSON.parse(row.data);
+      if (!row.vector || row.digest !== noteDigest(note)) continue;
+      const value = decodeVector(row.vector, meta.dimensions);
+      keepBest(matches, { ...note, score: value.reduce((sum, x, i) => sum + x * needle[i], 0) }, 20);
+    }
+    return { matches, stale, indexed, built: meta.built };
+  } finally { index.close(); }
 }

@@ -68,7 +68,7 @@ test('runtime cancellation saves a cancelled transcript', async t => {
   let runId;
   const provider = { name: 'test', model: 'test', complete: async () => { controller.abort(new Error('cancelled')); return { text: '', calls: [] }; } };
   await assert.rejects(runAgent({ root, agent: defaults[0], task: 'test', provider, signal: controller.signal }), /cancelled/);
-  const { readdir } = await import('node:fs/promises');
-  runId = (await readdir(path.join(root, '.nexus', 'runs')))[0];
-  assert.equal(JSON.parse(await readFile(path.join(root, '.nexus', 'runs', runId))).status, 'cancelled');
+  const { listState, readState } = await import('../src/state.js');
+  runId = (await listState(root, 'runs'))[0];
+  assert.equal((await readState(root, 'runs', runId)).status, 'cancelled');
 });

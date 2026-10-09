@@ -2,6 +2,8 @@ const vscode = require('vscode');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+const execFile = require('node:util').promisify(require('node:child_process').execFile);
 
 exports.run = async () => {
   const report = { verified: false, vscode: vscode.version };
@@ -23,12 +25,14 @@ exports.run = async () => {
     }
     assert.equal(agent?.name, 'architect', 'Initialize command must run the real CLI in the terminal.');
     await vscode.commands.executeCommand('nexuside.runAgent', { agent: 'architect', task: 'Reply with the synthetic VS Code host verification.', demo: true });
-    const runs = path.join(workspace, '.nexus', 'runs');
+    const settings = vscode.workspace.getConfiguration('nexuside');
+    const stateModule = pathToFileURL(path.join(path.dirname(settings.get('cliPath')), 'state.js')).href;
+    const readRuns = `const {recentState}=await import(process.argv[1]); console.log(JSON.stringify(await recentState(process.argv[2], 'runs', 10)));`;
     let completed;
     for (let i = 0; i < 200; i++) {
       try {
-        for (const name of await fs.readdir(runs)) {
-          const run = JSON.parse(await fs.readFile(path.join(runs, name), 'utf8'));
+        const { stdout } = await execFile(settings.get('nodePath') || 'node', ['--input-type=module', '-e', readRuns, stateModule, workspace], { timeout: 10000, maxBuffer: 2000000 });
+        for (const run of JSON.parse(stdout)) {
           if (run.status === 'completed' && run.messages?.some(message => message.content?.includes('synthetic VS Code host verification'))) completed = run;
         }
         if (completed) break;

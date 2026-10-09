@@ -8,7 +8,7 @@ let state, activeJob;
 const skillAudits = new Map();
 const memoryPanel = $('memory-form').parentElement;
 const indexButton = nodeButton();
-function nodeButton() { const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Rebuild semantic index'; return b; }
+function nodeButton() { const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Update semantic index'; return b; }
 const searchInput = document.createElement('input'); searchInput.placeholder = 'Search project memory by meaning'; searchInput.setAttribute('aria-label', 'Semantic memory query');
 const searchButton = document.createElement('button'); searchButton.textContent = 'Search by meaning'; searchButton.type = 'button';
 const searchResults = document.createElement('pre'); searchResults.setAttribute('aria-live', 'polite');
@@ -43,7 +43,7 @@ async function api(path, method = 'GET', data) {
 }
 const node = (tag, text, className) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (className) n.className = className; return n; };
 const action = fn => async event => { event?.preventDefault(); try { $('notice').textContent = ''; await fn(); } catch (e) { $('notice').textContent = e.message; } };
-indexButton.onclick = action(async () => { indexButton.disabled = true; try { const result = await api('memory/index', 'POST', {}); searchResults.textContent = `Indexed ${result.indexed} notes with ${result.model}.`; } finally { indexButton.disabled = false; } });
+indexButton.onclick = action(async () => { indexButton.disabled = true; try { const result = await api('memory/index', 'POST', {}); searchResults.textContent = `Indexed ${result.indexed} notes: ${result.embedded} updated, ${result.reused} reused.`; } finally { indexButton.disabled = false; } });
 searchButton.onclick = action(async () => { const result = await api('memory/search', 'POST', { query: searchInput.value }); searchResults.textContent = result.matches.map(m => m.text).join('\n\n') || 'No current indexed project notes.'; if (result.stale) searchResults.textContent += `\n${result.stale} notes need reindexing.`; });
 const titles = { workspace: 'Tasks', files: 'Project files', agents: 'Agents', history: 'Run library', memory: 'Memory', settings: 'Connections', terminal: 'Terminal' };
 const filesButton = node('button', 'Project files'); filesButton.dataset.tab = 'files'; document.querySelector('nav').append(filesButton);

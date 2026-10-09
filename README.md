@@ -10,7 +10,7 @@ New users: start with the step-by-step [NexusIDE User Guide](docs/user-guide.md)
 
 ## Start
 
-Requires Node.js 22+ and npm. Git is needed for worktrees. The PTY dependency may need platform build tools when a prebuilt binary is unavailable.
+Requires Node.js 22.18+ and npm. Git is needed for worktrees. The PTY dependency may need platform build tools when a prebuilt binary is unavailable.
 
 ```sh
 npm install
@@ -133,9 +133,11 @@ nexus status RUN_ID
 nexus run architect "Continue with this refinement" --resume RUN_ID
 ```
 
-Memory is project-scoped or agent-scoped and searched lexically. Agents with `memory: true` receive relevant notes and can propose new notes for approval. Optional semantic note retrieval uses a configured local Ollama embedding model. Run `nexus memory index` to rebuild and `nexus memory semantic "query"` to search; see the [user guide](docs/user-guide.md#9-save-and-inspect-memory). Continuations carry prior conversation prose into a new run; unfinished tool calls are not replayed. Default limits are 20 model steps and 160,000 serialized context characters.
+Memory is project-scoped or agent-scoped and searched lexically. Agents with `memory: true` receive relevant notes and can propose new notes for approval. Optional semantic note retrieval uses a configured local Ollama embedding model. Run `nexus memory index` to incrementally update and `nexus memory semantic "query"` to search; see the [user guide](docs/user-guide.md#9-save-and-inspect-memory). Continuations carry prior conversation prose into a new run; unfinished tool calls are not replayed. Default limits are 20 model steps and 160,000 serialized context characters.
 
-Project retrieval is separate from agent memory. `nexus project index` embeds bounded chunks from supported source and documentation files while excluding protected directories, links, binary files, files over 100 KB, and more than 5 MB or 500 files per build. `nexus project semantic` returns ranked paths and bounded excerpts. Rebuild after source changes; the local JSON index is intentionally capped for prototype-scale projects.
+Project retrieval is separate from agent memory. `nexus project index` scans supported source/document files, reuses embeddings for identical chunks (including renamed files), and removes deleted sources. It excludes protected directories, links, binaries and files over 100 KB; each scan is bounded to 10,000 files, 50 MB and 30,000 chunks. `nexus project semantic` returns ranked paths and bounded excerpts after checking the current file digest. Use `--force` to replace all embeddings, including after changing a model behind the same model name.
+
+Run history, workflows, notes and semantic indexes use `.nexus/storage.sqlite`. Existing JSON history migrates transactionally on first access; original files are retained. Configuration, agent definitions, skills, locks, receipts and the encrypted vault remain in their existing locations. `nexus storage status`, `nexus storage migrate` and `nexus storage backup <file.sqlite>` expose migration, integrity and snapshot operations. See [storage and recovery](docs/storage.md) before upgrading an active workspace or restoring a backup.
 
 If a crash leaves a workspace lock, `nexus recover` lists lock keys and whether the recorded process is present. `nexus recover <key-prefix>` asks for confirmation before removing a unique stale lock. Inspect the process and workspace before approving; run history and workspace changes remain available afterward.
 

@@ -14,11 +14,14 @@ try {
   await remember(root, { text: 'The film script features a spaceship landing on Mars.' });
   await remember(root, { text: 'Private accessibility notes.', scope: 'agent', agent: 'other-agent' });
   receipt.index = await rebuildMemoryIndex(root);
+  receipt.incremental = await rebuildMemoryIndex(root);
+  assert.equal(receipt.incremental.embedded, 0);
+  assert.equal(receipt.incremental.reused, 3);
   const result = await semanticRecall(root, 'How should we make the UI accessible?', 'reviewer');
   assert.equal(result.matches[0].id, relevant.id);
   assert.equal(result.matches.length, 2);
   receipt.verified = true;
-  receipt.checks = ['real-embedding-vectors', 'semantic-ranking', 'agent-scope-filter'];
+  receipt.checks = ['real-embedding-vectors', 'incremental-vector-reuse', 'semantic-ranking', 'agent-scope-filter'];
 } catch (error) { receipt.error = error.message; process.exitCode = 1; }
 finally { await writeState(process.cwd(), 'verification', 'semantic-memory.json', receipt); await rm(root, { recursive: true, force: true }); }
 console.log(JSON.stringify(receipt, null, 2));

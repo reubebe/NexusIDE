@@ -3,7 +3,7 @@ import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { listAgents, loadAgent, validateAgent } from './agents.js';
-import { listState, readState, writeState, safeName } from './state.js';
+import { listState, readState, writeState, safeName, recentState } from './state.js';
 import { loadConfig, saveConfig, routeProvider } from './config.js';
 import { listSkills, auditSkill } from './skills.js';
 import { recall, remember } from './memory.js';
@@ -40,8 +40,7 @@ export async function startServer({ root, port = 4317 }) {
   const body = readJsonBody;
   const send = (res, status, value) => { res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value)); };
   async function summary(folder) {
-    const records = await Promise.all((await listState(root, folder)).map(f => readState(root, folder, f)));
-    return records.sort((a, b) => (b.started || '').localeCompare(a.started || '')).slice(0, 100).map(({ messages, events, ...r }) => r);
+    return recentState(root, folder, 100, { summary: true });
   }
   const server = http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');

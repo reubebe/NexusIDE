@@ -4,7 +4,7 @@ The native shell opens the existing NexusIDE dashboard in a macOS window. It sha
 
 ## Build and open
 
-Requires macOS, Node 22 or later, project dependencies, and Xcode Command Line Tools with a matching macOS SDK.
+Requires macOS, Node 22.18 or later, project dependencies, and Xcode Command Line Tools with a matching macOS SDK.
 
 ```sh
 npm run desktop:build

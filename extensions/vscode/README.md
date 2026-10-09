@@ -1,6 +1,6 @@
 # NexusIDE VS Code launcher
 
-Open this folder in VS Code and press F5 to launch an Extension Development Host. Set `nexuside.cliPath` in **user settings** to the absolute path of NexusIDE's `src/cli.js`, and `nexuside.nodePath` to a Node.js 22+ executable if `node` is not on PATH.
+Open this folder in VS Code and press F5 to launch an Extension Development Host. Set `nexuside.cliPath` in **user settings** to the absolute path of NexusIDE's `src/cli.js`, and `nexuside.nodePath` to a Node.js 22.18+ executable if `node` is not on PATH.
 
 Commands: **NexusIDE: Initialize Project**, **NexusIDE: Run Agent**, and **NexusIDE: Start Dashboard**. The workspace must be trusted. Commands launch Node with an argument array in the integrated terminal; user tasks are not interpolated into a shell command.
 

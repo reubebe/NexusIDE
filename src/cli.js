@@ -7,7 +7,7 @@ import { loadConfig, saveConfig, routeProvider } from './config.js';
 import { importSkill, listSkills, loadSkill, readSkillBundle, auditSkill } from './skills.js';
 import { scanSkillFiles } from './skill-scan.js';
 import { remember, recall, forget } from './memory.js';
-import { writeState, readState, listState, safeName } from './state.js';
+import { writeState, readState, listState, safeName, recentState } from './state.js';
 import { validateWorkflow, loadWorkflow, runWorkflow } from './workflows.js';
 import { terminalApproval, print } from './approval.js';
 import { importMarkdownAgent } from './imports.js';
@@ -37,11 +37,14 @@ const help = `NexusIDE · One runtime. Any agent. Any model.
   nexus skills inspect <name>             Inspect provenance and resources
   nexus memory add "text" [--agent name]  Save scoped memory
   nexus memory search "query"             Search project memory
-  nexus memory index                      Rebuild embeddings for local notes
+  nexus memory index [--force]            Update embeddings for changed notes
   nexus memory semantic "query"           Semantic search [--agent name]
   nexus memory forget <id>                Delete memory
-  nexus project index                     Index bounded project code and documents
+  nexus project index [--force]           Update index of project code and documents
   nexus project semantic "query"          Search indexed project content by meaning
+  nexus storage status                    Inspect SQLite storage and integrity
+  nexus storage migrate                   Import existing history and notes
+  nexus storage backup <file.sqlite>      Save a consistent SQLite snapshot
   nexus config show                       Show provider/MCP configuration
   nexus config import <file.json>          Configure profiles and routes
   nexus worktree create|diff <name>        Create or inspect worktree
@@ -73,7 +76,7 @@ Provider env: NEXUS_PROVIDER, NEXUS_MODEL, NEXUS_API_KEY, NEXUS_BASE_URL.`;
 export function parseOptions(args) {
   const options = {}, positional = [];
   const values = new Set(['provider', 'worktree', 'resume', 'sandbox-image', 'concurrency', 'agent', 'port']);
-  const flags = new Set(['demo', 'allow-commands', 'isolated']);
+  const flags = new Set(['demo', 'allow-commands', 'isolated', 'force']);
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--') { positional.push(...args.slice(i + 1)); break; }
     if (!args[i].startsWith('--')) { positional.push(args[i]); continue; }
@@ -103,6 +106,13 @@ async function main() {
     throw new Error('Use nexus integration status [name], install <name>, or configure <name>.');
   }
   if (command === 'doctor') { const { doctor } = await import('./doctor.js'); return print(JSON.stringify(await doctor(root), null, 2)); }
+  if (command === 'storage') {
+    const { storageStatus, migrateStorage, backupStorage } = await import('./storage-maintenance.js');
+    if (args[0] === 'status' && args.length === 1) return print(JSON.stringify(await storageStatus(root), null, 2));
+    if (args[0] === 'migrate' && args.length === 1) return print(JSON.stringify(await migrateStorage(root), null, 2));
+    if (args[0] === 'backup' && args.length === 2) return print(JSON.stringify(await backupStorage(root, args[1]), null, 2));
+    throw new Error('Use nexus storage status, migrate, or backup <file.sqlite>.');
+  }
   if (command === 'recover') {
     if (args[0] === 'activity' && args.length === 1) return print(JSON.stringify(await inspectActivity(root), null, 2));
     if (['run', 'workflow'].includes(args[0])) {
@@ -165,14 +175,14 @@ async function main() {
     if (args[0] === 'inspect') { const s = await loadSkill(root, args[1]); return print(JSON.stringify({ ...s, files: Object.keys(s.files) }, null, 2)); }
   }
   if (command === 'memory') {
-    if (args[0] === 'index') return print(JSON.stringify(await rebuildMemoryIndex(root), null, 2));
+    if (args[0] === 'index') return runIndex(rebuildMemoryIndex);
     if (args[0] === 'semantic') return print(JSON.stringify(await semanticRecall(root, args.slice(1).join(' '), options.agent), null, 2));
     if (args[0] === 'add') return print(JSON.stringify(await remember(root, { text: args.slice(1).join(' '), scope: options.agent ? 'agent' : 'project', agent: options.agent }), null, 2));
     if (args[0] === 'search') return print(JSON.stringify(await recall(root, args.slice(1).join(' '), options.agent), null, 2));
     if (args[0] === 'forget') { await forget(root, args[1]); return print('Memory deleted.'); }
   }
   if (command === 'project') {
-    if (args[0] === 'index') return print(JSON.stringify(await rebuildProjectIndex(root), null, 2));
+    if (args[0] === 'index') return runIndex(rebuildProjectIndex);
     if (args[0] === 'semantic') return print(JSON.stringify(await semanticProjectSearch(root, args.slice(1).join(' ')), null, 2));
   }
   if (command === 'worktree') {
@@ -185,8 +195,8 @@ async function main() {
     const folder = command === 'status' ? 'runs' : 'workflows';
     const id = command === 'status' ? args[0] : args[1];
     if (id) return print(JSON.stringify(await readState(root, folder, `${safeName(id)}.json`), null, 2));
-    const records = await Promise.all((await listState(root, folder)).map(f => readState(root, folder, f)));
-    return print(records.sort((a, b) => b.started.localeCompare(a.started)).slice(0, 30).map(r => `${r.started}  ${r.agent || r.name}  ${r.status}  ${r.id}`).join('\n') || 'No runs yet.');
+    const records = await recentState(root, folder, 30, { summary: true });
+    return print(records.map(r => `${r.started}  ${r.agent || r.name}  ${r.status}  ${r.id}`).join('\n') || 'No runs yet.');
   }
   if (command === 'team' && args[0] === 'install') {
     const team = validateWorkflow(await json(args[1]));
@@ -204,6 +214,13 @@ async function main() {
     process.on('SIGINT', stop); process.on('SIGTERM', stop);
     print(`NexusIDE dashboard: ${server.url}`);
     return;
+  }
+  async function runIndex(build) {
+    const controller = new AbortController();
+    const cancel = () => controller.abort(new Error('Index build cancelled.'));
+    process.on('SIGINT', cancel); process.on('SIGTERM', cancel);
+    try { return print(JSON.stringify(await build(root, { signal: controller.signal, force: Boolean(options.force) }), null, 2)); }
+    finally { process.off('SIGINT', cancel); process.off('SIGTERM', cancel); }
   }
   const isTeam = command === 'team' && args[0] === 'run';
   if (command !== 'run' && command !== 'plan' && !isTeam) throw new Error('Unknown command. Use --help.');

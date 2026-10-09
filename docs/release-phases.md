@@ -1,0 +1,15 @@
+# Release phases
+
+Work proceeds one phase at a time. Completion means the phase's implementation and checks are recorded; it does not imply production certification.
+
+| Phase | Scope and completion evidence | Status |
+| --- | --- | --- |
+| 1. SQLite and incremental indexing | Transactional legacy migration, indexed history summaries, scoped notes, reusable code/document/note vectors, consistent backup, interrupted-build recovery, larger synthetic workspace and local embedding verification | Complete locally: 117 tests; 2,048-file scale probe; real Ollama reuse/ranking; VS Code run/history; private workspace backup and migration |
+| 2. Provider compatibility matrix | Select supported provider/model combinations; record tool calls, result parsing, structured output, limits, cancellation, errors, cost and credential handling using fixtures plus consented live checks | Next |
+| 3. Integration lifecycle | Pin and verify installations; validate grants and capabilities; test install/upgrade/failure/rollback/uninstall paths and surface actionable diagnostics | Pending |
+| 4. Bundled macOS app | Bundle supported Node/runtime/dependencies, remove source-directory dependencies, add first-run setup and application-data storage | Pending |
+| 5. Developer ID signing/notarization | Sign with the owner's Developer ID identity, hardened runtime/entitlements, notarize and staple release artifacts | Pending; requires signing identity and Apple account access |
+| 6. Clean-machine release testing | Test install, first launch, permissions, offline behavior, upgrades, uninstall, Intel/Apple Silicon support as selected, and restoration on fresh machines | Pending |
+| 7. Security review and production pilot | Review trust boundaries and dependencies; adversarial/recovery testing; limited pilot with measurable reliability and support criteria | Pending |
+
+Storage design, limits and recovery instructions: [Phase 1 storage](storage.md).

@@ -4,7 +4,7 @@ NexusIDE runs project agents from a terminal, local dashboard, VS Code terminal,
 
 ## 1. Install and initialize a project
 
-Use Node.js 22 or newer and Git. From the NexusIDE source directory:
+Use Node.js 22.18 or newer and Git. From the NexusIDE source directory:
 
 ```sh
 npm install
@@ -153,9 +153,9 @@ For semantic search, run `ollama pull nomic-embed-text` and add an `embeddings` 
 "embeddings": { "model": "nomic-embed-text", "url": "http://127.0.0.1:11434/api/embed" }
 ```
 
-Then run `npm start -- memory index` and `npm start -- memory semantic "your question"`. Add `--agent reviewer` to include that agent's notes. The dashboard provides rebuild and search buttons. Indexing sends note text only to the configured local embedding endpoint; remote embedding endpoints are not accepted. Rebuild after adding or changing notes or switching models. Changed/deleted notes are excluded immediately; retrieval reports notes needing reindexing. The index supports up to 1,000 notes, 8,192 dimensions and 18 MB of serialized data. It is a note index; code/document indexing remains separate work.
+Then run `npm start -- memory index` and `npm start -- memory semantic "your question"`. Add `--agent reviewer` to include that agent's notes. The dashboard provides update and search buttons. Indexing sends note text only to the configured local embedding endpoint. Update after adding or changing notes or switching models; unchanged text reuses its vectors. Changed/deleted notes are excluded from retrieval immediately. SQLite removes the previous 1,000-note/18-MB JSON ceiling; each vector has at most 8,192 dimensions and each index has a 512-MiB vector budget. Use `memory index --force` for a full embedding refresh. Code/document indexing uses the separate `project index` command.
 
-Agents with memory enabled and embeddings configured can request semantic retrieval through an approval prompt. Automatic startup recall continues to use lexical search. Stored vectors are sensitive derived data in `.nexus/indexes`; protect them along with the notes.
+Agents with memory enabled and embeddings configured can request semantic retrieval through an approval prompt. Automatic startup recall continues to use lexical search. Stored vectors and notes are sensitive data in `.nexus/storage.sqlite`; legacy JSON copies may remain in `.nexus/indexes` and `.nexus/memory`. See [migration and backups](storage.md).
 
 ## 10. Troubleshooting and security
 

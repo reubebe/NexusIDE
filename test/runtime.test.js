@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, readFile, symlink, rm, readdir } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, symlink, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { defaults, installAgent, loadAgent, validateAgent } from '../src/agents.js';
 import { executeTool, resolveProjectPath } from '../src/tools.js';
 import { createProvider } from '../src/providers.js';
 import { runAgent } from '../src/runtime.js';
+import { readState, listState } from '../src/state.js';
 
 async function workspace(t) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'nexus-test-'));
@@ -45,14 +46,13 @@ test('demo completes a tool cycle and persists history', async t => {
   const record = await runAgent({ root, agent: defaults[0], task: 'inspect', provider: createProvider({ NEXUS_PROVIDER: 'demo' }) });
   assert.equal(record.status, 'completed');
   assert.match(record.messages.at(-1).content, /README.md/);
-  const saved = JSON.parse(await readFile(path.join(root, '.nexus', 'runs', `${record.id}.json`)));
+  const saved = await readState(root, 'runs', `${record.id}.json`);
   assert.equal(saved.status, 'completed');
 });
 test('failed provider calls persist failure state', async t => {
   const root = await workspace(t);
   await assert.rejects(runAgent({ root, agent: defaults[0], task: 'inspect', provider: { name: 'fake', model: 'test', complete: async () => { throw new Error('offline'); } } }), /offline/);
-  const dir = path.join(root, '.nexus', 'runs');
-  const saved = JSON.parse(await readFile(path.join(dir, (await readdir(dir))[0])));
+  const saved = await readState(root, 'runs', (await listState(root, 'runs'))[0]);
   assert.equal(saved.status, 'failed');
 });
 test('provider adapters serialize tool results and parse tool requests', async t => {
@@ -79,8 +79,8 @@ test('runtime persists model waiting status before the provider responds', async
     onEvent: event => { if (event.type === 'model-request') request = event; },
     provider: { name: 'fixture', model: 'waiting-model', complete: async () => {
       assert.equal(request.model, 'waiting-model');
-      const files = await readdir(path.join(root, '.nexus/runs'));
-      const saved = JSON.parse(await readFile(path.join(root, '.nexus/runs', files[0]), 'utf8'));
+      const files = await listState(root, 'runs');
+      const saved = await readState(root, 'runs', files[0]);
       assert.equal(saved.status, 'running');
       assert.equal(saved.events.at(-1).type, 'model-request');
       return { text: 'Done', calls: [] };
