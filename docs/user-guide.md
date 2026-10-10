@@ -146,10 +146,13 @@ MCP servers run only when assigned to an agent and approved. Keep the tool allow
 npm start -- memory add "Use Python for this project's numerical analysis"
 npm start -- memory add "Prefer concise reviews" --agent reviewer
 npm start -- memory search "Python"
+npm start -- memory list --agent reviewer
+npm start -- memory history MEMORY_ID
+npm start -- memory update MEMORY_ID patch.json
 npm start -- memory forget MEMORY_ID
 ```
 
-Project and agent notes are local; lexical search works without a model. Agents with memory enabled can propose notes for approval.
+Project and agent notes are local. They have L1 facts/decisions, L2 summaries, or L3 preferences, with revisions, expiry, and active/archived status. `memory search` defaults to hybrid retrieval with local keyword fallback; `--mode lexical` makes no embedding call. Agents with memory enabled can propose notes for approval. Their `memoryLoadout` chooses project notes, layers, and bounded context. See [memory management and selections](memory.md) for update-file examples, ownership, and limits.
 
 For semantic search, run `ollama pull nomic-embed-text` and add an `embeddings` field to your existing project configuration (preserve the other settings):
 
@@ -159,7 +162,9 @@ For semantic search, run `ollama pull nomic-embed-text` and add an `embeddings` 
 
 Then run `npm start -- memory index` and `npm start -- memory semantic "your question"`. Add `--agent reviewer` to include that agent's notes. The dashboard provides update and search buttons. Indexing sends note text only to the configured local embedding endpoint. Update after adding or changing notes or switching models; unchanged text reuses its vectors. Changed/deleted notes are excluded from retrieval immediately. SQLite removes the previous 1,000-note/18-MB JSON ceiling; each vector has at most 8,192 dimensions and each index has a 512-MiB vector budget. Use `memory index --force` for a full embedding refresh. Code/document indexing uses the separate `project index` command.
 
-Agents with memory enabled and embeddings configured can request semantic retrieval through an approval prompt. Automatic startup recall continues to use lexical search. Stored vectors and notes are sensitive data in `.nexus/storage.sqlite`; legacy JSON copies may remain in `.nexus/indexes` and `.nexus/memory`. See [migration and backups](storage.md).
+Agents with memory enabled and embeddings configured can request hybrid retrieval through an approval prompt. Automatic startup context uses local keywords plus up to two recent selected summaries/preferences. Stored vectors, notes, revisions, and drafts are sensitive data in `.nexus/storage.sqlite`; legacy JSON copies may remain in `.nexus/indexes` and `.nexus/memory`. See [migration and backups](storage.md).
+
+To distill a completed run, use `npm start -- memory distill RUN_ID --demo` offline, or `--provider PROFILE_NAME` for an explicit provider transmission approval. Review the evidence with `memory drafts`, then run `memory review DRAFT_ID CANDIDATE_ID approve --revision N` (or `reject`). Every candidate needs its own decision; L3 preferences must quote the original user. See [distillation boundaries](memory.md#reviewable-distillation).
 
 ## 10. Troubleshooting and security
 
@@ -182,7 +187,7 @@ The VS Code extension passed activation, terminal initialization and Run Agent c
 
 The local `codebase-navigator` agent uses the installed codebase-memory-mcp backend to find functions and trace callers, then checks original source. It has read-only query grants. See [code graph setup and index refresh](codegraph.md) for its source-only scope, commands and verification.
 
-For local semantic retrieval across both code and documentation, run `nexus project index`, followed by `nexus project semantic "your question"`. The index excludes protected paths, links, binaries and oversized files, uses bounded storage, and filters changed or deleted source from results until the next rebuild.
+For retrieval across code and documentation, run `nexus project index --mode lexical`, followed by `nexus project search "your question"`. With local embeddings configured, `project index` also builds vectors; `project semantic` requires them. The index excludes protected paths, links, binaries and oversized files, uses bounded storage, and filters changed or deleted source from results until the next rebuild.
 
 ## Health and verification history
 

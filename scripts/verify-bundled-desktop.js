@@ -54,6 +54,23 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
       return response.json();
     };
     assert.equal((await request('/api/state')).agents.length, 7);
+    const memory = await request('/api/memory', { text: 'Bundled memory lifecycle fixture.', layer: 'L2' });
+    assert.equal(memory.revision, 1);
+    assert.equal((await request('/api/memory/search', { query: 'lifecycle', mode: 'lexical' })).matches[0].id, memory.id);
+    assert.equal((await request(`/api/memory/${memory.id}/history`)).versions.length, 1);
+    const extraction = await request('/api/memory/distill', { runId: savedId, demo: true });
+    let extracted;
+    for (let attempt = 0; attempt < 50; attempt++) {
+      extracted = (await request('/api/state')).jobs.find(job => job.id === extraction.id);
+      if (extracted?.status !== 'running') break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.equal(extracted.status, 'completed');
+    const draft = (await request('/api/memory/drafts')).drafts.find(draft => draft.id === extracted.result);
+    assert.equal(draft.candidates[0].status, 'pending');
+    const reviewed = await request(`/api/memory/drafts/${draft.id}/review`, { candidateId: draft.candidates[0].id, decision: 'approve', expectedRevision: draft.revision });
+    assert.equal(reviewed.memory.agent, 'architect');
+    receipt.checks.push('bundled-versioned-memory-and-fts', 'bundled-reviewable-offline-distillation');
     await request('/api/terminal/start', {});
     await request('/api/terminal/input', { input: "printf 'NEXUS_BUNDLE_TERMINAL_OK\\n'\n" });
     let output = '';

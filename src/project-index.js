@@ -7,7 +7,9 @@ import { boundedRead } from './bounded-read.js';
 import { loadConfig } from './config.js';
 import { validateEmbedding } from './embedding-config.js';
 import { embed } from './embeddings.js';
-import { digest, updateIndex, openIndex, decodeVector, keepBest } from './index-store.js';
+import { digest, configKey, updateIndex, openIndex, decodeVector } from './index-store.js';
+import { ftsQuery, searchBudget, reciprocalRankFusion } from './memory-search.js';
+import { boundMemoryResults } from './memory-policy.js';
 
 const excluded = new Set(['dist', 'build', '.venv', '__pycache__']);
 const extensions = new Set(['.c', '.cc', '.cpp', '.css', '.go', '.h', '.html', '.java', '.js', '.json', '.jsx', '.md', '.mjs', '.py', '.rb', '.rs', '.sh', '.sql', '.swift', '.ts', '.tsx', '.txt', '.yaml', '.yml']);
@@ -61,33 +63,32 @@ async function* projectSources(root, stats, signal) {
   yield* walk();
 }
 
-export async function rebuildProjectIndex(root, { signal, force = false } = {}) {
-  const config = validateEmbedding((await loadConfig(root)).embeddings), stats = {};
+export async function rebuildProjectIndex(root, { signal, force = false, mode = 'hybrid' } = {}) {
+  if (!['lexical', 'hybrid', 'semantic'].includes(mode)) throw new Error('Search mode must be lexical, semantic, or hybrid.');
+  const configured = mode === 'lexical' ? null : (await loadConfig(root)).embeddings;
+  const config = configured || mode === 'semantic' ? validateEmbedding(configured) : null, stats = {};
   return updateIndex(root, 'project', config, projectSources(await realpath(root), stats, signal), { signal, force, stats });
 }
 
-export async function semanticProjectSearch(root, query, { signal, limit = 12 } = {}) {
+export async function searchProject(root, query, options = {}) {
+  const { mode = 'hybrid', strictEmbedding = false } = options;
+  if (!['lexical', 'hybrid', 'semantic'].includes(mode)) throw new Error('Search mode must be lexical, semantic, or hybrid.');
   if (typeof query !== 'string' || !query.trim() || query.length > 4000) throw new Error('Project query must contain 1–4000 characters.');
-  if (!Number.isInteger(limit) || limit < 1 || limit > 20) throw new Error('Search limit must be 1–20.');
-  const config = validateEmbedding((await loadConfig(root)).embeddings);
-  const index = await openIndex(root, 'project', config);
+  const budget = searchBudget({ ...options, limit: options.limit ?? 12 });
+  const candidates = Math.max(60, budget.limit * 5), strict = strictEmbedding || mode === 'semantic';
+  let config, warning, usedMode = mode;
+  if (mode !== 'lexical') {
+    try { config = validateEmbedding((await loadConfig(root)).embeddings); }
+    catch (error) { if (strict) throw error; usedMode = 'lexical'; warning = 'Embeddings are not configured; using keyword search.'; }
+  }
+  budget.check();
+  const index = await openIndex(root, 'project', config, { anyConfig: !strict });
   try {
     const { db, meta } = index;
-    if (!meta.chunks) return { matches: [], stale: 0, indexed: 0, files: meta.files, truncated: Boolean(meta.truncated), built: meta.built };
-    const [needle] = await embed(config, [query], signal);
-    if (needle.length !== meta.dimensions) throw new Error('Embedding dimensions changed; rebuild the project index.');
-    const terms = [...new Set(query.toLowerCase().match(/[a-z0-9_-]{3,}/g) || [])].filter(term => !['the', 'and', 'where', 'what', 'which', 'with', 'from', 'this', 'that', 'defined'].includes(term));
-    const matches = [], validity = new Map(); let stale = 0, visited = 0;
-    for (const row of db.prepare(`SELECT c.*, s.digest FROM index_chunks c JOIN index_sources s
-      ON s.kind = c.kind AND s.key = c.source_key WHERE c.kind = 'project'`).iterate()) {
-      if (++visited % 128 === 0) await setImmediate();
-      signal?.throwIfAborted();
-      const vector = decodeVector(row.vector, meta.dimensions);
-      const semanticScore = vector.reduce((sum, value, i) => sum + value * needle[i], 0);
-      const haystack = `${row.source_key}\n${row.content}`.toLowerCase();
-      const lexicalScore = terms.reduce((count, term) => count + Number(haystack.includes(term)), 0) / Math.max(1, terms.length);
-      const score = semanticScore + lexicalScore * 0.35;
-      if (matches.length >= limit && score <= matches.at(-1).score) continue;
+    const validity = new Map(), staleKeys = new Set();
+    let visited = 0, lexical = [], semantic = [];
+    async function current(row) {
+      budget.check();
       if (!validity.has(row.source_key)) {
         let handle;
         try {
@@ -99,9 +100,66 @@ export async function semanticProjectSearch(root, query, { signal, limit = 12 } 
         } catch (error) { if (['ENOENT', 'EACCES', 'ELOOP'].includes(error.code)) validity.set(row.source_key, false); else throw error; }
         finally { await handle?.close(); }
       }
-      if (!validity.get(row.source_key)) { stale++; continue; }
-      keepBest(matches, { path: row.source_key, start: row.start, end: row.end, digest: row.digest, score, semanticScore, lexicalScore, text: row.content.slice(0, 700) }, limit);
+      budget.check();
+      if (!validity.get(row.source_key)) staleKeys.add(`${row.source_key}:${row.position}`);
+      return validity.get(row.source_key);
     }
-    return { matches, stale, indexed: meta.chunks, files: meta.files, truncated: Boolean(meta.truncated), built: meta.built };
+    const result = (row, score, type) => ({ path: row.source_key, start: row.start, end: row.end, digest: row.digest, score, [`${type}Score`]: score, text: row.content.slice(0, 700) });
+    const key = item => `${item.path}:${item.start}`;
+    const terms = ftsQuery(query);
+    if (mode !== 'semantic' && terms) {
+      // Validate source contents before accepting candidates, so stale high
+      // ranking chunks cannot crowd current documents out of the result set.
+      for (const row of db.prepare(`SELECT c.*,s.digest,-bm25(project_chunks_fts,1,2) AS score
+        FROM project_chunks_fts JOIN index_chunks c ON c.rowid=project_chunks_fts.rowid
+        JOIN index_sources s ON s.kind=c.kind AND s.key=c.source_key
+        WHERE project_chunks_fts MATCH ? AND c.kind='project'
+        ORDER BY bm25(project_chunks_fts,1,2),c.source_key,c.position`).iterate(terms)) {
+        if (++visited % 128 === 0) await setImmediate();
+        if (await current(row)) lexical.push(result(row, row.score, 'lexical'));
+        if (lexical.length >= candidates) break;
+      }
+    }
+    budget.check();
+    if (config && meta.config !== configKey(config)) {
+      if (strict) throw new Error('Rebuild the project index for the configured embedding model.');
+      usedMode = 'lexical'; warning = 'The semantic index needs rebuilding; using keyword search.';
+    } else if (config && meta.chunks) {
+      try {
+        const [needle] = await embed(config, [query], budget.signal);
+        if (needle.length !== meta.dimensions) throw new Error('Embedding dimensions changed; rebuild the project index.');
+        const lexicalRanks = new Map(lexical.map((item, rank) => [key(item), rank]));
+        const compare = (a, b) => b.score - a.score || (lexicalRanks.get(key(a)) ?? Infinity) - (lexicalRanks.get(key(b)) ?? Infinity) || key(a).localeCompare(key(b));
+        for (const row of db.prepare(`SELECT c.*,s.digest FROM index_chunks c JOIN index_sources s
+          ON s.kind=c.kind AND s.key=c.source_key WHERE c.kind='project' ORDER BY c.source_key,c.position`).iterate()) {
+          if (++visited % 128 === 0) await setImmediate();
+          budget.check();
+          const vector = decodeVector(row.vector, meta.dimensions);
+          const score = vector.reduce((sum, value, i) => sum + value * needle[i], 0);
+          const candidate = result(row, score, 'semantic');
+          if (semantic.length >= candidates && compare(candidate, semantic.at(-1)) >= 0) continue;
+          if (!await current(row)) continue;
+          const at = semantic.findIndex(item => compare(candidate, item) < 0);
+          semantic.splice(at < 0 ? semantic.length : at, 0, candidate);
+          if (semantic.length > candidates) semantic.pop();
+        }
+      } catch (error) {
+        options.signal?.throwIfAborted();
+        // Filesystem policy failures still fail closed, even when keywords are
+        // available. Only embedding/search budget failures permit fallback.
+        if (strict || /Symbolic links|protected|outside|Corrupt index/i.test(error.message)) throw error;
+        usedMode = 'lexical'; semantic = [];
+        warning = error.name === 'TimeoutError' ? 'Semantic search timed out; using keyword search.' : 'Semantic search is unavailable; using keyword search.';
+      }
+    }
+    const ranked = usedMode === 'hybrid' ? reciprocalRankFusion(lexical, semantic, key, candidates) : usedMode === 'semantic' ? semantic : lexical;
+    const bounded = boundMemoryResults(ranked, budget);
+    return { ...bounded, mode: usedMode, ...(warning ? { warning } : {}), stale: staleKeys.size, indexed: meta.chunks, files: meta.files, truncated: bounded.truncated || Boolean(meta.truncated), built: meta.built };
   } finally { index.close(); }
+}
+
+// Existing callers retain strict embedding configuration/index errors, while
+// the general search entry point offers an offline keyword fallback.
+export async function semanticProjectSearch(root, query, options = {}) {
+  return searchProject(root, query, { ...options, mode: 'hybrid', strictEmbedding: true });
 }

@@ -76,7 +76,7 @@ test('dashboard runs a provider tool cycle, approves once, and rejects stale fil
 });
 
 
-test('semantic dashboard endpoints enforce authentication and project-only retrieval', async t => {
+test('semantic dashboard endpoints enforce authentication and explicit agent selection', async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'nexus-semantic-api-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   let requests = 0;
@@ -101,11 +101,15 @@ test('semantic dashboard endpoints enforce authentication and project-only retri
   }
   assert.equal(requests, 0);
   assert.equal((await fetch(`${origin}/api/memory/index`, { method: 'POST', headers, body: '{}' })).status, 200);
-  const response = await fetch(`${origin}/api/memory/search`, { method: 'POST', headers, body: JSON.stringify({ query: 'note', agent: 'reviewer' }) });
+  const response = await fetch(`${origin}/api/memory/search`, { method: 'POST', headers, body: JSON.stringify({ query: 'note' }) });
   assert.equal(response.status, 200);
   const result = await response.json();
   assert.equal(result.matches.length, 1);
   assert.equal(result.matches[0].text, 'Project note');
+  assert.equal((await fetch(`${origin}/api/memory/search`, { method: 'POST', headers, body: JSON.stringify({ query: 'note', agent: 'reviewer' }) })).status, 400, 'unknown agent is refused');
+  await installAgent(root, { ...defaults[2], memory: true });
+  const selected = await (await fetch(`${origin}/api/memory/search`, { method: 'POST', headers, body: JSON.stringify({ query: 'note', agent: 'reviewer' }) })).json();
+  assert.equal(selected.matches.length, 2);
 });
 
 test('dashboard terminal is authenticated, bounded, interactive and explicitly stopped', async t => {

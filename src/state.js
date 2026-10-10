@@ -6,7 +6,7 @@ import { boundedRead } from './bounded-read.js';
 import { openDatabase } from './sqlite.js';
 
 export const MAX_STATE_BYTES = 20_000_000;
-const databaseFolders = new Set(['runs', 'workflows', 'memory']);
+const databaseFolders = new Set(['runs', 'workflows', 'memory', 'memory-drafts']);
 const absent = (folder, name) => Object.assign(new Error(`State record does not exist: ${folder}/${name}`), { code: 'ENOENT' });
 const collision = (folder, name) => Object.assign(new Error(`State record already exists: ${folder}/${name}`), { code: 'EEXIST' });
 
@@ -22,6 +22,17 @@ function putRecord(db, folder, name, data, serialized, exclusive = false) {
   const conflict = exclusive ? '' : ' ON CONFLICT(folder,name) DO UPDATE SET data=excluded.data, started=excluded.started, created=excluded.created, scope=excluded.scope, agent=excluded.agent';
   try { db.prepare(`INSERT INTO state_records(folder,name,data,started,created,scope,agent) VALUES(?,?,?,?,?,?,?)${conflict}`).run(folder, name, serialized, ...metadata(data)); }
   catch (error) { if (exclusive && error.errcode === 1555) throw collision(folder, name); throw error; }
+  if (folder === 'memory') {
+    db.prepare('DELETE FROM memory_fts WHERE name=?').run(name);
+    db.prepare('INSERT INTO memory_fts(name,text) VALUES(?,?)').run(name, typeof data?.text === 'string' ? data.text : '');
+  }
+}
+
+// For multi-record transactions; the caller must BEGIN/COMMIT/ROLLBACK.
+export function writeStateRecord(db, folder, name, data, { exclusive = false } = {}) {
+  if (!databaseFolders.has(folder)) throw new Error('Record is not stored in SQLite.');
+  safeName(folder); safeName(name);
+  putRecord(db, folder, name, data, serialize(data), exclusive);
 }
 
 async function stateDatabase(root, folder) {
@@ -44,6 +55,7 @@ async function stateDatabase(root, folder) {
       try {
         if (!db.prepare('SELECT 1 FROM state_migrations WHERE folder=?').get(folder)) {
           db.exec('INSERT INTO state_records SELECT * FROM migrated_records');
+          if (folder === 'memory') db.exec('INSERT INTO memory_fts(name,text) SELECT name,json_extract(data,\'$.text\') FROM migrated_records');
           db.prepare('INSERT INTO state_migrations(folder,migrated) VALUES(?,?)').run(folder, new Date().toISOString());
         }
         db.exec('COMMIT');
@@ -102,7 +114,11 @@ export async function writeState(root, folder, name, data, { exclusive = false }
   const serialized = serialize(data);
   if (databaseFolders.has(folder)) {
     const db = await stateDatabase(root, folder);
-    try { putRecord(db, folder, name, data, serialized, exclusive); }
+    try {
+      db.exec('BEGIN IMMEDIATE');
+      try { putRecord(db, folder, name, data, serialized, exclusive); db.exec('COMMIT'); }
+      catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
     finally { db.close(); }
     return;
   }
@@ -135,7 +151,14 @@ export async function deleteState(root, folder, name) {
   safeName(folder); safeName(name);
   if (!databaseFolders.has(folder)) return unlink(await statePath(root, folder, name));
   const db = await stateDatabase(root, folder);
-  try { if (!db.prepare('DELETE FROM state_records WHERE folder=? AND name=?').run(folder, name).changes) throw absent(folder, name); }
+  try {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      if (!db.prepare('DELETE FROM state_records WHERE folder=? AND name=?').run(folder, name).changes) throw absent(folder, name);
+      if (folder === 'memory') db.prepare('DELETE FROM memory_fts WHERE name=?').run(name);
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+  }
   finally { db.close(); }
 }
 

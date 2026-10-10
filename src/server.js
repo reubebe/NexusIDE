@@ -6,7 +6,9 @@ import { listAgents, loadAgent, validateAgent } from './agents.js';
 import { listState, readState, writeState, safeName, recentState } from './state.js';
 import { loadConfig, saveConfig, routeProvider } from './config.js';
 import { listSkills, auditSkill } from './skills.js';
-import { recall, remember } from './memory.js';
+import { recall, remember, listMemories, updateMemory, memoryHistory } from './memory.js';
+import { searchMemory } from './memory-search.js';
+import { draftMemory, listMemoryDrafts, reviewMemoryDraft } from './memory-distillation.js';
 import { runAgent } from './runtime.js';
 import { loadWorkflow, runWorkflow } from './workflows.js';
 import { resolveWorktree } from './worktrees.js';
@@ -14,7 +16,7 @@ import { executeTool } from './tools.js';
 import { createHash } from 'node:crypto';
 import { acquireWorkspace } from './locks.js';
 import { planTask } from './planner.js';
-import { rebuildMemoryIndex, semanticRecall } from './semantic-memory.js';
+import { rebuildMemoryIndex } from './semantic-memory.js';
 import { commandEnvironment } from './process.js';
 
 export async function readJsonBody(req) {
@@ -94,9 +96,30 @@ export async function startServer({ root, port = 4317 }) {
       if (req.method === 'PUT' && pathname === '/api/config') { const config = await body(req); await writeConfiguration(() => saveConfig(root, config)); return send(res, 200, { saved: true }); }
       if (req.method === 'GET' && pathname.startsWith('/api/runs/')) return send(res, 200, await readState(root, 'runs', `${safeName(pathname.split('/').at(-1))}.json`));
       if (req.method === 'PUT' && pathname === '/api/agent') { const agent = validateAgent(await body(req)); await writeConfiguration(() => writeState(root, 'agents', `${agent.name}.json`, agent)); return send(res, 200, agent); }
-      if (req.method === 'POST' && pathname === '/api/memory') return send(res, 201, await remember(root, await body(req)));
+      if (req.method === 'GET' && pathname === '/api/memory') return send(res, 200, await listMemories(root, {
+        agent: url.searchParams.get('agent') || undefined, layer: url.searchParams.get('layer') || undefined,
+        status: url.searchParams.get('status') || 'all', offset: Number(url.searchParams.get('offset') || 0), limit: Number(url.searchParams.get('limit') || 50)
+      }));
+      if (req.method === 'POST' && pathname === '/api/memory') {
+        const data = await body(req);
+        if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).some(key => !['text', 'layer', 'category', 'scope', 'agent', 'expiresAt'].includes(key))) throw new Error('Unsupported memory field.');
+        return send(res, 201, await remember(root, data));
+      }
+      if (req.method === 'GET' && pathname === '/api/memory/drafts') return send(res, 200, await listMemoryDrafts(root, { offset: Number(url.searchParams.get('offset') || 0), limit: Number(url.searchParams.get('limit') || 50) }));
+      const reviewRoute = pathname.match(/^\/api\/memory\/drafts\/([^/]+)\/review$/);
+      if (req.method === 'POST' && reviewRoute) {
+        const { candidateId, decision, expectedRevision } = await body(req);
+        return send(res, 200, await reviewMemoryDraft({ root, draftId: reviewRoute[1], candidateId, decision, expectedRevision }));
+      }
+      const memoryRoute = pathname.match(/^\/api\/memory\/([^/]+)(\/history)?$/);
+      if (req.method === 'GET' && memoryRoute?.[2]) return send(res, 200, await memoryHistory(root, memoryRoute[1], { offset: Number(url.searchParams.get('offset') || 0), limit: Number(url.searchParams.get('limit') || 50) }));
+      if (req.method === 'PATCH' && memoryRoute && !memoryRoute[2]) return send(res, 200, await updateMemory(root, memoryRoute[1], await body(req)));
       if (req.method === 'POST' && pathname === '/api/memory/index') return send(res, 200, await rebuildMemoryIndex(root));
-      if (req.method === 'POST' && pathname === '/api/memory/search') { const data = await body(req); return send(res, 200, await semanticRecall(root, data.query)); }
+      if (req.method === 'POST' && pathname === '/api/memory/search') {
+        const data = await body(req), agent = data.agent ? await loadAgent(root, data.agent) : undefined;
+        if (agent && !agent.memory) throw new Error('Memory is disabled for this agent.');
+        return send(res, 200, await searchMemory(root, data.query, agent?.name, { mode: data.mode || 'hybrid', loadout: agent ? agent.memoryLoadout || {} : undefined }));
+      }
       if (req.method === 'POST' && pathname === '/api/terminal/start') {
         if (terminalStarting || terminal?.exitCode === null) return send(res, 409, { error: 'Terminal is already running.' });
         terminalStarting = true;
@@ -137,9 +160,10 @@ export async function startServer({ root, port = 4317 }) {
       if (req.method === 'POST' && pathname === '/api/cancel') {
         const data = await body(req); jobs.get(data.id)?.controller.abort(new Error('Cancelled from dashboard.')); return send(res, 200, { cancelled: true });
       }
-      if (req.method === 'POST' && pathname === '/api/run') {
+      if (req.method === 'POST' && (pathname === '/api/run' || pathname === '/api/memory/distill')) {
         const data = await body(req);
-        if (typeof data.task !== 'string' || !data.task.trim() || data.task.length > 30000) throw new Error('Provide a task under 30000 characters.');
+        const distill = pathname === '/api/memory/distill';
+        if (!distill && (typeof data.task !== 'string' || !data.task.trim() || data.task.length > 30000)) throw new Error('Provide a task under 30000 characters.');
         if (launching || [...jobs.values()].some(j => j.status === 'running')) return send(res, 409, { error: 'Wait for or cancel the active dashboard task.' });
         launching = true;
         try {
@@ -156,7 +180,17 @@ export async function startServer({ root, port = 4317 }) {
         });
         const options = { root, task: data.task, signal: controller.signal, approve, commandMode: data.sandboxImage ? 'docker' : 'host', sandboxImage: data.sandboxImage, onEvent: event => { job.events.push(event); if (job.events.length > 300) job.events.shift(); } };
         let execute;
-        if (data.mode === 'plan') {
+        if (distill) {
+          const run = await readState(root, 'runs', `${safeName(data.runId)}.json`);
+          if (run.status !== 'completed') throw new Error('Memory distillation requires a completed run.');
+          const agent = await loadAgent(root, run.agent);
+          const provider = data.demo === true ? undefined : await routeProvider(root, agent, { providerName: data.provider });
+          execute = async () => {
+            const draft = await draftMemory({ root, runId: data.runId, provider, demo: data.demo === true, approve, signal: controller.signal });
+            job.events.push({ type: 'text', text: `Created ${draft.candidates.length} memory candidates. Review them in Memory.`, at: new Date().toISOString() });
+            return { id: draft.id, status: 'completed' };
+          };
+        } else if (data.mode === 'plan') {
           execute = () => planTask({ ...options, demo: data.demo === true });
         } else if (data.team) {
           const workflow = await loadWorkflow(root, data.team);

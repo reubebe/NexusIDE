@@ -324,7 +324,8 @@ test('incremental memory indexing honors note edits, deletion, and agent scope',
   assert.equal(changed.indexed, 3);
   assert.equal(changed.embedded, 2);
   assert.equal(changed.reused, 1);
-  assert.equal(changed.deleted, 1);
+  // Forget removes its vector immediately, before an index rebuild runs.
+  assert.equal(changed.deleted, 0);
   assert.deepEqual(new Set(f.inputs()), new Set(['updated private coder note', 'new shared note']));
   const coder = await semanticRecall(f.root, 'note', 'coder');
   assert.deepEqual(new Set(coder.matches.map(note => note.id)), new Set([own.id, added.id]));

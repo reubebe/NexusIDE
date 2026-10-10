@@ -5,8 +5,8 @@ import path from 'node:path';
 import { openDatabase } from './sqlite.js';
 import { ensureSqliteFolder, statePath } from './state.js';
 
-const folders = ['runs', 'workflows', 'memory'];
-const tables = ['state_records', 'state_migrations', 'index_meta', 'index_sources', 'index_chunks'];
+const folders = ['runs', 'workflows', 'memory', 'memory-drafts'];
+const tables = ['state_records', 'state_migrations', 'memory_versions', 'memory_usage', 'memory_fts', 'index_meta', 'index_sources', 'index_chunks', 'project_chunks_fts'];
 const suffixes = ['', '-wal', '-shm', '-journal'];
 const sameFile = (a, b) => a.dev === b.dev && a.ino === b.ino;
 

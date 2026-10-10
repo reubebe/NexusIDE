@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "providers": {},
+  "routes": {},
+  "mcp": {
+    "research-harness-context": {
+      "command": "/ABSOLUTE/PATH/Research_Agent/research-harness/.venv/bin/python",
+      "args": ["-m", "research_harness.agent_server", "--project", "/ABSOLUTE/PATH/RESEARCH_PROJECT", "--role", "critic"],
+      "tools": ["list_sources", "read_source", "search_sources", "get_record", "methods_reference", "read_methods_content", "read_task_output", "recall_procedural_lessons", "inspect_analysis_provenance", "get_project_writing_profile"],
+      "envKeys": []
+    }
+  }
+}

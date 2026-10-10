@@ -4,7 +4,7 @@ import { constants, mkdirSync, lstatSync, openSync, closeSync } from 'node:fs';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const sameFile = (a, b) => a.dev === b.dev && a.ino === b.ino;
 
 function regularFile(file, { optional = false } = {}) {
@@ -85,6 +85,20 @@ export async function openDatabase(root, { readOnly = false } = {}) {
         CREATE TABLE IF NOT EXISTS state_migrations (folder TEXT PRIMARY KEY, migrated TEXT NOT NULL);
         PRAGMA user_version = 1;
         COMMIT;`);
+    }
+    if (version < 2) {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        if (db.prepare('PRAGMA user_version').get().user_version < 2) {
+          db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(name UNINDEXED, text, tokenize='unicode61 remove_diacritics 2');
+            CREATE TABLE IF NOT EXISTS memory_versions (id TEXT NOT NULL, revision INTEGER NOT NULL, data TEXT NOT NULL CHECK(json_valid(data)), PRIMARY KEY(id,revision));
+            CREATE TABLE IF NOT EXISTS memory_usage (id TEXT PRIMARY KEY, last_used TEXT NOT NULL, uses INTEGER NOT NULL);
+            DELETE FROM memory_fts;
+            INSERT INTO memory_fts(name,text) SELECT name,json_extract(data,'$.text') FROM state_records WHERE folder='memory';
+            PRAGMA user_version=2;`);
+        }
+        db.exec('COMMIT');
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
     }
     secureSidecars(file);
     return db;

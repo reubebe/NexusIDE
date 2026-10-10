@@ -58,17 +58,17 @@
       "source": "https://github.com/reubebe/research-harness",
       "role": "Evidence provenance and research workflows",
       "status": "local-mcp-connection-verified",
-      "revision": "7d5b060",
-      "declaredVersion": "0.12.2",
-      "note": "Project-local Python MCP runtime remains compatible; four granted evidence readers were discovered and list_sources was verified against an empty synthetic project. The updated agent_server exposes an additional workflow/research surface; Nexus keeps it opt-in and allowlisted. This is not a completed real research workflow. Receipt: .nexus/verification/research-harness.json."
+      "revision": "f63e95d",
+      "declaredVersion": "0.14.0-working-tree",
+      "note": "Updated local environment verified with synthetic MCP evidence/context checks; old configured 0.11.1 environment was replaced by the user's current environment without widening the four evidence-reader grants. Base revision has uncommitted desktop/version work; source fingerprint is recorded in .nexus/verification/research-harness-current.json. No real research workflow or desktop release is certified."
     },
     {
       "id": "research-harness-agent",
       "source": "https://github.com/reubebe/research-harness",
       "role": "Opt-in research workflow agent MCP",
       "status": "read-review-tools-verified",
-      "revision": "7d5b060",
-      "note": "The researcher role exposed 57 tools in a local synthetic-project handshake. Nexus’s example profile grants only bounded reads, reviews and workflow status; task leasing, mutation, acquisition, program execution and plot rendering remain excluded until separately tested and approved."
+      "revision": "f63e95d",
+      "note": "Critic-role context-reader profile grants ten explicit reads: evidence, bounded lessons, methods discovery/content, hash-pinned task outputs, provenance inspection and writing preferences. Synthetic transport, stale-pin rejection and unchanged project-state checks passed. Local profile still targets the demo project. Lesson approval, acquisition, mutation, execution and release are excluded."
     },
     {
       "id": "codebase-memory",

@@ -221,7 +221,9 @@ test('memory recall and indexing pages respect agent scope, relevance, and resul
   assert.deepEqual((await recall(root, 'private', 'alice')).map(record => record.id), [alice.id]);
   assert.deepEqual((await recall(root, 'PRIVATE', 'bob')).map(record => record.id), [bob.id]);
   assert.deepEqual(await recall(root, 'private'), []);
-  assert.deepEqual((await recall(root, 'MÁLAGA evidence', 'alice')).map(record => [record.id, record.score]), [[alice.id, 2]]);
+  const ranked = await recall(root, 'MÁLAGA evidence', 'alice');
+  assert.deepEqual(ranked.map(record => record.id), [alice.id]);
+  assert.ok(ranked[0].score > 0, 'BM25 keyword score');
   const alicePages = [...await memoryRecords(root, { agent: 'alice', limit: 10 }), ...await memoryRecords(root, { agent: 'alice', offset: 10, limit: 100 })];
   assert.equal(alicePages.length, 26);
   assert.equal(new Set(alicePages.map(record => record.id)).size, 26);

@@ -4,6 +4,8 @@ Phase 1 stores runs, workflows, memory notes and semantic indexes in `.nexus/sto
 
 ## Upgrade and migration
 
+The governed-memory update uses **schema 2**: transactional FTS5 note indexing, memory revisions, usage metadata, and review drafts. Version-1 SQLite databases upgrade on their first writable open; existing memory rows are preserved and normalized when read. Take an online `storage backup` before that upgrade. A schema-1 Nexus executable cannot open schema 2; a downgrade requires restoring its pre-upgrade snapshot in a separate, stopped workspace. Do not mix old and new running versions against one database. Status and backup operations are read-only and do not trigger this upgrade.
+
 Finish active runs and close older Nexus processes before the first upgrade. Back up the complete private `.nexus` directory while those processes are stopped. Older versions write JSON and do not understand the database.
 
 ```sh

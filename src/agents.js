@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { readState, writeState, listState } from './state.js';
+import { validateMemoryLoadout } from './memory-policy.js';
 
 export const defaults = [
   { name: 'architect', instructions: 'Inspect the project and propose a concrete implementation plan. Explain tradeoffs and cite files.', permissions: { read: true, write: false } },
@@ -10,7 +11,7 @@ export const defaults = [
 
 export function validateAgent(a) {
   if (!a || typeof a !== 'object' || Array.isArray(a)) throw new Error('Agent must be an object.');
-  const allowed = ['version', 'name', 'instructions', 'permissions', 'skills', 'provider', 'mcp', 'memory', 'applications'];
+  const allowed = ['version', 'name', 'instructions', 'permissions', 'skills', 'provider', 'mcp', 'memory', 'memoryLoadout', 'applications'];
   for (const key of Object.keys(a)) if (!allowed.includes(key)) throw new Error(`Unsupported agent field: ${key}. Import requires NexusIDE v1 JSON.`);
   if (a.version !== 1 || !/^[a-z][a-z0-9-]{0,63}$/.test(a.name ?? '')) throw new Error('Agent needs version: 1 and a lowercase name (letters, digits, hyphens).');
   if (typeof a.instructions !== 'string' || !a.instructions.trim()) throw new Error('Agent instructions must be nonempty text.');
@@ -20,6 +21,7 @@ export function validateAgent(a) {
   for (const key of ['skills', 'mcp', 'applications']) if (a[key] !== undefined && (!Array.isArray(a[key]) || a[key].some(v => typeof v !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(v)))) throw new Error(`${key} must be a list of names.`);
   if (a.provider !== undefined && typeof a.provider !== 'string') throw new Error('provider must be a profile name.');
   if (a.memory !== undefined && typeof a.memory !== 'boolean') throw new Error('memory must be a boolean.');
+  if (a.memoryLoadout !== undefined) validateMemoryLoadout(a.memoryLoadout);
   return a;
 }
 

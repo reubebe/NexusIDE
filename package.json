@@ -31,6 +31,7 @@
     "desktop/",
     "scripts/verify-desktop.js",
     "scripts/verify-research-evidence.js",
+    "scripts/verify-research-harness.js",
     "scripts/verify-storage-scale.js",
     "scripts/macos-signing.js",
     "scripts/release-preflight.js",

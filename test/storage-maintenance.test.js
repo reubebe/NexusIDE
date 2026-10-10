@@ -27,7 +27,7 @@ test('storage status and failed backup do not create storage in a fresh workspac
   const status = await storageStatus(root);
   assert.equal(status.exists, false);
   assert.equal(status.schemaVersion, null);
-  assert.deepEqual(status.records, { runs: 0, workflows: 0, memory: 0 });
+  assert.deepEqual(status.records, { runs: 0, workflows: 0, memory: 0, 'memory-drafts': 0 });
   await assert.rejects(backupStorage(root, path.join(root, 'backup.sqlite')), /No SQLite storage/);
   assert.deepEqual(await readdir(root), []);
 });
@@ -63,8 +63,8 @@ test('migration retains JSON, reports counts, and is idempotent', async t => {
   assert.equal((await storageStatus(root)).exists, false);
   const migrated = await migrateStorage(root);
   assert.equal(migrated.integrity, 'ok');
-  assert.equal(migrated.schemaVersion, 1);
-  assert.deepEqual(migrated.records, { runs: 1, workflows: 0, memory: 1 });
+  assert.equal(migrated.schemaVersion, 2);
+  assert.deepEqual(migrated.records, { runs: 1, workflows: 0, memory: 1, 'memory-drafts': 0 });
   assert.ok(Object.values(migrated.migrations).every(value => typeof value === 'string'));
   assert.equal(migrated.tables.state_records, 2);
   assert.ok(migrated.bytes.database > 0);
@@ -86,7 +86,7 @@ test('a failed legacy migration remains pending and status never retries it', as
   assert.equal(status.exists, true);
   assert.equal(status.integrity, 'ok');
   assert.equal(status.migrations.runs, null);
-  assert.deepEqual(status.records, { runs: 0, workflows: 0, memory: 0 });
+  assert.deepEqual(status.records, { runs: 0, workflows: 0, memory: 0, 'memory-drafts': 0 });
   assert.equal(await readFile(broken, 'utf8'), original);
   await writeFile(broken, '{"id":"repaired","status":"completed"}');
   assert.equal((await migrateStorage(root)).records.runs, 1);

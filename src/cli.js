@@ -6,7 +6,9 @@ import { createWorktree, listWorktrees, resolveWorktree, inspectWorktree, mergeW
 import { loadConfig, saveConfig, routeProvider } from './config.js';
 import { importSkill, listSkills, loadSkill, readSkillBundle, auditSkill } from './skills.js';
 import { scanSkillFiles } from './skill-scan.js';
-import { remember, recall, forget } from './memory.js';
+import { remember, forget, listMemories, updateMemory, memoryHistory } from './memory.js';
+import { searchMemory } from './memory-search.js';
+import { draftMemory, listMemoryDrafts, reviewMemoryDraft } from './memory-distillation.js';
 import { writeState, readState, listState, safeName, recentState } from './state.js';
 import { validateWorkflow, loadWorkflow, runWorkflow } from './workflows.js';
 import { terminalApproval, print } from './approval.js';
@@ -15,7 +17,7 @@ import { setSecret, listSecrets } from './vault.js';
 import { inspectWorkspaceLocks, removeStaleWorkspaceLock } from './locks.js';
 import { inspectActivity, recoverActivity } from './recovery.js';
 import { rebuildMemoryIndex, semanticRecall } from './semantic-memory.js';
-import { rebuildProjectIndex, semanticProjectSearch } from './project-index.js';
+import { rebuildProjectIndex, searchProject, semanticProjectSearch } from './project-index.js';
 import { initializeWorkspace } from './workspace-init.js';
 
 const help = `NexusIDE · One runtime. Any agent. Any model.
@@ -37,11 +39,18 @@ const help = `NexusIDE · One runtime. Any agent. Any model.
   nexus skills list                       List imported skills
   nexus skills inspect <name>             Inspect provenance and resources
   nexus memory add "text" [--agent name]  Save scoped memory
-  nexus memory search "query"             Search project memory
+  nexus memory list [--agent name]         List notes [--all-scopes, --layer L1|L2|L3]
+  nexus memory history <id>               Inspect note revisions
+  nexus memory update <id> <patch.json>    Edit using patch.expectedRevision
+  nexus memory search "query"             Search memory [--mode lexical|hybrid|semantic]
   nexus memory index [--force]            Update embeddings for changed notes
   nexus memory semantic "query"           Semantic search [--agent name]
+  nexus memory distill <run-id>            Draft candidates [--demo | --provider profile]
+  nexus memory drafts                     List saved drafts and candidate status
+  nexus memory review <draft> <candidate> approve|reject --revision N
   nexus memory forget <id>                Delete memory
-  nexus project index [--force]           Update index of project code and documents
+  nexus project index [--force]           Update code/document index [--mode lexical]
+  nexus project search "query"            Search code/documents [--mode lexical|hybrid|semantic]
   nexus project semantic "query"          Search indexed project content by meaning
   nexus storage status                    Inspect SQLite storage and integrity
   nexus storage migrate                   Import existing history and notes
@@ -78,14 +87,20 @@ const help = `NexusIDE · One runtime. Any agent. Any model.
 Run options: --demo, --provider <profile>, --worktree <name>, --resume <id>,
   --allow-commands, --sandbox-image <image@sha256:digest>
 Team options: --demo, --allow-commands, --isolated, --concurrency <1-4>
+Memory add options: --layer L1|L2|L3, --category <category>
+Memory list options: --status all|active|archived, --offset N, --limit N
+Memory history/drafts options: --offset N, --limit N
+Memory search/semantic: --agent <name> applies that agent's memory selection.
+Search defaults to hybrid, with local keyword fallback. Semantic commands require embeddings.
+Distillation requires a completed run; live provider transmission prompts for approval.
 
 Commands require agent execute permission, --allow-commands, and approval.
 Provider env: NEXUS_PROVIDER, NEXUS_MODEL, NEXUS_API_KEY, NEXUS_BASE_URL.`;
 
 export function parseOptions(args) {
   const options = {}, positional = [];
-  const values = new Set(['provider', 'worktree', 'resume', 'sandbox-image', 'concurrency', 'agent', 'port']);
-  const flags = new Set(['demo', 'allow-commands', 'isolated', 'force']);
+  const values = new Set(['provider', 'worktree', 'resume', 'sandbox-image', 'concurrency', 'agent', 'port', 'mode', 'layer', 'category', 'status', 'offset', 'limit', 'revision']);
+  const flags = new Set(['demo', 'allow-commands', 'isolated', 'force', 'all-scopes']);
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--') { positional.push(...args.slice(i + 1)); break; }
     if (!args[i].startsWith('--')) { positional.push(args[i]); continue; }
@@ -198,14 +213,42 @@ async function main() {
   }
   if (command === 'memory') {
     if (args[0] === 'index') return runIndex(rebuildMemoryIndex);
-    if (args[0] === 'semantic') return print(JSON.stringify(await semanticRecall(root, args.slice(1).join(' '), options.agent), null, 2));
-    if (args[0] === 'add') return print(JSON.stringify(await remember(root, { text: args.slice(1).join(' '), scope: options.agent ? 'agent' : 'project', agent: options.agent }), null, 2));
-    if (args[0] === 'search') return print(JSON.stringify(await recall(root, args.slice(1).join(' '), options.agent), null, 2));
-    if (args[0] === 'forget') { await forget(root, args[1]); return print('Memory deleted.'); }
+    if (['search', 'semantic'].includes(args[0])) {
+      if (args[0] === 'semantic' && options.mode) throw new Error('memory semantic requires semantic retrieval; use memory search --mode for other modes.');
+      const agent = options.agent ? await loadAgent(root, options.agent) : undefined;
+      if (agent && !agent.memory) throw new Error('Memory is disabled for this agent.');
+      const settings = { ...(options.mode ? { mode: options.mode } : {}), ...(agent ? { loadout: agent.memoryLoadout || {} } : {}), ...(options.limit !== undefined ? { limit: Number(options.limit) } : {}) };
+      const search = args[0] === 'semantic' ? semanticRecall : searchMemory;
+      return print(JSON.stringify(await search(root, args.slice(1).join(' '), options.agent, settings), null, 2));
+    }
+    if (args[0] === 'add') return print(JSON.stringify(await remember(root, { text: args.slice(1).join(' '), scope: options.agent ? 'agent' : 'project', agent: options.agent, ...(options.layer ? { layer: options.layer } : {}), ...(options.category ? { category: options.category } : {}) }), null, 2));
+    if (args[0] === 'list' && args.length === 1) return print(JSON.stringify(await listMemories(root, { ...pageOptions(), agent: options.agent, allScopes: Boolean(options['all-scopes']), ...(options.layer ? { layer: options.layer } : {}), ...(options.status ? { status: options.status } : {}) }), null, 2));
+    if (args[0] === 'history' && args.length === 2) return print(JSON.stringify(await memoryHistory(root, args[1], pageOptions()), null, 2));
+    if (args[0] === 'update' && args.length === 3) return print(JSON.stringify(await updateMemory(root, args[1], await json(args[2])), null, 2));
+    if (args[0] === 'drafts' && args.length === 1) return print(JSON.stringify(await listMemoryDrafts(root, pageOptions()), null, 2));
+    if (args[0] === 'review' && args.length === 4) return print(JSON.stringify(await reviewMemoryDraft({ root, draftId: args[1], candidateId: args[2], decision: args[3], expectedRevision: Number(options.revision) }), null, 2));
+    if (args[0] === 'distill' && args.length === 2) {
+      if (Boolean(options.demo) === Boolean(options.provider)) throw new Error('Choose memory distill <run-id> --demo or --provider <profile>.');
+      const controller = new AbortController();
+      const cancel = () => controller.abort(new Error('Memory distillation cancelled.'));
+      process.on('SIGINT', cancel); process.on('SIGTERM', cancel);
+      try {
+        const runId = safeName(args[1]);
+        const run = options.demo ? undefined : await readState(root, 'runs', `${runId}.json`);
+        const provider = options.demo ? undefined : await routeProvider(root, { name: run.agent }, { providerName: options.provider });
+        return print(JSON.stringify(await draftMemory({ root, runId, provider, demo: Boolean(options.demo), approve: terminalApproval(controller.signal), signal: controller.signal }), null, 2));
+      } finally { process.off('SIGINT', cancel); process.off('SIGTERM', cancel); }
+    }
+    if (args[0] === 'forget' && args.length === 2) { await forget(root, args[1]); return print('Memory and its revision history deleted.'); }
+    throw new Error('Use nexus memory add, list, search, semantic, index, history <id>, update <id> <patch.json>, distill <run-id>, drafts, review <draft> <candidate> approve|reject --revision N, or forget <id>.');
   }
   if (command === 'project') {
     if (args[0] === 'index') return runIndex(rebuildProjectIndex);
-    if (args[0] === 'semantic') return print(JSON.stringify(await semanticProjectSearch(root, args.slice(1).join(' ')), null, 2));
+    if (args[0] === 'search') return print(JSON.stringify(await searchProject(root, args.slice(1).join(' '), { ...(options.mode ? { mode: options.mode } : {}), ...(options.limit !== undefined ? { limit: Number(options.limit) } : {}) }), null, 2));
+    if (args[0] === 'semantic') {
+      if (options.mode) throw new Error('project semantic requires embeddings; use project search --mode for other modes.');
+      return print(JSON.stringify(await semanticProjectSearch(root, args.slice(1).join(' ')), null, 2));
+    }
   }
   if (command === 'worktree') {
     if (args[0] === 'merge') return print(JSON.stringify(await mergeWorktree(root, args[1], terminalApproval()), null, 2));
@@ -241,8 +284,11 @@ async function main() {
     const controller = new AbortController();
     const cancel = () => controller.abort(new Error('Index build cancelled.'));
     process.on('SIGINT', cancel); process.on('SIGTERM', cancel);
-    try { return print(JSON.stringify(await build(root, { signal: controller.signal, force: Boolean(options.force) }), null, 2)); }
+    try { return print(JSON.stringify(await build(root, { signal: controller.signal, force: Boolean(options.force), ...(options.mode ? { mode: options.mode } : {}) }), null, 2)); }
     finally { process.off('SIGINT', cancel); process.off('SIGTERM', cancel); }
+  }
+  function pageOptions() {
+    return { ...(options.offset !== undefined ? { offset: Number(options.offset) } : {}), ...(options.limit !== undefined ? { limit: Number(options.limit) } : {}) };
   }
   const isTeam = command === 'team' && args[0] === 'run';
   if (command !== 'run' && command !== 'plan' && !isTeam) throw new Error('Unknown command. Use --help.');

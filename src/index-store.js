@@ -5,10 +5,10 @@ import { readState } from './state.js';
 import { embed, normalizeVector } from './embeddings.js';
 
 export const digest = value => createHash('sha256').update(value).digest('hex');
-export const configKey = config => JSON.stringify({ model: config.model, url: config.url, chunker: 1 });
+export const configKey = config => JSON.stringify({ model: config?.model ?? null, url: config?.url ?? null, chunker: 1 });
 const MAX_VECTOR_BYTES = 512 * 1024 * 1024;
 
-function schema(db) {
+export function indexSchema(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS index_meta (
       kind TEXT PRIMARY KEY, generation TEXT NOT NULL, config TEXT NOT NULL,
@@ -25,7 +25,20 @@ function schema(db) {
       content TEXT NOT NULL, vector BLOB NOT NULL, PRIMARY KEY(kind, source_key, position)
     );
     CREATE INDEX IF NOT EXISTS index_chunks_hash ON index_chunks(kind, hash);
+    CREATE VIRTUAL TABLE IF NOT EXISTS project_chunks_fts USING fts5(content, path, tokenize='unicode61 remove_diacritics 2');
+    CREATE TABLE IF NOT EXISTS index_fts_versions (kind TEXT PRIMARY KEY, version INTEGER NOT NULL);
   `);
+  if (!db.prepare("SELECT 1 FROM index_fts_versions WHERE kind='project' AND version=1").get()) {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      if (!db.prepare("SELECT 1 FROM index_fts_versions WHERE kind='project' AND version=1").get()) {
+        db.exec(`DELETE FROM project_chunks_fts;
+          INSERT INTO project_chunks_fts(rowid,content,path) SELECT rowid,content,source_key FROM index_chunks WHERE kind='project';
+          INSERT OR REPLACE INTO index_fts_versions VALUES ('project',1);`);
+      }
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+  }
 }
 
 export function encodeVector(vector) {
@@ -53,10 +66,10 @@ export async function updateIndex(root, kind, config, sources, { signal, force =
   signal?.throwIfAborted();
   const db = await openDatabase(root);
   try {
-    schema(db);
+    indexSchema(db);
     const base = db.prepare('SELECT * FROM index_meta WHERE kind = ?').get(kind);
     const compatible = !force && base?.config === configKey(config);
-    const legacy = !base && !force ? await legacyIndex(root, kind, config) : null;
+    const legacy = config && !base && !force ? await legacyIndex(root, kind, config) : null;
     // TEMP tables are private to this connection and disappear on close/crash.
     // No write transaction is held while waiting for the embedding service.
     db.exec(`CREATE TEMP TABLE staged_sources (key TEXT PRIMARY KEY, digest TEXT, bytes INTEGER, metadata TEXT);
@@ -103,7 +116,10 @@ export async function updateIndex(root, kind, config, sources, { signal, force =
           if (vector.length !== dimensions) throw new Error('Corrupt legacy index vector dimensions.');
           stored = encodeVector(vector);
         }
-        if (stored) {
+        if (!config) {
+          saveChunk.run(source.key, position, chunk.start, chunk.end, hash, chunk.content, Buffer.alloc(0));
+          if (compatible && oldVector.get(kind, base.generation, hash, chunk.content)) reused++;
+        } else if (stored) {
           decodeVector(stored, dimensions);
           saveChunk.run(source.key, position, chunk.start, chunk.end, hash, chunk.content, stored);
           reused++;
@@ -136,21 +152,31 @@ export async function updateIndex(root, kind, config, sources, { signal, force =
         ON CONFLICT(kind,source_key,position) DO UPDATE SET start=excluded.start, end=excluded.end,
         hash=excluded.hash, content=excluded.content, vector=excluded.vector
         WHERE start!=excluded.start OR end!=excluded.end OR hash!=excluded.hash OR vector!=excluded.vector`).run(kind);
+      if (kind === 'project') {
+        // Synchronize FTS in the same publication transaction as source digests
+        // and vectors. No triggers are required with trusted_schema disabled.
+        db.exec(`DELETE FROM project_chunks_fts WHERE rowid IN (
+          SELECT f.rowid FROM project_chunks_fts f LEFT JOIN index_chunks c ON c.rowid=f.rowid
+          WHERE c.rowid IS NULL OR c.kind!='project' OR f.content!=c.content OR f.path!=c.source_key);
+          INSERT INTO project_chunks_fts(rowid,content,path)
+          SELECT c.rowid,c.content,c.source_key FROM index_chunks c LEFT JOIN project_chunks_fts f ON f.rowid=c.rowid
+          WHERE c.kind='project' AND f.rowid IS NULL;`);
+      }
       db.prepare('INSERT OR REPLACE INTO index_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(kind, randomUUID(), configKey(config), built, indexed ? dimensions : 0, files, bytes, Number(Boolean(stats.truncated)), indexed);
       db.exec('COMMIT');
     } catch (error) { db.exec('ROLLBACK'); throw error; }
-    return { indexed, embedded, reused, deleted, files, bytes, dimensions: indexed ? dimensions : 0, truncated: Boolean(stats.truncated), model: config.model, built, storage: 'sqlite', migrated: Boolean(legacy) };
+    return { indexed, embedded, reused, deleted, files, bytes, dimensions: indexed ? dimensions : 0, truncated: Boolean(stats.truncated), model: config?.model ?? null, mode: config ? 'hybrid' : 'lexical', built, storage: 'sqlite', migrated: Boolean(legacy) };
   } finally { db.close(); }
 }
 
-export async function openIndex(root, kind, config) {
+export async function openIndex(root, kind, config, { anyConfig = false } = {}) {
   const db = await openDatabase(root);
   try {
-    schema(db);
+    indexSchema(db);
     // A read snapshot keeps metadata/chunks consistent across concurrent publishes.
     db.exec('BEGIN');
     const meta = db.prepare('SELECT * FROM index_meta WHERE kind = ?').get(kind);
-    if (!meta || meta.config !== configKey(config)) throw new Error(`Rebuild the ${kind} index for the configured embedding model.`);
+    if (!meta || (!anyConfig && meta.config !== configKey(config))) throw new Error(`Rebuild the ${kind} index for the configured embedding model.`);
     return { db, meta, close() { db.exec('ROLLBACK'); db.close(); } };
   } catch (error) { db.close(); throw error; }
 }
