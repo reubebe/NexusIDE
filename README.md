@@ -6,6 +6,8 @@ A local agent development workspace for software, scientific research, trading r
 
 The latest [workflow audit](docs/audit-2026-10-08.md) records fixes, fresh checks and remaining release limitations.
 
+Release preparation now includes [Developer ID/notarization tooling](docs/macos-release.md), an [isolated install/recovery rehearsal](docs/release-testing.md), and [internal security review](docs/security-review-2026-10-09.md). Apple enrollment, genuine clean-device acceptance and a [consented production pilot](docs/production-pilot.md) remain release gates; automated passes are not production certification.
+
 New users: start with the step-by-step [NexusIDE User Guide](docs/user-guide.md).
 
 ## Start

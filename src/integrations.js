@@ -57,6 +57,12 @@ export async function listIntegrationStatus() {
   return Promise.all(Object.keys(catalog).map(name => integrationStatus(name)));
 }
 
+function validateGrant(receipt, name, agent) {
+  if (receipt === null) return;
+  if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt) || receipt.version !== 1 || receipt.name !== name || receipt.agent !== agent || !['preparing', 'configured', 'revoking'].includes(receipt.state) || typeof receipt.executionGranted !== 'boolean' || ![true, false, null].includes(receipt.previousExecute) ||
+      (receipt.profile !== null && (!receipt.profile || typeof receipt.profile !== 'object' || Array.isArray(receipt.profile))) || (receipt.state === 'configured' && receipt.profile === null)) throw new Error('Invalid integration grant receipt; no configuration was changed.');
+}
+
 // Internal injectable boundary for isolated grant transaction tests; public
 // commands always use the reviewed catalog and verified lifecycle above.
 export function createIntegrationConfigurator({ definitions = catalog, statusFor = integrationStatus } = {}) {
@@ -73,6 +79,7 @@ async function configureIntegration(projectRoot, name, options = {}) {
   const before = structuredClone(config);
   const beforeAgent = structuredClone(agent);
   const receipt = await readState(projectRoot, 'integration-grants', `${name}.json`, null);
+  validateGrant(receipt, name, definition.agent);
   if (receipt && receipt.state !== 'configured') throw new Error('An incomplete integration grant exists. Run nexus integration unconfigure to revoke it safely before configuring again.');
   config.applications ||= {};
   const profile = {
@@ -117,7 +124,7 @@ async function unconfigureIntegration(projectRoot, name, options = {}) {
     const config = await loadConfig(projectRoot), agent = await loadAgent(projectRoot, definition.agent);
     const receipt = await readState(projectRoot, 'integration-grants', `${name}.json`, null);
     const existing = config.applications?.[name];
-    if (receipt && (receipt.version !== 1 || receipt.name !== name || receipt.agent !== definition.agent || !['preparing', 'configured', 'revoking'].includes(receipt.state) || typeof receipt.executionGranted !== 'boolean' || ![true, false, null].includes(receipt.previousExecute))) throw new Error('Invalid integration grant receipt; no configuration was changed.');
+    validateGrant(receipt, name, definition.agent);
     const managed = existing?.args?.length === 3 && existing.args[0] === runner && existing.args[1] === name && path.isAbsolute(existing.args[2]) && existing.command === process.execPath;
     if (existing && !(receipt ? JSON.stringify(existing) === JSON.stringify(receipt.profile) : managed)) throw new Error('Application profile changed since configuration; no user configuration was removed.');
     const before = structuredClone(config), beforeAgent = structuredClone(agent);

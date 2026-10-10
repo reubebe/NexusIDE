@@ -42,6 +42,13 @@ export async function startServer({ root, port = 4317 }) {
   async function summary(folder) {
     return recentState(root, folder, 100, { summary: true });
   }
+  async function writeConfiguration(callback) {
+    // Configuration and grant journals share the writer lease. Otherwise an
+    // editor save can interleave with integration grant setup/revocation and
+    // silently restore a permission or profile that was just removed.
+    const release = await acquireWorkspace(root, root, randomUUID());
+    try { return await callback(); } finally { await release(); }
+  }
   const server = http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -84,9 +91,9 @@ export async function startServer({ root, port = 4317 }) {
         return send(res, 200, { result, hash: createHash('sha256').update(data.content).digest('hex') });
         } finally { await release(); }
       }
-      if (req.method === 'PUT' && pathname === '/api/config') { await saveConfig(root, await body(req)); return send(res, 200, { saved: true }); }
+      if (req.method === 'PUT' && pathname === '/api/config') { const config = await body(req); await writeConfiguration(() => saveConfig(root, config)); return send(res, 200, { saved: true }); }
       if (req.method === 'GET' && pathname.startsWith('/api/runs/')) return send(res, 200, await readState(root, 'runs', `${safeName(pathname.split('/').at(-1))}.json`));
-      if (req.method === 'PUT' && pathname === '/api/agent') { const agent = validateAgent(await body(req)); await writeState(root, 'agents', `${agent.name}.json`, agent); return send(res, 200, agent); }
+      if (req.method === 'PUT' && pathname === '/api/agent') { const agent = validateAgent(await body(req)); await writeConfiguration(() => writeState(root, 'agents', `${agent.name}.json`, agent)); return send(res, 200, agent); }
       if (req.method === 'POST' && pathname === '/api/memory') return send(res, 201, await remember(root, await body(req)));
       if (req.method === 'POST' && pathname === '/api/memory/index') return send(res, 200, await rebuildMemoryIndex(root));
       if (req.method === 'POST' && pathname === '/api/memory/search') { const data = await body(req); return send(res, 200, await semanticRecall(root, data.query)); }

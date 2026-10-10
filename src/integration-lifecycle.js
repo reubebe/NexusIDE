@@ -9,6 +9,9 @@ import { boundedRead } from './bounded-read.js';
 import { processIsAlive } from './locks.js';
 
 const identifier = value => value === 'legacy' || (typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value));
+// A replacement ref can substitute a different tree while rev-parse still
+// returns the pinned object ID. Source attestation must inspect real objects.
+const sourceGit = (root, args, options) => runGit(root, ['--no-replace-objects', ...args], options);
 const present = async (file, mode = constants.F_OK) => { try { await access(file, mode); return true; } catch { return false; } };
 async function directory(file, optional = true) {
   try { const stat = await lstat(file); if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error(`Managed runtime directory is not a real directory: ${file}`); }
@@ -43,7 +46,7 @@ function validateManifest(manifest, name) {
   return manifest;
 }
 async function trackedSource(root) {
-  const tree = await runGit(root, ['ls-tree', '-r', '-z', '--full-tree', 'HEAD'], { timeoutMs: 30_000, maxBytes: 4_000_000 });
+  const tree = await sourceGit(root, ['ls-tree', '-r', '-z', '--full-tree', 'HEAD'], { timeoutMs: 30_000, maxBytes: 4_000_000 });
   if (tree.code !== 0 || tree.stopped) return { clean: false, reason: 'Could not enumerate pinned source files.' };
   const entries = tree.output.split('\0').filter(Boolean);
   if (!entries.length || entries.length > 25_000) return { clean: false, reason: 'Source file count is outside verification limits.' };
@@ -104,7 +107,7 @@ export function createIntegrationLifecycle({ definitions, rootFor, execute = run
     await directory(root); await directory(path.join(root, '.git')); await directory(path.join(root, '.venv'));
     let revision = null, origin = null, sourceClean = false, sourceReason = 'Runtime has not been cloned.';
     if (await present(path.join(root, '.git'))) {
-      const command = args => runGit(root, args, { timeoutMs: 10_000, maxBytes: 20_000 });
+      const command = args => sourceGit(root, args, { timeoutMs: 10_000, maxBytes: 20_000 });
       const head = await command(['rev-parse', '--verify', 'HEAD']);
       const remote = await command(['remote', 'get-url', 'origin']);
       const location = await command(['rev-parse', '--show-toplevel']);
@@ -162,7 +165,7 @@ export function createIntegrationLifecycle({ definitions, rootFor, execute = run
           if (result.code !== 0 || result.stopped) throw new Error(`${command} failed (${result.stopped || `exit ${result.code}`}). Staged files were retained for inspection.`);
         };
         await step('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', 'clone', '--no-checkout', '--filter=blob:none', '--', d.source, root], p.versions, 300_000);
-        const checkout = await runGit(root, ['checkout', '--detach', d.revision], { timeoutMs: 300_000, maxBytes: 1_000_000, signal: options.signal, onSpawn: trackChild });
+        const checkout = await sourceGit(root, ['checkout', '--detach', d.revision], { timeoutMs: 300_000, maxBytes: 1_000_000, signal: options.signal, onSpawn: trackChild });
         if (checkout.code !== 0 || checkout.stopped) throw new Error('Could not check out the reviewed runtime revision. No installer was run.');
         if (!(await source(name, root)).sourceVerified) throw new Error('Runtime source verification failed. No installer was run.');
         for (const [command, args] of d.steps) await step(command, args, root, 3_600_000);

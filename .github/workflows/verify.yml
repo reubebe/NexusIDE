@@ -17,6 +17,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run verify:pilot
       - run: node scripts/verify-storage-scale.js
       - run: npm audit --omit=dev --audit-level=high
       - if: runner.os == 'macOS'
@@ -25,3 +26,5 @@ jobs:
         run: npm run desktop:package
       - if: runner.os == 'macOS'
         run: npm run desktop:verify-bundle
+      - if: runner.os == 'macOS'
+        run: npm run verify:release

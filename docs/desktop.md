@@ -17,7 +17,7 @@ Create a locally signed application bundle and installable disk image:
 npm run desktop:package
 ```
 
-This produces `dist/NexusIDE.app`, `dist/NexusIDE-0.2.0-arm64.dmg` (or `x64`) and a build report. The app bundles Node and its production dependencies. Open it from Finder and choose a project; missing default agents/team are initialized without overwriting existing state. The Phase 4 builder permits only ad-hoc signing. Developer ID signing, hardened-runtime entitlements and notarization belong to Phase 5. See [standalone distribution](desktop-distribution.md) for installation and checks.
+This produces `dist/NexusIDE.app`, `dist/NexusIDE-0.2.0-arm64.dmg` (or `x64`) and a build report. The app bundles Node and its production dependencies. Open it from Finder and choose a project; missing default agents/team are initialized without overwriting existing state. Default builds are ad-hoc signed. Explicit Developer ID signing and notarization tooling is available but awaits owner enrollment and live validation; see [release preparation](macos-release.md) and [standalone distribution](desktop-distribution.md).
 
 After linking the CLI, run `nexus desktop` from another initialized project to open that project's workspace. Build the host again after changing `desktop/macos/NexusDesktop.swift`. The compiled executable lives at `dist/NexusIDE-host`.
 

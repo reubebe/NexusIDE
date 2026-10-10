@@ -31,7 +31,12 @@
     "desktop/",
     "scripts/verify-desktop.js",
     "scripts/verify-research-evidence.js",
-    "scripts/verify-storage-scale.js"
+    "scripts/verify-storage-scale.js",
+    "scripts/macos-signing.js",
+    "scripts/release-preflight.js",
+    "scripts/notarize-desktop.js",
+    "scripts/verify-release.js",
+    "scripts/verify-pilot.js"
   ],
   "scripts": {
     "start": "node src/cli.js",
@@ -40,7 +45,11 @@
     "desktop:build": "node scripts/build-desktop.js",
     "desktop": "node src/cli.js desktop",
     "desktop:package": "node scripts/package-desktop.js",
-    "desktop:verify-bundle": "node scripts/verify-bundled-desktop.js"
+    "desktop:verify-bundle": "node scripts/verify-bundled-desktop.js",
+    "release:preflight": "node scripts/release-preflight.js",
+    "release:notarize": "node scripts/notarize-desktop.js",
+    "verify:release": "node scripts/verify-release.js",
+    "verify:pilot": "node scripts/verify-pilot.js"
   },
   "engines": {
     "node": ">=22.18.0"
