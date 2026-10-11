@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 720" role="img" aria-labelledby="title desc">
+  <title id="title">From task proposal to reviewed result</title>
+  <desc id="desc">Choose an agent for a direct run, or generate and inspect a workflow plan before starting it. The runtime checks each requested tool action against permissions. Disallowed actions do not execute. Actions that require approval wait for the user; declining prevents that action. Allowed actions execute and their results return to the agent. Review the resulting report, diff and tests; changes are never automatically merged.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="5.7" refY="3.5" orient="auto"><path d="m0 0 6 3.5L0 7" fill="none" stroke="#a2b1ce" stroke-width="1.4"/></marker>
+  </defs>
+  <rect width="1060" height="720" rx="20" fill="#111216"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="42" y="44" font-size="12px" font-weight="650" letter-spacing="1.8px">NEXUSIDE / TASK LIFECYCLE</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="42" y="87" font-size="30px" font-weight="650" letter-spacing="-.8px">You set the task. You keep the controls.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="42" y="117" font-size="16px">A generated plan is a proposal, not permission to execute.</text>
+
+  <rect x="42" y="153" width="282" height="122" rx="13" fill="#1b1e26" stroke="#3b4250"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="62" y="184" font-size="12px" font-weight="650" letter-spacing="1.8px">01</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="62" y="214" font-size="20px" font-weight="620" letter-spacing="-.3px">Describe the outcome</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="62" y="247" font-size="16px">Choose an agent and project.</text>
+  <path d="M324 214h39" fill="none" stroke="#a2b1ce" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="372" y="153" width="300" height="122" rx="13" fill="#202a43" stroke="#576b98"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="392" y="184" font-size="12px" font-weight="650" letter-spacing="1.8px">02 / OPTIONAL PLANNING</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="392" y="214" font-size="20px" font-weight="620" letter-spacing="-.3px">Inspect the workflow</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="392" y="247" font-size="16px">Review roles and dependencies.</text>
+  <path d="M672 214h39" fill="none" stroke="#a2b1ce" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="720" y="153" width="298" height="122" rx="13" fill="#1b1e26" stroke="#3b4250"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="740" y="184" font-size="12px" font-weight="650" letter-spacing="1.8px">03</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="740" y="214" font-size="20px" font-weight="620" letter-spacing="-.3px">Start the run</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="740" y="247" font-size="16px">The agent works with its model.</text>
+  <path d="M183 275v30h686v-23" fill="none" stroke="#a2b1ce" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4 5"/>
+  <rect x="425" y="291" width="194" height="28" rx="14" fill="#111216"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a9b2c2" x="522" y="310" font-size="14px" text-anchor="middle">Or run one agent directly</text>
+
+  <path d="M869 275v65H183v27" fill="none" stroke="#a2b1ce" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="42" y="376" width="282" height="147" rx="13" fill="#1b1e26" stroke="#3b4250"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="62" y="407" font-size="12px" font-weight="650" letter-spacing="1.8px">04 / EVERY TOOL ACTION</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="62" y="438" font-size="20px" font-weight="620" letter-spacing="-.3px">Check permissions</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="62" y="470" font-size="16px">Tools, paths and service grants.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a9b2c2" x="62" y="498" font-size="14px">Disallowed? No execution.</text>
+  <path d="M324 450h39" fill="none" stroke="#a2b1ce" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="372" y="376" width="300" height="147" rx="13" fill="#29251f" stroke="#7d6845"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#edc889" x="392" y="407" font-size="12px" font-weight="650" letter-spacing="1.8px">05 / WHEN REQUIRED</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="392" y="438" font-size="20px" font-weight="620" letter-spacing="-.3px">Review the action</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="392" y="470" font-size="16px">Inspect, then allow or decline.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a9b2c2" x="392" y="498" font-size="14px">Declined? That action does not run.</text>
+  <path d="M672 450h39" fill="none" stroke="#a2b1ce" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="720" y="376" width="298" height="147" rx="13" fill="#1b1e26" stroke="#3b4250"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="740" y="407" font-size="12px" font-weight="650" letter-spacing="1.8px">06</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="740" y="438" font-size="20px" font-weight="620" letter-spacing="-.3px">Execute and record</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="740" y="470" font-size="16px">Results return to the agent.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a9b2c2" x="740" y="498" font-size="14px">Further actions repeat the checks.</text>
+  <path d="M869 523v48" fill="none" stroke="#a2b1ce" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="42" y="580" width="976" height="100" rx="13" fill="#1a2326" stroke="#47646a"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a4d3cc" x="62" y="615" font-size="12px" font-weight="650" letter-spacing="1.8px">07 / YOUR REVIEW</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="62" y="650" font-size="20px" font-weight="620" letter-spacing="-.3px">Read the report. Inspect the diff. Check the tests.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="740" y="616" font-size="16px">An isolated worktree stays separate.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a9b2c2" x="740" y="647" font-size="14px">No automatic merge into your branch.</text>
+</svg>

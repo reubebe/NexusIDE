@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Nexus convergence star</title>
+  <desc id="desc">Four folded beams meet around an open diamond, with two small orbiting sparks. A meeting point for independent agents.</desc>
+  <defs>
+    <linearGradient id="north" x1="25" y1="4" x2="39" y2="33" gradientUnits="userSpaceOnUse"><stop stop-color="#f1f5ff"/><stop offset="1" stop-color="#a8bfff"/></linearGradient>
+    <linearGradient id="east" x1="60" y1="30" x2="32" y2="38" gradientUnits="userSpaceOnUse"><stop stop-color="#dbe7ff"/><stop offset="1" stop-color="#7f9bff"/></linearGradient>
+    <linearGradient id="south" x1="38" y1="61" x2="26" y2="32" gradientUnits="userSpaceOnUse"><stop stop-color="#9ab4ff"/><stop offset="1" stop-color="#5576d7"/></linearGradient>
+    <linearGradient id="west" x1="4" y1="34" x2="32" y2="25" gradientUnits="userSpaceOnUse"><stop stop-color="#d8e3ff"/><stop offset="1" stop-color="#8ca9ff"/></linearGradient>
+  </defs>
+  <path d="M32 3 39 24 32 29 25 24Z" fill="url(#north)"/>
+  <path d="M61 32 40 39 35 32 40 25Z" fill="url(#east)"/>
+  <path d="M32 61 25 40 32 35 39 40Z" fill="url(#south)"/>
+  <path d="M3 32 24 25 29 32 24 39Z" fill="url(#west)"/>
+  <path d="M32 3 32 29 25 24Z" fill="#fff" opacity=".2"/>
+  <path d="M61 32 35 32 40 25Z" fill="#fff" opacity=".2"/>
+  <path d="M32 61 32 35 39 40Z" fill="#dfe7ff" opacity=".18"/>
+  <path d="M3 32 29 32 24 39Z" fill="#dfe7ff" opacity=".22"/>
+  <path d="m48 9 1.7 5.3L55 16l-5.3 1.7L48 23l-1.7-5.3L41 16l5.3-1.7Z" fill="#c7d7ff"/>
+  <path d="m15 44 1.2 3.8L20 49l-3.8 1.2L15 54l-1.2-3.8L10 49l3.8-1.2Z" fill="#8eaaff"/>
+</svg>

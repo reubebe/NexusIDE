@@ -19,6 +19,19 @@ import { planTask } from './planner.js';
 import { rebuildMemoryIndex } from './semantic-memory.js';
 import { commandEnvironment } from './process.js';
 
+// Public help contains bundled, non-project assets only. Never resolve a request
+// path against the workspace or use a directory-wide static file fallback.
+const publicAssets = new Map([
+  ['/', ['ui/index.html', 'text/html']],
+  ['/guide', ['ui/guide.html', 'text/html']],
+  ['/user-guide.md', ['docs/user-guide.md', 'text/plain']],
+  ...['app.js', 'file-editor.js', 'render-cache.js'].map(name => ['/' + name, ['ui/' + name, 'text/javascript']]),
+  ...['style.css', 'guide.css'].map(name => ['/' + name, ['ui/' + name, 'text/css']]),
+  ...['brand/nexus-symbol.svg', 'illustrations/architecture.svg'].map(name => ['/' + name, ['ui/' + name, 'image/svg+xml']]),
+  ...['task-flow.svg', 'research-flow.svg'].map(name => ['/guide-assets/' + name, ['docs/assets/guide/' + name, 'image/svg+xml']]),
+  ...['workspace.png', 'agent-memory.png', 'memory.png', 'about.png', 'mobile.png'].map(name => ['/guide-assets/' + name, ['docs/assets/guide/' + name, 'image/png']]),
+]);
+
 export async function readJsonBody(req) {
   if (!req.headers['content-type']?.startsWith('application/json')) throw new Error('Expected JSON.');
   const chunks = []; let bytes = 0;
@@ -63,11 +76,10 @@ export async function startServer({ root, port = 4317 }) {
       const url = new URL(req.url, origin);
       const pathname = url.pathname;
       if (!pathname.startsWith('/api/')) {
-        const assets = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/file-editor.js': ['file-editor.js', 'text/javascript'], '/render-cache.js': ['render-cache.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
-        const asset = assets[pathname];
+        const asset = publicAssets.get(pathname);
         if (req.method !== 'GET' || !asset) return send(res, 404, { error: 'Not found.' });
-        const data = await readFile(fileURLToPath(new URL(`../ui/${asset[0]}`, import.meta.url)));
-        res.writeHead(200, { 'content-type': `${asset[1]}; charset=utf-8` }); return res.end(data);
+        const data = await readFile(fileURLToPath(new URL(`../${asset[0]}`, import.meta.url)));
+        res.writeHead(200, { 'content-type': asset[1] + (asset[1] === 'image/png' ? '' : '; charset=utf-8') }); return res.end(data);
       }
       const supplied = Buffer.from(req.headers.authorization?.replace(/^Bearer /, '') || '');
       const expected = Buffer.from(token);

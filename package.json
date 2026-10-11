@@ -18,6 +18,8 @@
     "scripts/verify-semantic-memory.js",
     "scripts/verify-codegraph.js",
     "scripts/verify-responsive.js",
+    "scripts/capture-user-guide.js",
+    "scripts/generate-app-icon.js",
     "README.md",
     "SECURITY.md",
     "docs/",
@@ -42,6 +44,8 @@
   "scripts": {
     "start": "node src/cli.js",
     "test": "node --test",
+    "docs:captures": "node scripts/capture-user-guide.js",
+    "brand:icon": "node scripts/generate-app-icon.js",
     "postinstall": "node scripts/setup-pty.js",
     "desktop:build": "node scripts/build-desktop.js",
     "desktop": "node src/cli.js desktop",

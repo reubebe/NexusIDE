@@ -20,6 +20,7 @@ export function applicationPlist(version, arch) {
 <key>CFBundleIdentifier</key><string>dev.nexuside.desktop</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 <key>CFBundleName</key><string>NexusIDE</string>
+<key>CFBundleIconFile</key><string>NexusIDE.icns</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>${version}</string>
 <key>CFBundleVersion</key><string>1</string>
@@ -91,6 +92,7 @@ export async function packageDesktop({ mode = process.env.NEXUS_SIGNING_MODE || 
     await copyFile(nodeBinary, bundledNode); await chmod(bundledNode, 0o755);
     await writeFile(path.join(runtime, 'LICENSE'), license);
     await copyPayload(root, payload);
+    await copyFile(path.join(payload, 'ui', 'brand', 'NexusIDE.icns'), path.join(contents, 'Resources', 'NexusIDE.icns'));
     await buildDesktop({ output: executable });
     await inspectBinary(executable);
     await writeFile(path.join(contents, 'Info.plist'), applicationPlist(version, arch));

@@ -5,16 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>NexusIDE · Agent workspace</title>
+  <link rel="icon" href="/brand/nexus-symbol.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/guide.css">
   <script src="/app.js" type="module"></script>
 </head>
 <body>
-  <a class="skip-link" href="#workspace">Skip to workspace</a>
+  <a class="skip-link" href="#main-content">Skip to content</a>
   <header class="site-header">
     <div class="wrap header-inner">
       <a class="brand" href="/" aria-label="NexusIDE home">
         <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 36 36"><path d="M10 26V10l16 16V10"/><path class="node-link" d="M10 10h7m2 16h7"/><circle cx="10" cy="10" r="2.4"/><circle cx="10" cy="26" r="2.4"/><circle cx="26" cy="10" r="2.4"/><circle cx="26" cy="26" r="2.4"/></svg>
+          <img src="/brand/nexus-symbol.svg" width="32" height="32" alt="">
         </span>
         <strong>Nexus<span>IDE</span></strong><span class="brand-context">Agent workspace</span>
       </a>
@@ -25,13 +27,15 @@
         <button data-tab="memory">Memory</button>
         <button data-tab="settings">Connections</button>
         <button data-tab="terminal">Terminal</button>
+        <button data-tab="files">Project files</button>
+        <button data-tab="about">About</button>
       </nav>
       <div class="header-actions"><span class="status-pill"><i></i>Local runtime</span></div>
     </div>
   </header>
   <div class="wrap breadcrumb"><span>Workspace</span><span>/</span><span id="page-title">Tasks</span><span class="privacy-pill">Local to this computer</span></div>
 
-  <main class="wrap">
+  <main class="wrap" id="main-content" tabindex="-1">
     <div id="notice" role="status"></div>
     <section id="workspace" class="tab">
       <header class="page-heading">
@@ -101,7 +105,7 @@
 
     <section id="history" class="tab" hidden>
       <header class="page-heading"><h1>Your run library</h1><p>A clear record of each task and the work behind it.</p></header>
-      <div class="library-layout"><div id="history-list"></div><section class="record-panel"><div class="section-heading compact"><span>RECORD</span><div><h2>Task transcript</h2><p>Messages, tool calls, status, and usage.</p></div></div><pre id="transcript">Select a completed run to review its record.</pre><div class="editor-actions"><button id="distill-run" class="secondary" disabled>Extract memories</button></div><p class="helper">Uses the selected run's agent and model. Review the provider request, then approve each proposed memory before it can be recalled.</p></section></div>
+      <div class="library-layout"><div id="history-list"></div><section class="record-panel"><div class="section-heading compact"><span>RECORD</span><div><h2>Task transcript</h2><p>Messages, tool calls, status, and usage.</p></div></div><pre id="transcript">Select a completed run to review its record.</pre><div class="editor-actions"><button id="distill-run" class="secondary" disabled>Extract memories</button></div><p class="helper">Uses the current model route for the selected run's agent. Review the provider request, then approve each proposed memory before it can be recalled.</p></section></div>
     </section>
 
     <section id="memory" class="tab" hidden>
@@ -128,6 +132,26 @@
     <section id="settings" class="tab" hidden>
       <header class="page-heading"><h1>Connections</h1><p>Connect model providers and approved tool services.</p></header>
       <section class="workflow-section"><header class="section-heading"><span>01</span><div><h2>Model providers & MCP</h2><p>Use environment variable names for secrets. Tool services start only after approval.</p></div></header><textarea id="config-editor" rows="24" spellcheck="false" aria-label="Connection configuration"></textarea><div class="editor-actions"><button id="save-config" class="primary">Save connections</button></div></section>
+    </section>
+
+    <section id="about" class="tab" hidden aria-labelledby="about-title">
+      <header class="about-heading">
+        <div><p class="eyebrow">MEET NEXUS</p><h1 id="about-title">Many minds.<br>One workspace.</h1><p class="about-intro">Your agents, tools, and project context, connected by one local runtime. Choose the interface. Keep control of the work.</p><a class="primary" href="/guide">Explore the visual guide <span aria-hidden="true">→</span></a></div>
+        <div class="about-emblem" aria-hidden="true"><img src="/brand/nexus-symbol.svg" width="210" height="210" alt=""><span>A point of convergence.</span></div>
+      </header>
+      <div class="about-layout">
+        <section class="about-principles" aria-labelledby="about-principles-title"><p class="eyebrow">BUILT AROUND THE AGENT</p><h2 id="about-principles-title">One system.<br>Clear boundaries.</h2>
+          <ol class="principle-list">
+            <li><span>01</span><div><h3>Bring your own team</h3><p>Give each agent instructions, skills, tool permissions, and a deliberate memory loadout.</p></div></li>
+            <li><span>02</span><div><h3>Work where you want</h3><p>The CLI, dashboard, macOS window, VS Code terminal, and Zed ACP bridge share the runtime.</p></div></li>
+            <li><span>03</span><div><h3>Review the important steps</h3><p>Inspect plans and requested actions. Permission checks and approval gates control agent tool use.</p></div></li>
+            <li><span>04</span><div><h3>Keep useful context</h3><p>Local records, scoped memory, and incremental indexes keep project knowledge available between tasks.</p></div></li>
+          </ol>
+          <aside class="about-note"><h3>Local-first, not always offline</h3><p>Project state stays in your workspace. Cloud models and enabled integrations can receive the context you send. The manual terminal runs as you; it is not an agent sandbox.</p></aside>
+        </section>
+        <figure class="architecture-figure"><a href="/illustrations/architecture.svg" aria-label="Open the NexusIDE architecture diagram at full size"><img src="/illustrations/architecture.svg" width="960" height="1050" alt="NexusIDE architecture: interfaces connect to the shared agent runtime; permission-controlled tools, model providers, and local project state support execution." aria-describedby="architecture-caption"></a><figcaption id="architecture-caption">How Nexus fits together. <a href="/illustrations/architecture.svg">Open full-size diagram ↗</a></figcaption></figure>
+      </div>
+      <section class="about-status"><div><span class="soft-pill">Development build</span><h2>Built to be inspected.</h2><p>NexusIDE is a local-first prototype. Developer ID signing, notarization, clean-machine certification, and production-pilot validation remain separate release gates.</p></div><a class="secondary" href="/guide#first-task">Start with an offline task →</a></section>
     </section>
 
     <section id="terminal" class="tab" hidden>

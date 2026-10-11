@@ -182,6 +182,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
     var web: WKWebView!
     var allowExit = false
     var checkingClose = false
+    var checkingNavigation = false
     init(url: URL?, selectedPath: String?) { self.url = url; self.selectedPath = selectedPath }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -221,6 +222,14 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
         }
         editItem.submenu = edit
         menu.addItem(editItem)
+        let viewItem = NSMenuItem()
+        let viewMenu = NSMenu(title: "View")
+        let back = viewMenu.addItem(withTitle: "Back", action: #selector(goBack), keyEquivalent: "[")
+        back.target = self
+        let forward = viewMenu.addItem(withTitle: "Forward", action: #selector(goForward), keyEquivalent: "]")
+        forward.target = self
+        viewItem.submenu = viewMenu
+        menu.addItem(viewItem)
         NSApplication.shared.mainMenu = menu
         NSApplication.shared.activate(ignoringOtherApps: true)
         if let url = url {
@@ -235,8 +244,13 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
         }
     }
 
+    // The bundled guide and full-size diagrams are same-origin pages. Give the
+    // native shell the navigation controls a browser normally supplies.
+    @objc func goBack() { if web.canGoBack { web.goBack() } }
+    @objc func goForward() { if web.canGoForward { web.goForward() } }
+
     @objc func chooseProject() {
-        guard !checkingClose else { return }
+        guard !checkingClose && !checkingNavigation else { return }
         checkingClose = true
         confirmDiscard(forProjectSwitch: true) { allowed in
             self.checkingClose = false
@@ -319,7 +333,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         if allowExit { return true }
-        if checkingClose { return false }
+        if checkingClose || checkingNavigation { return false }
         checkingClose = true
         confirmDiscard { allowed in
             self.checkingClose = false
@@ -330,7 +344,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if allowExit { return .terminateNow }
-        if checkingClose { return .terminateCancel }
+        if checkingClose || checkingNavigation { return .terminateCancel }
         checkingClose = true
         confirmDiscard { allowed in
             self.checkingClose = false
@@ -351,10 +365,32 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        guard let url = url, let target = navigationAction.request.url, navigationAction.targetFrame != nil,
+        guard let url = url, let target = navigationAction.request.url, navigationAction.targetFrame?.isMainFrame == true,
               target.scheme == url.scheme, target.host == url.host, target.port == url.port,
               target.user == nil, target.password == nil else { decisionHandler(.cancel); return }
-        decisionHandler(.allow)
+        guard let current = webView.url else { decisionHandler(.allow); return }
+        // In-page anchors do not discard the document. Other navigation,
+        // including native Back/Forward, must protect dashboard drafts.
+        if current.path == target.path && current.query == target.query && current.fragment != target.fragment {
+            decisionHandler(.allow); return
+        }
+        guard !checkingClose && !checkingNavigation else { decisionHandler(.cancel); return }
+        checkingNavigation = true
+        webView.evaluateJavaScript("window.nexusHasUnsavedChanges ? window.nexusHasUnsavedChanges() : false") { value, error in
+            if error == nil && (value as? Bool) != true {
+                self.checkingNavigation = false
+                decisionHandler(.allow); return
+            }
+            let alert = NSAlert()
+            alert.messageText = "Leave this page?"
+            alert.informativeText = "Unsaved edits may be lost. Active tasks will continue in the local runtime."
+            alert.addButton(withTitle: "Keep editing")
+            alert.addButton(withTitle: "Discard and continue")
+            alert.beginSheetModal(for: self.window) { response in
+                self.checkingNavigation = false
+                decisionHandler(response == .alertSecondButtonReturn ? .allow : .cancel)
+            }
+        }
     }
 
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,

@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1050" role="img" aria-labelledby="title desc">
+  <title id="title">NexusIDE architecture: one runtime, several interfaces</title>
+  <desc id="desc">The CLI, local dashboard and macOS shell, and VS Code and Zed adapters share an agent runtime. It combines agent definitions and scoped memory, validated workflow plans, permissions and action approvals. The runtime uses configured model providers, project tools and explicitly granted external connections. Runs and memory are stored locally in SQLite; configuration, definitions and the encrypted vault remain separate files. Remote providers and external services have their own data boundaries.</desc>
+  <defs>
+    <linearGradient id="runtime" x1="48" y1="314" x2="912" y2="560" gradientUnits="userSpaceOnUse"><stop stop-color="#202a43"/><stop offset="1" stop-color="#181e2b"/></linearGradient>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="5.7" refY="3.5" orient="auto"><path d="m0 0 6 3.5L0 7" fill="none" stroke="#8d9bb8" stroke-width="1.3"/></marker>
+  </defs>
+  <rect width="960" height="1050" rx="22" fill="#111216"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="48" y="49" font-size="12px" font-weight="650" letter-spacing="2px">NEXUSIDE / SYSTEM MAP</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="48" y="94" font-size="31px" font-weight="650" letter-spacing="-1px">One workspace. One shared runtime.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="48" y="123" font-size="15px">Choose your interface. Keep your agents, controls and project context.</text>
+
+  <rect x="48" y="156" width="276" height="116" rx="13" fill="#191c23" stroke="#363c48" stroke-width="1"/>
+  <path d="m73 181 7 6-7 6m13 0h9" fill="none" stroke="#bed0ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="108" y="194" font-size="20px" font-weight="620" letter-spacing="-.35px">Terminal CLI</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="72" y="226" font-size="15px">Tasks, teams and project tools</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a1a9b9" x="72" y="248" font-size="13px">Direct access to the runtime</text>
+  <rect x="342" y="156" width="276" height="116" rx="13" fill="#191c23" stroke="#363c48" stroke-width="1"/>
+  <rect x="366" y="179" width="24" height="17" rx="2" fill="none" stroke="#bed0ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M378 196v5m-5 0h10" fill="none" stroke="#bed0ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="404" y="194" font-size="20px" font-weight="620" letter-spacing="-.35px">Dashboard + macOS</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="366" y="226" font-size="15px">A local browser or native shell</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a1a9b9" x="366" y="248" font-size="13px">Tasks, approvals, files and PTY</text>
+  <rect x="636" y="156" width="276" height="116" rx="13" fill="#191c23" stroke="#363c48" stroke-width="1"/>
+  <path d="m667 180-7 7 7 7m12-14 7 7-7 7m-3-16-6 18" fill="none" stroke="#bed0ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="698" y="194" font-size="20px" font-weight="620" letter-spacing="-.35px">Editor adapters</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="660" y="226" font-size="15px">VS Code launcher · Zed ACP</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a1a9b9" x="660" y="248" font-size="13px">Existing editors, shared agents</text>
+  <path d="M186 272v34" fill="none" stroke="#8d9bb8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <path d="M480 272v34" fill="none" stroke="#8d9bb8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <path d="M774 272v34" fill="none" stroke="#8d9bb8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="48" y="314" width="864" height="246" rx="16" fill="url(#runtime)" stroke="#53658e"/>
+  <path d="m77 337 3 10 10 3-10 3-3 10-3-10-10-3 10-3Z" fill="#c2d2ff"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="105" y="357" font-size="20px" font-weight="620" letter-spacing="-.35px">Shared agent runtime</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="72" y="387" font-size="15px">One execution path, whatever starts the task.</text>
+  <path d="M336 412v118M624 412v118" stroke="#414b62"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="72" y="437" font-size="12px" font-weight="650" letter-spacing="2px">01 / AGENTS</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="72" y="467" font-size="15px">Role + instructions + skills</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="72" y="491" font-size="15px">Scoped, bounded memory</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a1a9b9" x="72" y="515" font-size="13px">Persistent definitions</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="360" y="437" font-size="12px" font-weight="650" letter-spacing="2px">02 / WORKFLOWS</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="360" y="467" font-size="15px">Reviewable, validated plans</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="360" y="491" font-size="15px">Dependencies + report handoffs</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a1a9b9" x="360" y="515" font-size="13px">Sequential or parallel stages</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="648" y="437" font-size="12px" font-weight="650" letter-spacing="2px">03 / ACTION CONTROL</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="648" y="467" font-size="15px">Agent permissions + grants</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="648" y="491" font-size="15px">Action approvals when required</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a1a9b9" x="648" y="515" font-size="13px">Cancellation + execution limits</text>
+  <path d="M186 560v40" fill="none" stroke="#8d9bb8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <path d="M480 560v40" fill="none" stroke="#8d9bb8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <path d="M774 560v40" fill="none" stroke="#8d9bb8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="48" y="608" width="276" height="169" rx="13" fill="#191c23" stroke="#363c48" stroke-width="1"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="72" y="641" font-size="12px" font-weight="650" letter-spacing="2px">CONFIGURED PROFILES</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="72" y="674" font-size="20px" font-weight="620" letter-spacing="-.35px">Model providers</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="72" y="705" font-size="15px">Anthropic or compatible APIs</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="72" y="729" font-size="15px">Local Ollama or a cloud model</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a1a9b9" x="72" y="755" font-size="13px">User-defined role routing</text>
+  <rect x="342" y="608" width="276" height="169" rx="13" fill="#191c23" stroke="#363c48" stroke-width="1"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="366" y="641" font-size="12px" font-weight="650" letter-spacing="2px">PERMISSION-CHECKED</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="366" y="674" font-size="20px" font-weight="620" letter-spacing="-.35px">Project tools</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="366" y="705" font-size="15px">Files, search, Git and commands</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="366" y="729" font-size="15px">Optional isolated worktrees</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a1a9b9" x="366" y="755" font-size="13px">No automatic merge</text>
+  <rect x="636" y="608" width="276" height="169" rx="13" fill="#191c23" stroke="#363c48" stroke-width="1"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="660" y="641" font-size="12px" font-weight="650" letter-spacing="2px">EXPLICIT CONNECTIONS</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="660" y="674" font-size="20px" font-weight="620" letter-spacing="-.35px">External tools</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="660" y="705" font-size="15px">Allowlisted MCP services</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="660" y="729" font-size="15px">Managed application profiles</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a1a9b9" x="660" y="755" font-size="13px">Separate service boundaries</text>
+
+  <path d="M48 438H26v449h14" fill="none" stroke="#8d9bb8" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4 5"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="48" y="812" font-size="12px" font-weight="650" letter-spacing="2px">LOCAL PROJECT STATE / USED THROUGHOUT EACH RUN</text>
+  <rect x="48" y="833" width="864" height="155" rx="13" fill="#191c23" stroke="#363c48" stroke-width="1"/>
+  <path d="M480 856v108" stroke="#363c48"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="72" y="873" font-size="20px" font-weight="620" letter-spacing="-.35px">SQLite storage</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="72" y="904" font-size="15px">Runs, workflows and governed memory</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="72" y="928" font-size="15px">Incremental note, code and document indexes</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a1a9b9" x="72" y="962" font-size="13px">Stored inside the project’s .nexus directory</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="504" y="873" font-size="20px" font-weight="620" letter-spacing="-.35px">Separate local files</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="504" y="904" font-size="15px">Configuration, agents, plans and skills</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b7bdca" x="504" y="928" font-size="15px">Workspace locks and encrypted vault</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a1a9b9" x="504" y="962" font-size="13px">Back up private state separately.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a1a9b9" x="48" y="1024" font-size="13px">Local-first does not mean offline: a chosen remote provider or service receives the data sent to it.</text>
+</svg>

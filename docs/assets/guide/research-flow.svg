@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 740" role="img" aria-labelledby="title desc">
+  <title id="title">NexusIDE and Research Harness: context is not evidence</title>
+  <desc id="desc">A research question enters the Nexus context-reader agent. Scoped Nexus memory provides working context but is not a citation. An explicitly configured, approved MCP connection exposes only allowlisted critic-role read tools from the separate Research Harness project. Admitted evidence, reviewed lessons, complete methods packs and pinned task outputs and provenance return to the agent as distinct categories. The user reviews source references and limitations. Evidence admission, lesson approval, reproduction and publication release remain separate human-governed workflows.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="5.7" refY="3.5" orient="auto"><path d="m0 0 6 3.5L0 7" fill="none" stroke="#a2b1ce" stroke-width="1.4"/></marker>
+  </defs>
+  <rect width="1060" height="740" rx="20" fill="#111216"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="42" y="44" font-size="12px" font-weight="650" letter-spacing="1.7px">NEXUSIDE / RESEARCH HARNESS</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="42" y="87" font-size="30px" font-weight="650" letter-spacing="-.8px">Keep working context separate from scientific evidence.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="42" y="118" font-size="16px">The reader retrieves and explains. It does not admit evidence or certify a result.</text>
+
+  <rect x="42" y="155" width="310" height="132" rx="13" fill="#202a43" stroke="#576b98"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="64" y="188" font-size="12px" font-weight="650" letter-spacing="1.7px">NEXUS / YOUR QUESTION</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="64" y="221" font-size="20px" font-weight="620" letter-spacing="-.3px">Context-reader agent</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="64" y="252" font-size="16px">Instructions + scoped Nexus memory</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a9b2c2" x="64" y="274" font-size="14px">Memory guides work; it is not a citation.</text>
+  <path d="M352 221h37" fill="none" stroke="#a2b1ce" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="398" y="155" width="266" height="132" rx="13" fill="#29251f" stroke="#7d6845"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#edc889" x="420" y="188" font-size="12px" font-weight="650" letter-spacing="1.7px">CONNECTION BOUNDARY</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="420" y="221" font-size="20px" font-weight="620" letter-spacing="-.3px">Explicit MCP grants</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="420" y="252" font-size="16px">Approve connection and calls.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a9b2c2" x="420" y="274" font-size="14px">Only allowlisted read tools.</text>
+  <path d="M664 221h37" fill="none" stroke="#a2b1ce" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="710" y="155" width="308" height="132" rx="13" fill="#1b1e26" stroke="#3b4250"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="732" y="188" font-size="12px" font-weight="650" letter-spacing="1.7px">SEPARATE PROJECT</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="732" y="221" font-size="20px" font-weight="620" letter-spacing="-.3px">Research Harness</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="732" y="252" font-size="16px">Critic-role reader access</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a9b2c2" x="732" y="274" font-size="14px">Choose the intended research project.</text>
+  <path d="M864 287v40" fill="none" stroke="#a2b1ce" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="42" y="336" width="976" height="232" rx="14" fill="#171b24" stroke="#3d4960"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#afc3ff" x="64" y="370" font-size="12px" font-weight="650" letter-spacing="1.7px">RETRIEVE WITH PROVENANCE / DO NOT MIX THESE CATEGORIES</text>
+  <path d="M365 396v145M689 396v145" stroke="#364154"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="64" y="421" font-size="20px" font-weight="620" letter-spacing="-.3px">Admitted evidence</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="64" y="452" font-size="16px">Inspect sources and their records.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="64" y="477" font-size="16px">Cite the actual evidence source.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a9b2c2" x="64" y="524" font-size="14px">Retrieval is not scientific validation.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="388" y="421" font-size="20px" font-weight="620" letter-spacing="-.3px">Lessons + methods</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="388" y="452" font-size="16px">Lessons are reviewed context.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="388" y="477" font-size="16px">Read complete methods packs,</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="388" y="501" font-size="16px">including their contraindications.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a9b2c2" x="388" y="540" font-size="14px">Keep methods versions pinned.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="712" y="421" font-size="20px" font-weight="620" letter-spacing="-.3px">Outputs + provenance</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="712" y="452" font-size="16px">Pin output hashes across pages.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="712" y="477" font-size="16px">Inspect analysis provenance with</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#b9c0cd" x="712" y="501" font-size="16px">the expected version intact.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a9b2c2" x="712" y="540" font-size="14px">A stale pin means refresh, not bypass.</text>
+  <path d="M530 568v19" fill="none" stroke="#a2b1ce" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="42" y="595" width="976" height="103" rx="13" fill="#1a2326" stroke="#47646a"/>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a4d3cc" x="64" y="629" font-size="12px" font-weight="650" letter-spacing="1.7px">RETURN TO NEXUS / HUMAN REVIEW</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#f3f4f7" x="64" y="665" font-size="20px" font-weight="620" letter-spacing="-.3px">Check sources, assumptions and limits before using the result.</text>
+  <text font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" fill="#a9b2c2" x="42" y="724" font-size="14px">Admission, lesson approval, code execution, reproduction and publication release are outside this reader’s grants.</text>
+</svg>

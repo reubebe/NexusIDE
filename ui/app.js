@@ -42,16 +42,20 @@ async function api(path, method = 'GET', data) {
 }
 const node = (tag, text, className) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (className) n.className = className; return n; };
 const action = fn => async event => { event?.preventDefault(); try { $('notice').textContent = ''; await fn(); } catch (e) { $('notice').textContent = e.message; } };
-const titles = { workspace: 'Tasks', files: 'Project files', agents: 'Agents', history: 'Run library', memory: 'Memory', settings: 'Connections', terminal: 'Terminal' };
-const filesButton = node('button', 'Project files'); filesButton.dataset.tab = 'files'; document.querySelector('nav').append(filesButton);
+const titles = { workspace: 'Tasks', files: 'Project files', agents: 'Agents', history: 'Run library', memory: 'Memory', settings: 'Connections', terminal: 'Terminal', about: 'About Nexus' };
 function showTab(tab) {
+  if (!Object.hasOwn(titles, tab)) return;
   for (const section of document.querySelectorAll('.tab')) section.hidden = section.id !== tab;
-  for (const b of document.querySelectorAll('[data-tab]')) b.classList.toggle('active', b.dataset.tab === tab);
+  for (const b of document.querySelectorAll('[data-tab]')) {
+    b.classList.toggle('active', b.dataset.tab === tab);
+    if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  }
   $('page-title').textContent = titles[tab];
   if (tab === 'files') action(() => loadFiles())();
   if (tab === 'memory') action(() => refreshMemories())();
 }
 for (const button of document.querySelectorAll('[data-tab]')) button.onclick = () => showTab(button.dataset.tab);
+if (initialToken === 'about') showTab('about');
 let terminalCursor = 0, terminalTimer;
 const cleanTerminalOutput = value => value.replace(/[\u001b\u009b][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d\/#&.:=?%@~_]+)*)?\u0007)|(?:(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))/g, '');
 async function pollTerminal() {

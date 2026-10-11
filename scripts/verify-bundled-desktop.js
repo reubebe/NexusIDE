@@ -29,6 +29,10 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
     };
     await checked('/usr/bin/codesign', ['--verify', '--deep', '--strict', app]);
     receipt.checks.push('relocated-signature-valid');
+    assert.match(await readFile(path.join(contents, 'Info.plist'), 'utf8'), /CFBundleIconFile<\/key><string>NexusIDE\.icns/);
+    const icon = await readFile(path.join(contents, 'Resources/NexusIDE.icns'));
+    assert.equal(icon.subarray(0, 4).toString(), 'icns');
+    assert.equal(icon.readUInt32BE(4), icon.length);
     const native = JSON.parse(await checked(host, ['--check-bootstrap', '--workspace', workspace, '--data-root', dataRoot]));
     assert.equal(native.origin.startsWith('http://127.0.0.1:'), true);
     await assert.rejects(fetch(native.origin, { signal: AbortSignal.timeout(1000) }));
@@ -48,6 +52,12 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
     const [line] = await once(lines, 'line', { signal: AbortSignal.timeout(15000) });
     const ready = JSON.parse(line), url = new URL(ready.url), token = url.hash.slice(1);
     assert.equal((await fetch(url.origin + '/api/state')).status, 401);
+    for (const asset of ['/guide', '/user-guide.md', '/brand/nexus-symbol.svg', '/illustrations/architecture.svg', '/guide-assets/workspace.png', '/guide-assets/task-flow.svg']) {
+      const response = await fetch(url.origin + asset, { signal: AbortSignal.timeout(10000) });
+      assert.equal(response.status, 200, `Missing bundled guide asset: ${asset}`);
+      assert.ok((await response.arrayBuffer()).byteLength > 100);
+    }
+    receipt.checks.push('bundled-visual-guide-and-brand');
     const request = async (route, body) => {
       const response = await fetch(url.origin + route, { method: body === undefined ? 'GET' : 'POST', headers: { authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'content-type': 'application/json' }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(10000) });
       assert.ok(response.ok, `API request failed: ${route} (${response.status})`);

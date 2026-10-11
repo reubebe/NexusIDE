@@ -36,10 +36,21 @@ test('application metadata is versioned, architecture-specific and free of sourc
   const plist = applicationPlist('0.2.0', 'arm64');
   assert.match(plist, /LSMinimumSystemVersion<\/key><string>13\.0/);
   assert.match(plist, /CFBundleShortVersionString<\/key><string>0\.2\.0/);
+  assert.match(plist, /CFBundleIconFile<\/key><string>NexusIDE\.icns/);
   assert.doesNotMatch(plist, /Users\/|Downloads\//);
   assert.throws(() => safeVersion('../escape'));
   assert.throws(() => applicationPlist('0.2.0</string>', 'arm64'));
   assert.throws(() => applicationPlist('0.2.0', '<xml>'));
+});
+
+test('committed native icon assets are valid containers at the expected size', async () => {
+  const icon = await readFile(new URL('../ui/brand/NexusIDE.icns', import.meta.url));
+  assert.equal(icon.subarray(0, 4).toString(), 'icns');
+  assert.equal(icon.readUInt32BE(4), icon.length);
+  const raster = await readFile(new URL('../ui/brand/nexus-app-icon.png', import.meta.url));
+  assert.equal(raster.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  assert.equal(raster.readUInt32BE(16), 1024);
+  assert.equal(raster.readUInt32BE(20), 1024);
 });
 
 test('positive payload allowlist excludes private state and developer dependencies', async t => {

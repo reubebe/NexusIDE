@@ -2,6 +2,18 @@
 
 NexusIDE runs project agents from a terminal, local dashboard, VS Code terminal, or a Zed ACP connection. Agents use the same project configuration, tool approvals, memory, and run history in each interface.
 
+## A visual tour
+
+Start with [your first task](#2-open-the-dashboard), then learn to [configure an agent](#4-run-an-agent), [review a plan](#5-run-teams-and-review-isolated-changes), [connect research tools](#7-use-research-and-hobby-workflows), and [control memory](#9-save-and-inspect-memory).
+
+The screenshots below show the actual dashboard in an isolated demonstration project. Names, tasks, and notes are examples, not your private workspace. They illustrate the interface, not a live model connection, a completed research study, or release certification. Open any image to inspect it at full size.
+
+In the app, open **About → Explore the visual guide** for the bundled visual walkthrough. In the macOS window, use **View → Back** (Command-[) after opening a full-size diagram or the Markdown reference; use **View → Forward** (Command-]) to return.
+
+![NexusIDE architecture: the dashboard, macOS app, terminal CLI, VS Code, and Zed connect to a shared agent runtime; permission-controlled tools and model connections work with local project state.](../ui/illustrations/architecture.svg)
+
+*One runtime, several interfaces. The same architecture diagram appears in the app's About page. Local storage does not mean every action stays offline: configured cloud models and external tools can transmit data. See [architecture status](architecture.md) for implemented capabilities and limits.*
+
 ## 1. Install and initialize a project
 
 Use Node.js 22.18 or newer and Git. From the NexusIDE source directory:
@@ -34,6 +46,19 @@ npm start -- serve
 
 Open the full local URL printed in the terminal, including its login fragment. The dashboard is bound to `127.0.0.1`. Use it to review agents, runs, approvals, files, skills, memory, and provider settings. Stop the server with Ctrl+C.
 
+![Workspace dashboard with agent selection, task instructions, offline-demo and command-request options, task activity, and a project overview.](assets/guide/workspace.png)
+
+*Workspace · Define the outcome at the top, follow activity below, and inspect approval requests before allowing actions.*
+
+For your first visual walkthrough:
+
+1. Open **Workspace**, choose **architect**, and enter “Inspect this project and summarize its structure.”
+2. Keep **Offline demo** checked and **Allow command requests** unchecked. Choose **Run task**.
+3. Read **Task activity**, then open **Run library** and select the run to inspect its transcript. The demo is scripted; it has not inspected or changed your project.
+4. After configuring a model, return to Workspace and uncheck **Offline demo** for a real task. Check the selected agent's permissions first.
+
+An action requiring approval appears under activity with **Approve** and **Decline**. Read the exact paths, command, or MCP request; decline anything outside your intended task. **Cancel task** stops an active run but does not undo actions that have already completed.
+
 ## 3. Connect a model
 
 For Anthropic, export a provider and API key in your shell:
@@ -62,6 +87,18 @@ npm start -- status
 
 Starter agent definitions are in `.nexus/agents/`. Each agent has instructions, permissions, and optional memory, skills, MCP servers, and applications. Edit the JSON through the dashboard or directly. Imported agents start read-only; agent instructions alone cannot grant tools.
 
+![Agents view showing an agent definition and its memory selection controls, including project memories, layers, maximum memories, and context character limit.](assets/guide/agent-memory.png)
+
+*Agents · Give a role a bounded selection of useful context. Memory selection does not grant tools or enable an agent's memory permission.*
+
+To tailor a role in the dashboard:
+
+1. Open **Agents** and select the agent. Review its instructions and permissions in the definition editor.
+2. Under **Memory for this agent**, choose all, selected, or no project memories. With **Selected memories**, use Command-click on Mac or Control-click on Windows to select multiple notes.
+3. Choose the layers and context limits, then select **Save agent**. The agent's own eligible notes remain separate from the project-note selection; another agent's private notes are not available.
+
+Memory must also be enabled with `"memory": true` in the definition. See [agent memory selections](memory.md#agent-memory-selections) for the exact limits and startup behavior.
+
 To let an agent run approved commands, its configuration must enable execution and the run must also include the explicit flag:
 
 ```sh
@@ -83,7 +120,18 @@ Teams use dependency-ordered workflows. Use `--isolated` to give workflow steps 
 
 To incorporate committed work, run `npm start -- worktree merge TASK_NAME`. NexusIDE shows the exact revisions, file list and diff for approval, then checks them again before fast-forwarding the current branch. It refuses dirty workspaces, divergent history, protected paths, links, binary changes and configured Git content filters. Commit the reviewed source changes yourself first; the merge command does not create commits, push, or delete worktrees.
 
-`nexus plan "task description"` creates a reviewable workflow proposal. Inspect it and install/run only after you understand the agents and permissions it will use.
+![Task lifecycle from a written goal to a proposed plan, reviewed workflow execution, permission checks and approvals, then a recorded result and reviewed changes.](assets/guide/task-flow.svg)
+
+*Plan before execution · A saved plan is a proposal, not completed work. Tool permissions and action approvals still apply when its team runs.*
+
+`nexus plan "task description"` saves a reviewable workflow proposal and a corresponding `plan-…` team. It does not execute that team. The dashboard provides the same planning flow:
+
+1. Enter a concrete task in **Workspace**, then select **Plan this task first →**. Keep **Offline demo** checked to explore with a scripted proposal, or uncheck it to use your configured planning model.
+2. Inspect the proposal in **Task activity**: read each step's agent, task, dependencies, and approval requirement. Review each referenced agent's actual permissions too.
+3. When satisfied, choose the newly saved `plan-…` team under **Agent or team** and select **Run task**. Planning and running are separate actions; a real run requires **Offline demo** to be unchecked.
+4. Review tool requests during execution. Inspect the completed records and any changed files; use the CLI worktree commands above when running an isolated workflow.
+
+Worktrees separate files, not host privileges. They are not a substitute for permission checks or a configured execution sandbox.
 
 ## 6. Import a third-party agent or skill
 
@@ -127,6 +175,19 @@ npm start -- team run movie-studio "Create a production plan for a short film"
 
 Research Harness and the included research skills support evidence-oriented work. Install a managed hobby runtime with `nexus integration install tradingagents` or `nexus integration install openmontage`, then connect it with `nexus integration configure NAME`. Check both with `nexus integration status`. External launches require `--allow-commands` and interactive approval. NexusIDE does not place trades; OpenMontage rendering remains subject to its own provider, media, cost, and licensing requirements.
 
+![Research workflow: a Nexus research agent makes an explicitly allowed MCP request to Research Harness, reads bounded evidence and context with version or hash pins, and returns findings for human review.](assets/guide/research-flow.svg)
+
+*Research Harness remains a separate evidence system. Saved Nexus memories and Harness lessons can guide work, but are not citations or human attestations.*
+
+For the optional updated Research Harness reader:
+
+1. Review the [connection example](../integrations/research-harness.example.json) and [context-reader agent](../examples/harness-context-reader.json). Merge only the intended configuration into your project; set explicit environment and research-project paths.
+2. Select `harness-context-reader` only after configuring it for the intended project. The existing local profile targets a demo project, not a real manuscript.
+3. Approve the connection and each allowed MCP call after reading its request. Keep version/hash pins across paginated reads, and refresh stale data instead of removing a pin.
+4. Check findings against their source evidence. Read complete methods guidance, including assumptions and contraindications; review provenance without treating an inspection as successful reproduction.
+
+The reader cannot admit evidence, approve lessons, run arbitrary research code, or release a publication. See [Research Harness integration details](integrations.md#tool-services) for the tested source version, grants, and synthetic verification command.
+
 Managed runtimes support `upgrade`, `rollback`, `recover`, `unconfigure`, and `uninstall`. Upgrades stage the reviewed pin without moving existing environments; uninstall disables while retaining files. Configuration and lifecycle changes require confirmation. See [integration lifecycle](integration-lifecycle.md) before changing grants or recovering a failed installation.
 
 ## 8. Configure MCP tools
@@ -144,7 +205,7 @@ MCP servers run only when assigned to an agent and approved. Keep the tool allow
 
 ```sh
 npm start -- memory add "Use Python for this project's numerical analysis"
-npm start -- memory add "Prefer concise reviews" --agent reviewer
+npm start -- memory add "Prefer concise reviews" --agent reviewer --layer L3
 npm start -- memory search "Python"
 npm start -- memory list --agent reviewer
 npm start -- memory history MEMORY_ID
@@ -153,6 +214,19 @@ npm start -- memory forget MEMORY_ID
 ```
 
 Project and agent notes are local. They have L1 facts/decisions, L2 summaries, or L3 preferences, with revisions, expiry, and active/archived status. `memory search` defaults to hybrid retrieval with local keyword fallback; `--mode lexical` makes no embedding call. Agents with memory enabled can propose notes for approval. Their `memoryLoadout` chooses project notes, layers, and bounded context. See [memory management and selections](memory.md) for update-file examples, ownership, and limits.
+
+![Memory workspace with controls to save project or agent context, preview retrieval for a selected agent, and inspect saved notes.](assets/guide/memory.png)
+
+*Memory · Save deliberately, preview what an agent can recall, and inspect a note's source before trusting it.*
+
+The dashboard separates four decisions:
+
+1. **Save useful context:** choose the layer, category, and project or agent scope. Record one useful fact, decision, summary, or preference; use expiry for temporary context.
+2. **Preview recall:** select an agent and enter a task or question. **Keyword search · local** makes no embedding call. **Keywords + meaning** uses configured local embeddings when available; read the returned mode and warnings rather than assuming semantic retrieval occurred.
+3. **Saved memories:** filter by agent, layer, or status. Edit inaccurate notes or archive context that no longer applies. Archived and expired notes remain inspectable but are excluded from recall.
+4. **Proposed memories:** review each candidate against its evidence, then approve or reject it individually. A proposal is not recalled until approved.
+
+To generate proposals in the UI, select a completed run in **Run library**, then choose **Extract memories**. This uses the current model route for the run's agent and requires approval before transmitting the excerpt; it may call a cloud provider. Review candidates back in **Memory**. For a fully offline extraction example, use the CLI `--demo` command below.
 
 For semantic search, run `ollama pull nomic-embed-text` and add an `embeddings` field to your existing project configuration (preserve the other settings):
 
@@ -198,3 +272,17 @@ Run `npm start -- doctor` to inspect configured connections, missing skill refer
 On macOS, run `npm run desktop:build` followed by `npm run desktop`. For another initialized project, use `nexus desktop` after linking the CLI. Closing the window cancels active jobs. See [desktop setup](desktop.md) for requirements, verification and distribution limits.
 
 For Finder launch, build with `npm run desktop:package`, open `dist/NexusIDE.app`, and choose your project. Node and the core runtime are included. Existing `.nexus` state is kept, and missing defaults are initialized without model calls. Use **File → Open Project…** to switch projects. This remains an ad-hoc development build, not a notarized public release; see [distribution details](desktop-distribution.md).
+
+## About and smaller screens
+
+![NexusIDE About page with the star-inspired Nexus symbol and a diagram of the shared runtime, interfaces, tools, models, and local state.](assets/guide/about.png)
+
+*About · A map of how the parts fit together, inside the workspace. This is the browser dashboard; it is not a native-window screenshot or evidence of macOS signing.*
+
+Open **About** for the architecture overview. The diagram describes the shared runtime; optional integrations still require their own installation, configuration, grants, and validation.
+
+<img src="assets/guide/mobile.png" alt="NexusIDE workspace at a narrow mobile-sized browser viewport, with stacked task controls and a horizontally scrollable navigation row." width="390">
+
+*Narrow-screen layout · The same local dashboard adapts to smaller windows. Scroll the navigation row horizontally to reach additional sections.*
+
+This is a responsive browser view, not a separate mobile application. The default server listens only on the computer's loopback address; a phone on the same Wi-Fi cannot reach it. Do not expose the development server to a network to reproduce this view—resize the browser on the host computer instead.
