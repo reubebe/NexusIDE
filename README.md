@@ -210,3 +210,7 @@ Run `npm run desktop:package` to create a self-contained, ad-hoc signed `NexusID
 Node/npm and this source checkout are not needed to launch the bundled app. Existing project state stays in `.nexus`; first launch creates only missing defaults. External tools/models remain separate. Public distribution still requires Developer ID signing/notarization and clean-machine testing.
 
 Managed TradingAgents/OpenMontage installations now support staged upgrades, verified rollback, interrupted-setup recovery and recoverable disablement without moving existing virtual environments. Use `nexus integration status` and see [integration lifecycle](docs/integration-lifecycle.md) for commands, grants and remaining dependency boundaries.
+
+## Acknowledgments
+
+NexusIDE's later governed-memory design was informed by ideas presented in [TencentDB Agent Memory](https://github.com/TencentCloud/TencentDB-Agent-Memory), particularly layered memory, role-specific memory loadouts, and human-governed reusable context. NexusIDE implements its own local SQLite, full-text, and optional embedding-based system; it does not include or require TencentDB Agent Memory or a Tencent service. See [memory design and boundaries](docs/memory.md).
