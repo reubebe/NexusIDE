@@ -1,14 +1,46 @@
-# NexusIDE
+<p align="center">
+  <img src="ui/brand/nexus-app-icon.png" width="96" height="96" alt="NexusIDE convergence-star symbol">
+</p>
 
-**One runtime. Any agent. Any model.**
+<h1 align="center">NexusIDE</h1>
 
-A local agent development workspace for software, scientific research, trading research, and movie-making. A shared Node.js runtime powers the terminal CLI and authenticated web dashboard. The current version is a working local prototype; see [implementation status](docs/architecture.md) for the exact boundaries.
+<p align="center"><strong>Your agents. Your models. One workspace.</strong></p>
 
-The latest [workflow audit](docs/audit-2026-10-08.md) records fixes, fresh checks and remaining release limitations.
+Build a team of specialized AI agents for coding and research—with shared project memory, reviewable actions, and one runtime across your terminal, desktop, and editor.
 
-Release preparation now includes [Developer ID/notarization tooling](docs/macos-release.md), an [isolated install/recovery rehearsal](docs/release-testing.md), and [internal security review](docs/security-review-2026-10-09.md). Apple enrollment, genuine clean-device acceptance and a [consented production pilot](docs/production-pilot.md) remain release gates; automated passes are not production certification.
+[Visual user guide](docs/user-guide.md) · [Quick start](#start) · [Architecture](#architecture) · [Project status](#project-status)
 
-New users: start with the step-by-step [NexusIDE User Guide](docs/user-guide.md).
+> **Development preview:** a working local prototype, not a production-certified release. Agent portability and model support depend on the available adapters; see [compatibility and implementation boundaries](docs/architecture.md).
+
+[![NexusIDE workspace with agent selection, a focused task description, offline-demo controls, and a reviewable task activity panel.](docs/assets/guide/workspace.png)](docs/user-guide.md)
+
+*The actual NexusIDE dashboard, using synthetic demonstration data. Start with a task, follow the work, and review requested actions. The macOS app uses the same interface.*
+
+## Why NexusIDE?
+
+- **Build a team with clear roles.** Give each agent instructions, skills, tool permissions, and a focused memory loadout.
+- **Choose models by role.** Route agents to configured local or cloud profiles through Anthropic and compatible Chat Completions adapters. [See tested providers.](docs/providers.md)
+- **Keep control of the work.** Review plans, approve sensitive agent actions, and inspect changes in optional Git worktrees before merging.
+- **Keep useful project context.** Reuse scoped, versioned memory and search incrementally indexed code and documents across tasks.
+- **Use your preferred interface.** Work through the CLI, local dashboard, macOS window, VS Code terminal launcher, or Zed ACP bridge.
+
+Start with a development team—architect → coder → reviewer—or assemble research, trading-research, and movie-planning workflows using the optional packs and explicitly configured integrations. External tools and model services require their own setup.
+
+## Architecture
+
+One shared runtime connects your interfaces, agents, models, approved tools, and local project state. This is the same system map shown in **About** inside the app.
+
+[![NexusIDE architecture: the terminal CLI, dashboard and macOS app, and editor adapters connect to a shared agent runtime with scoped memory, workflows, permissions, model providers, project tools, external connections, and local SQLite storage.](ui/illustrations/architecture.svg)](ui/illustrations/architecture.svg)
+
+*Select the diagram for a full-size view. Local-first does not mean always offline: configured cloud providers and external tools receive the context you send. See the [implementation map](docs/architecture.md) for exact capabilities and limits.*
+
+## Project status
+
+NexusIDE includes a working agent runtime, SQLite-backed history and retrieval, editor adapters, and a self-contained **macOS development app**. The app is ad-hoc signed, not Developer ID signed or notarized. Windows and Linux desktop builds remain future work.
+
+The [workflow audit](docs/audit-2026-10-08.md), [provider matrix](docs/providers.md), and [security boundaries](SECURITY.md) document what has been checked and what remains unverified. Release preparation includes [signing/notarization tooling](docs/macos-release.md), an [isolated install/recovery rehearsal](docs/release-testing.md), and [internal security review](docs/security-review-2026-10-09.md). Apple enrollment, genuine clean-device acceptance, and a [consented production pilot](docs/production-pilot.md) remain release gates; automated passes are not production certification.
+
+Explore the [illustrated user guide](docs/user-guide.md) for task planning, agent configuration, memory, approvals, and the Research Harness connection—or try the offline walkthrough below.
 
 ## Start
 
