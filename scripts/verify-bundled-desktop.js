@@ -10,7 +10,12 @@ import { runProcess } from '../src/process.js';
 import { writeState } from '../src/state.js';
 
 const providerCredentialNames = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'XAI_API_KEY', 'DEEPSEEK_API_KEY', 'MOONSHOT_API_KEY', 'ZHIPUAI_API_KEY', 'DASHSCOPE_API_KEY'];
-const fixtureProviderEnvironment = () => Object.fromEntries(providerCredentialNames.map((key, index) => [key, `nexus-synthetic-credential-${index}`]));
+const numberedCredentialNames = [...providerCredentialNames.map(key => `${key}2`), 'OPENAI_API_KEY10', 'ANTHROPIC_API_KEY3', 'GEMINI_API_KEY99'];
+const fixtureProviderEnvironment = () => Object.fromEntries([...providerCredentialNames, ...numberedCredentialNames].map((key, index) => [key, `nexus-synthetic-credential-${index}`]));
+const fixtureExcludedEnvironment = () => Object.fromEntries([
+  ...providerCredentialNames.flatMap(key => ['0', '1', '02', '100', '_WORK', '2_EXTRA', '2.0', '-2', '+2'].map(suffix => `${key}${suffix}`)),
+  'UNKNOWN_API_KEY2',
+].map(key => [key, 'nexus-excluded-fixture']));
 
 // Exercise the compiled native host with a synthetic child. This checks the
 // actual process boundary without contacting a provider or using real keys.
@@ -26,9 +31,11 @@ export async function verifyNativeProviderEnvironment({ host, node, plist, tempo
   await cp(host, binary); await writeFile(path.join(contents, 'Info.plist'), plist);
   await symlink(node, path.join(resources, 'runtime', 'bin', 'node'));
   const fixture = fixtureProviderEnvironment();
+  const excluded = fixtureExcludedEnvironment();
   const childSource = `const assert = require('node:assert/strict');
 const expected = ${JSON.stringify(fixture)};
 for (const [key, value] of Object.entries(expected)) assert.equal(process.env[key], value);
+for (const key of ${JSON.stringify(Object.keys(excluded))}) assert.equal(process.env[key], undefined);
 assert.equal(process.env.UNRELATED_SECRET, undefined);
 assert.equal(process.env.NODE_OPTIONS, undefined);
 assert.equal(process.env.NEXUS_API_KEY, undefined);
@@ -40,7 +47,7 @@ process.stdout.write(JSON.stringify({ url: 'http://127.0.0.1:4317/#' + 'a'.repea
   await writeFile(path.join(resources, 'app', 'src', 'desktop-bootstrap.js'), childSource);
   const result = await runProcess(binary, ['--check-bootstrap', '--workspace', workspace], {
     cwd: workspace, timeoutMs: 45000,
-    env: { PATH: '/usr/bin:/bin', HOME: os.homedir(), ...fixture, UNRELATED_SECRET: 'nexus-unrelated-fixture', NODE_OPTIONS: '--require=/nonexistent/nexus-injection.js', NEXUS_API_KEY: 'nexus-generic-fixture', NEXUS_BASE_URL: 'https://example.invalid' },
+    env: { PATH: '/usr/bin:/bin', HOME: os.homedir(), ...fixture, ...excluded, UNRELATED_SECRET: 'nexus-unrelated-fixture', NODE_OPTIONS: '--require=/nonexistent/nexus-injection.js', NEXUS_API_KEY: 'nexus-generic-fixture', NEXUS_BASE_URL: 'https://example.invalid' },
   });
   assert.equal(result.code, 0, 'Native host did not forward the supported credentials with other environment variables excluded.');
   assert.equal(result.stopped, null);
@@ -69,7 +76,7 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
     await checked('/usr/bin/codesign', ['--verify', '--deep', '--strict', app]);
     receipt.checks.push('relocated-signature-valid');
     await verifyNativeProviderEnvironment({ host, node, plist: await readFile(path.join(contents, 'Info.plist'), 'utf8'), temporary });
-    receipt.checks.push('native-provider-credential-allowlist');
+    receipt.checks.push('native-provider-credential-allowlist', 'native-numbered-provider-credential-allowlist');
     assert.match(await readFile(path.join(contents, 'Info.plist'), 'utf8'), /CFBundleIconFile<\/key><string>NexusIDE\.icns/);
     const icon = await readFile(path.join(contents, 'Resources/NexusIDE.icns'));
     assert.equal(icon.subarray(0, 4).toString(), 'icns');
@@ -88,7 +95,7 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
     assert.equal(run.status, 'completed'); assert.equal(run.agent, 'architect');
     receipt.checks.push('bundled-cli-demo', 'persisted-sqlite-history');
     const providerEnvironment = fixtureProviderEnvironment();
-    child = spawn(node, [path.join(payload, 'src/desktop-bootstrap.js'), '--workspace', workspace, '--data-root', dataRoot], { cwd: workspace, env: { ...env, ...providerEnvironment }, stdio: ['pipe', 'pipe', 'pipe'] });
+    child = spawn(node, [path.join(payload, 'src/desktop-bootstrap.js'), '--workspace', workspace, '--data-root', dataRoot], { cwd: workspace, env: { ...env, ...providerEnvironment, ...fixtureExcludedEnvironment() }, stdio: ['pipe', 'pipe', 'pipe'] });
     const exited = once(child, 'exit'); child.stderr.on('data', () => {});
     const lines = createInterface({ input: child.stdout });
     const [line] = await once(lines, 'line', { signal: AbortSignal.timeout(15000) });
@@ -107,18 +114,23 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
     };
     assert.equal((await request('/api/state')).agents.length, 7);
     const providers = (await request('/api/providers')).providers;
-    assert.deepEqual([...new Set(providers.map(provider => provider.keyEnv))].sort(), [...providerCredentialNames].sort());
+    assert.deepEqual([...new Set(providers.map(provider => provider.keyEnv))].sort(), Object.keys(providerEnvironment).sort());
     assert.ok(providers.every(provider => provider.credential === 'available'));
-    const selection = await request('/api/providers/select', { provider: 'deepseek', model: 'deepseek-chat', route: 'default' });
+    for (const id of ['openai', 'anthropic', 'gemini', 'xai', 'deepseek', 'moonshot', 'moonshot-cn', 'zhipu', 'zai', 'qwen', 'qwen-cn']) {
+      assert.ok(providers.some(provider => provider.id === id), `Missing default account: ${id}`);
+      assert.ok(providers.some(provider => provider.id === `${id}:2`), `Missing second account: ${id}`);
+    }
+    for (const id of ['openai:10', 'anthropic:3', 'gemini:99']) assert.ok(providers.some(provider => provider.id === id), `Missing numbered account: ${id}`);
+    const selection = await request('/api/providers/select', { provider: 'deepseek:2', model: 'deepseek-chat', route: 'default' });
     const configText = await readFile(path.join(workspace, '.nexus', 'config', 'project.json'), 'utf8');
     const config = JSON.parse(configText);
-    assert.equal(config.providers[config.routes.default].keyEnv, 'DEEPSEEK_API_KEY');
+    assert.equal(config.providers[config.routes.default].keyEnv, 'DEEPSEEK_API_KEY2');
     assert.equal(config.providers[config.routes.default].model, 'deepseek-chat');
     for (const value of Object.values(providerEnvironment)) {
       assert.equal(JSON.stringify({ providers, selection }).includes(value), false);
       assert.equal(configText.includes(value), false);
     }
-    receipt.checks.push('bundled-provider-picker-all-eight-keys', 'bundled-provider-selection-without-secret-persistence');
+    receipt.checks.push('bundled-provider-picker-all-eight-keys', 'bundled-provider-picker-numbered-accounts', 'bundled-provider-selection-without-secret-persistence');
     const memory = await request('/api/memory', { text: 'Bundled memory lifecycle fixture.', layer: 'L2' });
     assert.equal(memory.revision, 1);
     assert.equal((await request('/api/memory/search', { query: 'lifecycle', mode: 'lexical' })).matches[0].id, memory.id);

@@ -133,15 +133,15 @@
       <header class="page-heading"><h1>Connections</h1><p>Connect model providers and approved tool services.</p></header>
       <section class="workflow-section"><header class="section-heading"><span>01</span><div><h2>Choose your model</h2><p>Connect using API keys already available to Nexus.</p></div></header>
         <form id="provider-form" class="form-grid">
-          <label>Provider<select id="provider-picker" required><option value="">Choose a provider</option></select></label>
+          <label>Provider / account<select id="provider-picker" required><option value="">Choose a provider / account</option></select></label>
           <p id="provider-status" class="helper" role="status">Checking environment…</p>
-          <label>Model<select id="model-picker" disabled><option value="">Choose a provider first</option></select></label>
+          <label>Model<select id="model-picker" disabled><option value="">Choose a provider / account first</option></select></label>
           <label id="custom-model-label" hidden>Model ID<input id="custom-model" type="text" placeholder="Enter a text model with tool calling" maxlength="200"></label>
           <label>Use for<select id="provider-route"><option value="default">Workspace default</option></select><small>Agent-specific routes and pinned profiles take precedence over the workspace default.</small></label>
           <div class="editor-actions"><button id="connect-provider" class="primary" disabled>Use this model</button><button id="refresh-providers" type="button" class="secondary">Refresh providers</button></div>
           <p id="provider-selection-status" class="helper" role="status"></p>
         </form>
-        <p class="helper">Keys are used only by the runtime to authenticate with your selected provider; they are never displayed or saved in connection settings. Start Nexus from the terminal where your keys are exported. After changing exports, relaunch Nexus. Choose the region matching your API account.</p>
+        <p class="helper">Add a second account with a numbered export such as OPENAI_API_KEY2. The standard key is Account 1; numbered keys 2–99 appear as separate choices. Keys are used only by the runtime to authenticate with your selected account; their values are never displayed or saved in connection settings. Start Nexus from the terminal where your keys are exported. After changing exports, relaunch Nexus. Choose the region matching your API account.</p>
       </section>
       <section class="workflow-section"><details><summary>Advanced connections & MCP</summary><p class="helper">Edit custom endpoints, existing profiles, and tool services. Use environment variable names for secrets.</p><textarea id="config-editor" rows="24" spellcheck="false" aria-label="Connection configuration" aria-describedby="config-status"></textarea><div class="editor-actions"><button id="save-config" class="primary" disabled>Save connections</button></div><p id="config-status" class="helper" role="status">Loading connections…</p></details></section>
     </section>

@@ -81,6 +81,59 @@ test('stale model responses cannot replace the newer selected provider', async (
   assert.equal(picker.loading, false);
 });
 
+test('account switching clears models, ignores stale responses, and saves the exact credential route', async () => {
+  const account1 = { id: 'openai', providerId: 'openai', account: 1, label: 'OpenAI · Account 1', keyEnv: 'OPENAI_API_KEY', kind: 'compatible', baseUrl: 'https://api.openai.com/v1', credential: 'available' };
+  const account2 = { ...account1, id: 'openai:2', account: 2, label: 'OpenAI · Account 2', keyEnv: 'OPENAI_API_KEY2' };
+  const first = deferred(), second = deferred(), selections = [];
+  let current = config(), available = [account1, account2];
+  const picker = await ready(async (route, method, body) => {
+    if (route === 'providers') return { providers: available };
+    if (route === 'config') return structuredClone(current);
+    if (route === 'providers/models?provider=openai') return first.promise;
+    if (route === 'providers/models?provider=openai%3A2') return second.promise;
+    assert.equal(route, 'providers/select'); assert.equal(method, 'POST');
+    selections.push(body);
+    current.providers['picker-openai-account-2-hash'] = { kind: account2.kind, baseUrl: account2.baseUrl, keyEnv: account2.keyEnv, model: body.model };
+    current.routes[body.route] = 'picker-openai-account-2-hash';
+  });
+  picker.models = ['previous-account-model']; picker.model = '__custom__'; picker.customModel = 'private-model';
+  const a = picker.selectProvider('openai');
+  const b = picker.selectProvider('openai:2');
+  assert.deepEqual(picker.models, []);
+  assert.equal(picker.modelId, ''); assert.equal(picker.customModel, ''); assert.equal(picker.canConnect, false);
+  second.resolve({ models: ['account-2-model'], note: 'second account' }); await b;
+  picker.model = 'account-2-model';
+  first.resolve({ models: ['account-1-model'], note: 'first account' }); await a;
+  assert.equal(picker.provider, 'openai:2');
+  assert.deepEqual(picker.models, ['account-2-model']); assert.equal(picker.note, 'second account');
+  await picker.connect();
+  assert.deepEqual(selections, [{ provider: 'openai:2', model: 'account-2-model', route: 'default' }]);
+  assert.match(picker.selectionStatus, /account-2-model · OpenAI · Account 2 \(OPENAI_API_KEY2\)/);
+  assert.doesNotMatch(picker.selectionStatus, /picker-openai-account-2-hash/);
+
+  available = [account1];
+  await picker.refreshProviders();
+  assert.equal(picker.provider, ''); assert.equal(picker.canConnect, false); assert.deepEqual(picker.models, []);
+  assert.match(picker.selectionStatus, /OpenAI · Account 2 \(OPENAI_API_KEY2; key missing\)/);
+  assert.doesNotMatch(picker.selectionStatus, /Account 1/);
+});
+
+test('saved account summary reports placeholders without mislabelling custom endpoints or vault credentials', async () => {
+  const account = { id: 'openai:2', account: 2, label: 'OpenAI · Account 2', keyEnv: 'OPENAI_API_KEY2', kind: 'compatible', baseUrl: 'https://api.openai.com/v1', credential: 'placeholder' };
+  const current = config();
+  current.providers.remote = { kind: account.kind, baseUrl: `${account.baseUrl}/`, keyEnv: account.keyEnv, model: 'test-model' };
+  current.routes.default = 'remote';
+  const picker = await ready(async route => route === 'config' ? current : { providers: [account] });
+  assert.match(picker.selectionStatus, /Account 2 \(OPENAI_API_KEY2; example key\)/);
+  current.providers.remote.baseUrl = 'https://example.com/v1';
+  assert.match(picker.selectionStatus, /remote \(OPENAI_API_KEY2\)/);
+  assert.doesNotMatch(picker.selectionStatus, /Account 2/);
+  current.providers.remote.baseUrl = account.baseUrl;
+  current.providers.remote.keySecret = 'saved-credential';
+  assert.match(picker.selectionStatus, /remote \(vault: saved-credential\)/);
+  assert.doesNotMatch(picker.selectionStatus, /Account 2/);
+});
+
 test('stale catalog refresh is ignored and model errors offer manual entry', async () => {
   const first = deferred(), second = deferred(); let requests = 0;
   const picker = createProviderPicker(async route => {

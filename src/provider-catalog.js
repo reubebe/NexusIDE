@@ -20,9 +20,12 @@ const catalog = [
   ...(id.startsWith('qwen') ? { note: 'For accounts requiring a workspace-specific endpoint, use Advanced connections. Streaming-only models are not supported by the current agent runtime.' } : {}) }));
 
 function preset(id) {
-  const found = catalog.find(p => p.id === id);
+  // A preset ID chooses a provider-owned key name, never an arbitrary env var.
+  const match = typeof id === 'string' && /^([a-z][a-z-]*)(?::([2-9]|[1-9][0-9]))?$/.exec(id);
+  const found = match && catalog.find(p => p.id === match[1]);
   if (!found) throw new Error('Unknown provider.');
-  return found;
+  const account = match[2] ? Number(match[2]) : 1;
+  return { ...found, id, providerId: found.id, account, label: `${found.label} · Account ${account}`, keyEnv: found.keyEnv + (account === 1 ? '' : account) };
 }
 
 export function credentialStatus(value) {
@@ -32,7 +35,13 @@ export function credentialStatus(value) {
 }
 
 export function discoverProviders(env = process.env) {
-  return catalog.map(p => ({ ...p, credential: credentialStatus(env[p.keyEnv]) }));
+  return catalog.flatMap(base => {
+    const accounts = [preset(base.id)];
+    for (let account = 2; account <= 99; account++) {
+      if (Object.hasOwn(env, base.keyEnv + account)) accounts.push(preset(`${base.id}:${account}`));
+    }
+    return accounts.map(p => ({ ...p, credential: credentialStatus(env[p.keyEnv]) }));
+  });
 }
 
 export function isAgentModel(id, provider = '') {
@@ -66,7 +75,7 @@ export async function discoverModels(id, { env = process.env, fetchImpl = fetch 
       listed += entries.length;
       for (const item of entries) {
         const id = p.modelsUrl ? item?.model : item?.id;
-        if (typeof id === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,199}$/.test(id) && isAgentModel(id, p.id)) models.push(id);
+        if (typeof id === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,199}$/.test(id) && isAgentModel(id, p.providerId)) models.push(id);
       }
       hasMore = p.modelsUrl ? Number.isSafeInteger(data.output?.total) && listed < data.output.total && entries.length > 0
         : p.kind === 'anthropic' && data.has_more === true && typeof data.last_id === 'string' && data.last_id !== after;
@@ -89,9 +98,9 @@ export function applyProviderSelection(config, { provider, model, route = 'defau
   const next = structuredClone(config);
   // Reuse identical selections without growing configuration on every click.
   // Profiles are immutable here: changing a route never changes another route.
-  const profile = { kind: p.kind, model, baseUrl: p.baseUrl, keyEnv: p.keyEnv, ...(provider === 'openai' ? { tokenLimitField: 'max_completion_tokens' } : {}), maxOutputTokens: 4096 };
+  const profile = { kind: p.kind, model, baseUrl: p.baseUrl, keyEnv: p.keyEnv, ...(p.providerId === 'openai' ? { tokenLimitField: 'max_completion_tokens' } : {}), maxOutputTokens: 4096 };
   const fingerprint = createHash('sha256').update(JSON.stringify(profile)).digest('hex').slice(0, 16);
-  const stem = `picker-${provider}-${fingerprint}`;
+  const stem = `picker-${p.providerId}-${fingerprint}`;
   let name = stem, suffix = 1;
   while (Object.hasOwn(next.providers, name) && JSON.stringify(next.providers[name]) !== JSON.stringify(profile)) name = `${stem}-${suffix++}`;
   next.providers[name] = profile;

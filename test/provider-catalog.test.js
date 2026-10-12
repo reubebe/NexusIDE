@@ -17,6 +17,62 @@ test('catalog detects only named keys and distinguishes example credentials with
   assert.ok(!JSON.stringify(result).includes('other-secret'));
 });
 
+test('numbered accounts are discovered independently, ordered numerically, and never expose key values', () => {
+  const env = { OPENAI_API_KEY: 'private-default', OPENAI_API_KEY2: 'private-second', OPENAI_API_KEY10: 'private-tenth',
+    ANTHROPIC_API_KEY2: 'your-anthropic-key', GEMINI_API_KEY2: '', OPENAI_API_KEY1: 'ignored', OPENAI_API_KEY02: 'ignored',
+    OPENAI_API_KEY100: 'ignored', OPENAI_API_KEY_WORK: 'ignored', UNRELATED_API_KEY2: 'ignored' };
+  const entries = discoverProviders(env);
+  assert.deepEqual(entries.filter(p => p.providerId === 'openai').map(p => [p.id, p.keyEnv, p.account]), [
+    ['openai', 'OPENAI_API_KEY', 1], ['openai:2', 'OPENAI_API_KEY2', 2], ['openai:10', 'OPENAI_API_KEY10', 10],
+  ]);
+  assert.equal(entries.find(p => p.id === 'anthropic:2').credential, 'placeholder');
+  assert.equal(entries.find(p => p.id === 'gemini:2').credential, 'missing');
+  assert.equal(entries.some(p => p.keyEnv === 'UNRELATED_API_KEY2'), false);
+  assert.doesNotMatch(JSON.stringify(entries), /private-default|private-second|private-tenth|ignored|your-anthropic-key/);
+});
+
+test('all provider and region presets use the selected account for model discovery, without falling back', async () => {
+  for (const p of discoverProviders({})) {
+    const env = { [p.keyEnv]: 'first-private-key', [p.keyEnv + '2']: 'second-private-key' };
+    const result = await discoverModels(`${p.id}:2`, { env, fetchImpl: async (url, options) => {
+      assert.equal(options.headers[p.kind === 'anthropic' ? 'x-api-key' : 'authorization'], p.kind === 'anthropic' ? 'second-private-key' : 'Bearer second-private-key');
+      assert.equal(String(url).startsWith(p.modelsUrl || p.baseUrl), true);
+      return Response.json(p.modelsUrl ? { output: { total: 1, models: [{ model: 'account-two-model' }] } } : { data: [{ id: 'account-two-model' }] });
+    } });
+    assert.deepEqual(result.models, ['account-two-model']);
+    await assert.rejects(discoverModels(`${p.id}:2`, { env: { [p.keyEnv]: 'first-private-key' }, fetchImpl: () => assert.fail('Must not fall back to account one') }), /Set a real/);
+  }
+  for (const id of ['openai:0', 'openai:1', 'openai:02', 'openai:100', 'openai:2:3', 'openai:WORK', 'openai:2\n', 'unknown:2']) {
+    await assert.rejects(discoverModels(id, { env: {}, fetchImpl: () => assert.fail('Invalid ID must not fetch') }), /Unknown provider/);
+  }
+});
+
+test('two accounts can route separate agents to the same model with distinct runtime credentials', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'nexus-numbered-provider-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const env = { OPENAI_API_KEY: 'first-runtime-key', OPENAI_API_KEY2: 'second-runtime-key' };
+  let config = applyProviderSelection(structuredClone(defaultConfig), { provider: 'openai', model: 'same-model', route: 'coder' }, env);
+  config = applyProviderSelection(config, { provider: 'openai:2', model: 'same-model', route: 'reviewer' }, env);
+  validateConfig(config);
+  assert.notEqual(config.routes.coder, config.routes.reviewer);
+  assert.equal(config.providers[config.routes.reviewer].keyEnv, 'OPENAI_API_KEY2');
+  assert.equal(config.providers[config.routes.reviewer].tokenLimitField, 'max_completion_tokens');
+  assert.deepEqual(applyProviderSelection(config, { provider: 'openai:2', model: 'same-model', route: 'reviewer' }, env), config);
+  await saveConfig(root, config);
+  const sent = [];
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    sent.push(options.headers.authorization);
+    return Response.json({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: 'Done.' } }] });
+  });
+  for (const name of ['coder', 'reviewer']) {
+    const provider = await routeProvider(root, { name }, { env });
+    await provider.complete([{ role: 'user', content: 'Synthetic connection test.' }]);
+  }
+  assert.deepEqual(sent, ['Bearer first-runtime-key', 'Bearer second-runtime-key']);
+  assert.doesNotMatch(JSON.stringify(config), /first-runtime-key|second-runtime-key/);
+  await assert.rejects(routeProvider(root, { name: 'reviewer' }, { env: { OPENAI_API_KEY: env.OPENAI_API_KEY } }), /OPENAI_API_KEY2/);
+});
+
 test('each preset uses only its own credential and fixed HTTPS endpoint', async () => {
   for (const p of discoverProviders({})) {
     let requested;

@@ -1,9 +1,30 @@
 // Keep the advanced draft and acknowledged configuration separate while requests run.
+function connectionLabel(configured, profile, catalog) {
+  const sameEndpoint = p => p.kind === configured.kind
+    && p.baseUrl?.replace(/\/+$/, '') === configured.baseUrl?.replace(/\/+$/, '');
+  if (!configured.keySecret && configured.keyEnv) {
+    const exact = catalog.find(p => sameEndpoint(p) && p.keyEnv === configured.keyEnv);
+    if (exact) {
+      const status = exact.credential === 'available' ? '' : exact.credential === 'placeholder' ? '; example key' : '; key missing';
+      return `${exact.label} (${exact.keyEnv}${status})`;
+    }
+    // Numbered entries disappear when their export is absent. Keep the saved
+    // account visible rather than attributing its route to the base credential.
+    const base = catalog.find(p => sameEndpoint(p) && p.account === 1
+      && configured.keyEnv.startsWith(p.keyEnv) && /^(?:[2-9]|[1-9][0-9])$/.test(configured.keyEnv.slice(p.keyEnv.length)));
+    if (base) {
+      const account = configured.keyEnv.slice(base.keyEnv.length);
+      return `${base.label.replace(/ · Account 1$/, '')} · Account ${account} (${configured.keyEnv}; key missing)`;
+    }
+  }
+  return `${profile}${configured.keySecret ? ` (vault: ${configured.keySecret})` : configured.keyEnv ? ` (${configured.keyEnv})` : ''}`;
+}
+
 export function createProviderPicker(api, changed = () => {}) {
   let catalogRequest = 0, modelRequest = 0;
   return {
     catalog: [], agents: [], models: [], provider: '', model: '', customModel: '', route: 'default',
-    note: 'Select a provider to see available models.', busy: false, loading: false, refreshing: false,
+    note: 'Select a provider and account to see available models.', busy: false, loading: false, refreshing: false,
     config: null, draft: '', saved: '',
     get dirty() { return this.draft !== this.saved; },
     get modelId() { return this.model === '__custom__' ? this.customModel.trim() : this.model; },
@@ -21,7 +42,7 @@ export function createProviderPicker(api, changed = () => {}) {
       if (!configured) return `${label}: using the runtime environment settings. No model route saved.`;
       const source = agent?.provider ? 'Pinned in the agent definition; edit Agents to change it.'
         : this.route !== 'default' && !this.config.routes[this.route] ? 'Inherited from the workspace default.' : 'Applies to new tasks.';
-      return `${label}: ${configured.model} · ${profile}. ${source}`;
+      return `${label}: ${configured.model} · ${connectionLabel(configured, profile, this.catalog)}. ${source}`;
     },
     setDraft(value) { this.draft = value; changed(); },
     setAgents(agents) {
@@ -54,7 +75,7 @@ export function createProviderPicker(api, changed = () => {}) {
       const p = this.catalog.find(p => p.id === id);
       this.provider = id; this.model = ''; this.customModel = ''; this.models = [];
       this.loading = !!p && p.credential === 'available';
-      this.note = !p ? 'Select a provider to see available models.'
+      this.note = !p ? 'Select a provider and account to see available models.'
         : p.credential !== 'available' ? `${p.keyEnv}: ${p.credential === 'placeholder' ? 'contains an example value. Replace it with your real API key' : 'not found in the Nexus environment'}. Relaunch Nexus after exporting it.`
         : `${p.keyEnv} detected. Loading account models…`;
       changed();

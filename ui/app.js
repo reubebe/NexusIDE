@@ -429,12 +429,12 @@ const providerPicker = createProviderPicker(api, renderProviders);
 function renderProviders() {
   const picker = providerPicker, p = picker.catalog.find(p => p.id === picker.provider);
   renderWhenChanged($('provider-picker'), JSON.stringify(picker.catalog), () => {
-    $('provider-picker').replaceChildren(option('', 'Choose a provider'), ...picker.catalog.map(p => option(p.id, `${p.label} · ${p.credential === 'available' ? 'key detected' : p.credential === 'placeholder' ? 'example key' : 'key needed'}`)));
+    $('provider-picker').replaceChildren(option('', 'Choose a provider / account'), ...picker.catalog.map(p => option(p.id, `${p.label} · ${p.credential === 'available' ? 'key detected' : p.credential === 'placeholder' ? 'example key' : 'key needed'}`)));
   });
   $('provider-picker').value = picker.provider;
   $('provider-picker').disabled = picker.busy;
   renderWhenChanged($('model-picker'), JSON.stringify([picker.provider, p?.credential, picker.loading, picker.models]), () => {
-    const placeholder = picker.loading ? 'Loading models…' : !p ? 'Choose a provider first' : p.credential !== 'available' ? 'API key needed' : 'Choose a model';
+    const placeholder = picker.loading ? 'Loading account models…' : !p ? 'Choose a provider / account first' : p.credential !== 'available' ? 'API key needed' : 'Choose a model';
     $('model-picker').replaceChildren(option('', placeholder), ...picker.models.map(id => option(id, id)), ...(!picker.loading && p?.credential === 'available' ? [option('__custom__', 'Enter a model ID…')] : []));
   });
   $('model-picker').value = picker.model;

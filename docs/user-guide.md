@@ -4,7 +4,7 @@ NexusIDE runs project agents from a terminal, local dashboard, VS Code terminal,
 
 ## A visual tour
 
-**Connect a cloud model:** Export your provider's API key before starting Nexus, then open **Connections → Choose your model**. Pick a provider, scroll through its models, choose the workspace default or a particular agent, and click **Use this model**. OpenAI, Anthropic, Gemini, xAI, DeepSeek, Kimi, GLM, and Qwen have built-in presets. Missing keys and example values are clearly marked. See [provider setup](providers.md#choose-a-provider-in-the-dashboard) for environment variables, regional accounts, and macOS launch behavior.
+**Connect a cloud model:** Export your provider's API key before starting Nexus, then open **Connections → Choose your model**. Pick a provider and account, scroll through that account's models, choose the workspace default or a particular agent, and click **Use this model**. OpenAI, Anthropic, Gemini, xAI, DeepSeek, Kimi, GLM, and Qwen have built-in presets. Missing keys and example values are clearly marked. Numbered exports such as `OPENAI_API_KEY2` add separate account choices. See [provider setup](providers.md#choose-a-provider-in-the-dashboard) for environment variables, regional accounts, and macOS launch behavior.
 
 Start with [your first task](#2-open-the-dashboard), then learn to [configure an agent](#4-run-an-agent), [review a plan](#5-run-teams-and-review-isolated-changes), [connect research tools](#7-use-research-and-hobby-workflows), and [control memory](#9-save-and-inspect-memory).
 
@@ -62,6 +62,10 @@ For your first visual walkthrough:
 An action requiring approval appears under activity with **Approve** and **Decline**. Read the exact paths, command, or MCP request; decline anything outside your intended task. **Cancel task** stops an active run but does not undo actions that have already completed.
 
 ## 3. Connect a model
+
+For the dashboard, export a real key such as `OPENAI_API_KEY`, then launch Nexus from the same terminal and choose **Connections → Provider / account → Model → Use this model**. The standard key is Account 1. A second export named `OPENAI_API_KEY2` adds Account 2; the same numbering works for all eight provider variables through `99`. You can use Account 2 without setting Account 1, and route different agents to different accounts. Each model list belongs to its selected account. Nexus does not switch accounts automatically after an error or quota limit. See [all eight numbered-key examples](providers.md#multiple-accounts-with-numbered-keys).
+
+For an installed macOS app, fully quit Nexus, then run `/Applications/NexusIDE.app/Contents/MacOS/NexusIDE` from the terminal containing those exports. Finder does not inherit them. Relaunch after changing exports; refreshing the picker cannot import changes made to another process's environment.
 
 For Anthropic, export a provider and API key in your shell:
 

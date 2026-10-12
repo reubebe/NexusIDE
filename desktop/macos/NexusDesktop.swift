@@ -70,6 +70,12 @@ final class BootstrapHost {
         for name in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY",
                      "DEEPSEEK_API_KEY", "MOONSHOT_API_KEY", "ZHIPUAI_API_KEY", "DASHSCOPE_API_KEY"] {
             if let value = inherited[name] { environment[name] = value }
+            // Additional accounts use canonical suffixes 2...99. Construct the
+            // exact names so unrelated variables and malformed suffixes stay out.
+            for account in 2...99 {
+                let accountName = name + String(account)
+                if let value = inherited[accountName] { environment[accountName] = value }
+            }
         }
         process.environment = environment
         process.standardInput = input; process.standardOutput = output; process.standardError = errors

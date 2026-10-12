@@ -4,13 +4,34 @@
 
 Open **Connections → Choose your model**. Nexus detects `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`, `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `ZHIPUAI_API_KEY`, and `DASHSCOPE_API_KEY` in the runtime's environment. Example values such as `your-openai-key` are marked as placeholders.
 
-Select a provider, select a model from its account model list, choose the workspace default or an individual agent, and click **Use this model**. Loading a model list sends only an authenticated catalogue request, not project content or a generation request. A detected key is not proof of a valid account or model compatibility. Known media, embedding, and Responses-only model families are omitted; model IDs can also be entered manually when listing is unavailable. The current runtime uses Chat Completions or Anthropic Messages, so choose a text model with tool calling.
+Select a provider and account, select a model from that account's model list, choose the workspace default or an individual agent, and click **Use this model**. Loading a model list sends only an authenticated catalogue request, not project content or a generation request. A detected key is not proof of a valid account or model compatibility. Known media, embedding, and Responses-only model families are omitted; model IDs can also be entered manually when listing is unavailable. The current runtime uses Chat Completions or Anthropic Messages, so choose a text model with tool calling.
+
+### Multiple accounts with numbered keys
+
+Keep the standard export for **Account 1** and append `2` for **Account 2**, `3` for **Account 3**, and so on through `99`. For example, the following names add a second credential slot for each of the eight providers; replace the example values with the corresponding account's real key:
+
+```sh
+export OPENAI_API_KEY2='your-openai-key'
+export ANTHROPIC_API_KEY2='your-anthropic-key'
+export GEMINI_API_KEY2='your-gemini-key'
+export XAI_API_KEY2='your-xai-key'
+export DEEPSEEK_API_KEY2='your-deepseek-key'
+export MOONSHOT_API_KEY2='your-kimi-key'
+export ZHIPUAI_API_KEY2='your-glm-key'
+export DASHSCOPE_API_KEY2='your-qwen-key'
+```
+
+After launching Nexus from that terminal, **Connections → Provider / account** shows choices such as **OpenAI · Account 1** and **OpenAI · Account 2**. Numbered entries appear only when that variable exists in the runtime environment; an empty or example value is shown as needing a real key. Account 2 can be used even if Account 1 is absent. Only unpadded suffixes `2` through `99` are discovered; names such as `OPENAI_API_KEY1`, `OPENAI_API_KEY02`, and `OPENAI_API_KEY_WORK` are not automatically discovered or forwarded by the macOS host.
+
+Choose each account separately to load its own model list. Model availability and billing follow the selected credential; a model accessible to one account may not be accessible to another. You can assign Account 1 to one agent and Account 2 to another, or choose either as the workspace default. The saved route includes the exact variable name, and its summary identifies the account. Removing that export leaves the saved route unchanged and requires restoring the key or explicitly choosing another account. Nexus does not automatically fail over between accounts or rotate keys when a quota is reached.
+
+### Launch and regional endpoints
 
 Kimi, GLM, and Qwen have separate regional endpoints. Select the endpoint matching the account that issued your key. Nexus never tries different regions automatically. Unsupported endpoints and coding-plan accounts can still be configured under **Advanced connections & MCP**.
 
 Qwen accounts may require a workspace-specific base URL, which must be configured under Advanced connections. Some Qwen thinking models require streaming; Nexus currently uses non-streaming requests, so those models are not supported. The picker filters known mismatches but cannot certify every returned model. See [Alibaba's API requirements](https://www.alibabacloud.com/help/en/model-studio/deep-thinking).
 
-Only the environment variable name is saved, never its value. Start `nexus serve` or `nexus desktop` from the shell where the variables are exported. For the installed macOS app, launch `/Applications/NexusIDE.app/Contents/MacOS/NexusIDE` from that terminal after fully quitting any running instance; the native host forwards the eight supported keys. A macOS application opened from Finder does not automatically inherit terminal exports. After changing exports, relaunch the runtime from that terminal; the refresh button only checks its existing environment. Nexus does not read `.env` or import Keychain credentials automatically. See [desktop setup](desktop-distribution.md).
+Only the environment variable name is saved, never its value. Start `nexus serve` or `nexus desktop` from the shell where the variables are exported. For the installed macOS app, launch `/Applications/NexusIDE.app/Contents/MacOS/NexusIDE` from that terminal after fully quitting any running instance; the native host forwards the eight supported base keys and their numbered `2`–`99` variants. A macOS application opened from Finder does not automatically inherit terminal exports. After changing exports, relaunch the runtime from that terminal; the refresh button only checks its existing environment. Nexus does not read `.env` or import Keychain credentials automatically. See [desktop setup](desktop-distribution.md).
 
 Selections apply to new tasks and preserve existing provider profiles, MCP services, and unrelated routes. An agent's pinned `provider` takes precedence; remove that pin in **Agents** before assigning it through the picker. Existing agent routes also take precedence over the workspace default.
 

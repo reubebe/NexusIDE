@@ -31,7 +31,9 @@ Finder does not inherit shell-exported API keys or PATH additions. For the eight
 /Applications/NexusIDE.app/Contents/MacOS/NexusIDE
 ```
 
-The native host forwards only `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`, `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `ZHIPUAI_API_KEY`, and `DASHSCOPE_API_KEY` to its owned runtime. It does not read shell startup files, `.env` files, or the Keychain, and does not persist key values. **Connections → Choose your model** then detects those keys. `open -a NexusIDE` is not a substitute for directly launching the binary with inherited variables.
+For cloud credentials, the native host forwards `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`, `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `ZHIPUAI_API_KEY`, and `DASHSCOPE_API_KEY`, plus their numbered `2`–`99` variants, to its owned runtime. For example, `OPENAI_API_KEY2` appears as **OpenAI · Account 2** in **Connections → Provider / account**, independently of `OPENAI_API_KEY` (Account 1). The base key is optional when using a numbered account. Account suffixes must be unpadded numbers: `KEY1`, `KEY02`, and arbitrary names such as `KEY_WORK` are not forwarded. See [multiple-account setup](providers.md#multiple-accounts-with-numbered-keys) for all eight examples and account-specific routing.
+
+The native host does not read shell startup files, `.env` files, or the Keychain, and does not persist key values. `open -a NexusIDE` is not a substitute for directly launching the binary with inherited variables. Changing exports requires fully quitting and relaunching Nexus from that terminal. Keys are selected explicitly; no automatic failover or quota rotation occurs.
 
 Existing local Ollama profiles work while Ollama is running; vault-password setup and optional tools remain explicit. The bundled CLI can be invoked from a configured terminal using:
 
