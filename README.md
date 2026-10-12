@@ -78,7 +78,7 @@ export ANTHROPIC_API_KEY='YOUR_API_KEY'
 npm start -- run architect "Inspect the project and propose a plan"
 ```
 
-For a compatible Chat Completions service, set `NEXUS_PROVIDER=compatible`, `NEXUS_MODEL`, `NEXUS_API_KEY`, and `NEXUS_BASE_URL` (defaults to `https://api.openai.com/v1`). Local Ollama typically uses `http://localhost:11434/v1`; select an installed tool-capable model and unset unrelated key variables. NexusIDE does not automatically read `.env` files.
+For a compatible Chat Completions service, set `NEXUS_PROVIDER=compatible`, `NEXUS_MODEL`, `NEXUS_API_KEY`, and `NEXUS_BASE_URL` (defaults to `https://api.openai.com/v1`). Local Ollama typically uses `http://localhost:11434/v1`; select an installed tool-capable model and unset unrelated key variables. On Windows, persist cloud keys with PowerShell's `[Environment]::SetEnvironmentVariable("OPENAI_API_KEY", "your-key", "User")`, then reopen PowerShell before starting Nexus. NexusIDE does not automatically read `.env` files. The CLI and browser dashboard run on Windows; the packaged native desktop app is currently macOS-only.
 
 For different models by role, edit [the example configuration](integrations/providers.example.json), then import your file:
 

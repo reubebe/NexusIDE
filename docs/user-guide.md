@@ -67,6 +67,36 @@ For the dashboard, export a real key such as `OPENAI_API_KEY`, then launch Nexus
 
 For an installed macOS app, fully quit Nexus, then run `/Applications/NexusIDE.app/Contents/MacOS/NexusIDE` from the terminal containing those exports. Finder does not inherit them. Relaunch after changing exports; refreshing the picker cannot import changes made to another process's environment.
 
+### Windows setup
+
+The CLI and browser dashboard run on Windows with Node.js 22.18 or newer. In PowerShell, persist provider keys for your Windows user account with the following commands, replacing the example values with real keys:
+
+```powershell
+[Environment]::SetEnvironmentVariable("OPENAI_API_KEY", "your-openai-key", "User")
+[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "your-anthropic-key", "User")
+[Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "your-gemini-key", "User")
+[Environment]::SetEnvironmentVariable("XAI_API_KEY", "your-xai-key", "User")
+[Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY", "your-deepseek-key", "User")
+[Environment]::SetEnvironmentVariable("MOONSHOT_API_KEY", "your-kimi-key", "User")
+[Environment]::SetEnvironmentVariable("ZHIPUAI_API_KEY", "your-glm-key", "User")
+[Environment]::SetEnvironmentVariable("DASHSCOPE_API_KEY", "your-qwen-key", "User")
+```
+
+For a second account, append the account number, for example:
+
+```powershell
+[Environment]::SetEnvironmentVariable("OPENAI_API_KEY2", "your-second-openai-key", "User")
+```
+
+Close and reopen PowerShell (and restart Nexus) after changing persistent variables. Then install and start the browser dashboard from the repository directory:
+
+```powershell
+npm install
+npm start
+```
+
+The native packaged desktop application is currently macOS-only. On Windows, use the CLI or browser dashboard. Ollama can be used locally on Windows as an OpenAI-compatible service; start Ollama, pull a tool-capable model such as `gpt-oss:20b`, and configure its local endpoint under **Advanced connections & MCP** or with a compatible profile. Windows managed integrations and a native Windows installer remain future work.
+
 For Anthropic, export a provider and API key in your shell:
 
 ```sh

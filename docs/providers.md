@@ -33,6 +33,23 @@ Qwen accounts may require a workspace-specific base URL, which must be configure
 
 Only the environment variable name is saved, never its value. Start `nexus serve` or `nexus desktop` from the shell where the variables are exported. For the installed macOS app, launch `/Applications/NexusIDE.app/Contents/MacOS/NexusIDE` from that terminal after fully quitting any running instance; the native host forwards the eight supported base keys and their numbered `2`–`99` variants. A macOS application opened from Finder does not automatically inherit terminal exports. After changing exports, relaunch the runtime from that terminal; the refresh button only checks its existing environment. Nexus does not read `.env` or import Keychain credentials automatically. See [desktop setup](desktop-distribution.md).
 
+### Windows environment setup
+
+The CLI and browser dashboard use the same provider catalog on Windows. In PowerShell, persist credentials for the current Windows user with `SetEnvironmentVariable`:
+
+```powershell
+[Environment]::SetEnvironmentVariable("OPENAI_API_KEY", "your-openai-key", "User")
+[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "your-anthropic-key", "User")
+[Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "your-gemini-key", "User")
+[Environment]::SetEnvironmentVariable("XAI_API_KEY", "your-xai-key", "User")
+[Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY", "your-deepseek-key", "User")
+[Environment]::SetEnvironmentVariable("MOONSHOT_API_KEY", "your-kimi-key", "User")
+[Environment]::SetEnvironmentVariable("ZHIPUAI_API_KEY", "your-glm-key", "User")
+[Environment]::SetEnvironmentVariable("DASHSCOPE_API_KEY", "your-qwen-key", "User")
+```
+
+Numbered accounts use the same convention, such as `OPENAI_API_KEY2`. Restart PowerShell and Nexus after changing these variables so the new process receives them. Windows currently uses `nexus serve`/the browser dashboard; the packaged native desktop host is macOS-only. Ollama runs locally on Windows and can be configured through its OpenAI-compatible endpoint, commonly `http://localhost:11434/v1`.
+
 Selections apply to new tasks and preserve existing provider profiles, MCP services, and unrelated routes. An agent's pinned `provider` takes precedence; remove that pin in **Agents** before assigning it through the picker. Existing agent routes also take precedence over the workspace default.
 
 Discovery uses the official [OpenAI models API](https://developers.openai.com/api/reference/resources/models/methods/list), [Anthropic models API](https://platform.claude.com/docs/en/api/models/list), [Gemini compatibility API](https://ai.google.dev/gemini-api/docs/openai), [Qwen Singapore catalogue API](https://www.alibabacloud.com/help/en/model-studio/list-models), and compatible provider model endpoints. A catalogue can include models your account cannot use. If a provider does not expose a list at the configured endpoint, Nexus offers manual model ID entry. Model listing and credential isolation have fixture coverage across the presets; live discovery was checked with OpenAI. This does not extend the generation verification matrix below to every provider.
