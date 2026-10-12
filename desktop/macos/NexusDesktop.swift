@@ -58,11 +58,20 @@ final class BootstrapHost {
         process.arguments = [bootstrap.path, "--workspace", workspace.path]
         if let dataRoot = dataRoot { process.arguments! += ["--data-root", dataRoot] }
         process.currentDirectoryURL = workspace
-        process.environment = [
+        var environment = [
             "HOME": NSHomeDirectory(), "TMPDIR": NSTemporaryDirectory(),
             "USER": NSUserName(), "LOGNAME": NSUserName(), "LANG": "en_US.UTF-8",
             "PATH": node.deletingLastPathComponent().path + ":/usr/bin:/bin:/usr/sbin:/sbin"
         ]
+        // The owned runtime resolves provider keys; no credential is copied into
+        // arguments, app preferences or browser state. Keep unrelated variables
+        // (including Node startup hooks) outside the child environment.
+        let inherited = ProcessInfo.processInfo.environment
+        for name in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY",
+                     "DEEPSEEK_API_KEY", "MOONSHOT_API_KEY", "ZHIPUAI_API_KEY", "DASHSCOPE_API_KEY"] {
+            if let value = inherited[name] { environment[name] = value }
+        }
+        process.environment = environment
         process.standardInput = input; process.standardOutput = output; process.standardError = errors
         process.terminationHandler = { _ in
             if self.changeState(from: ["starting"], to: "failed") {

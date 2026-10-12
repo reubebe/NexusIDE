@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +8,45 @@ import { createInterface } from 'node:readline';
 import { once } from 'node:events';
 import { runProcess } from '../src/process.js';
 import { writeState } from '../src/state.js';
+
+const providerCredentialNames = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'XAI_API_KEY', 'DEEPSEEK_API_KEY', 'MOONSHOT_API_KEY', 'ZHIPUAI_API_KEY', 'DASHSCOPE_API_KEY'];
+const fixtureProviderEnvironment = () => Object.fromEntries(providerCredentialNames.map((key, index) => [key, `nexus-synthetic-credential-${index}`]));
+
+// Exercise the compiled native host with a synthetic child. This checks the
+// actual process boundary without contacting a provider or using real keys.
+export async function verifyNativeProviderEnvironment({ host, node, plist, temporary }) {
+  const contents = path.join(temporary, 'Credential Fixture.app', 'Contents');
+  const resources = path.join(contents, 'Resources');
+  const binary = path.join(contents, 'MacOS', 'NexusIDE');
+  const workspace = path.join(temporary, 'Credential Fixture Workspace');
+  await mkdir(path.dirname(binary), { recursive: true });
+  await mkdir(path.join(resources, 'runtime', 'bin'), { recursive: true });
+  await mkdir(path.join(resources, 'app', 'src'), { recursive: true });
+  await mkdir(workspace);
+  await cp(host, binary); await writeFile(path.join(contents, 'Info.plist'), plist);
+  await symlink(node, path.join(resources, 'runtime', 'bin', 'node'));
+  const fixture = fixtureProviderEnvironment();
+  const childSource = `const assert = require('node:assert/strict');
+const expected = ${JSON.stringify(fixture)};
+for (const [key, value] of Object.entries(expected)) assert.equal(process.env[key], value);
+assert.equal(process.env.UNRELATED_SECRET, undefined);
+assert.equal(process.env.NODE_OPTIONS, undefined);
+assert.equal(process.env.NEXUS_API_KEY, undefined);
+assert.equal(process.env.NEXUS_BASE_URL, undefined);
+assert.equal(process.env.PATH.startsWith(${JSON.stringify(path.join(resources, 'runtime', 'bin') + ':')}), true);
+process.stdin.resume();
+process.stdout.write(JSON.stringify({ url: 'http://127.0.0.1:4317/#' + 'a'.repeat(64), root: process.cwd() }) + '\\n');
+`;
+  await writeFile(path.join(resources, 'app', 'src', 'desktop-bootstrap.js'), childSource);
+  const result = await runProcess(binary, ['--check-bootstrap', '--workspace', workspace], {
+    cwd: workspace, timeoutMs: 45000,
+    env: { PATH: '/usr/bin:/bin', HOME: os.homedir(), ...fixture, UNRELATED_SECRET: 'nexus-unrelated-fixture', NODE_OPTIONS: '--require=/nonexistent/nexus-injection.js', NEXUS_API_KEY: 'nexus-generic-fixture', NEXUS_BASE_URL: 'https://example.invalid' },
+  });
+  assert.equal(result.code, 0, 'Native host did not forward the supported credentials with other environment variables excluded.');
+  assert.equal(result.stopped, null);
+  assert.equal(JSON.parse(result.output).origin, 'http://127.0.0.1:4317');
+  for (const value of Object.values(fixture)) assert.equal(result.output.includes(value), false, 'Native check exposed a fixture credential.');
+}
 
 export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../dist/NexusIDE.app', import.meta.url))) {
   if (process.platform !== 'darwin') throw new Error('Bundled macOS verification requires macOS.');
@@ -29,6 +68,8 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
     };
     await checked('/usr/bin/codesign', ['--verify', '--deep', '--strict', app]);
     receipt.checks.push('relocated-signature-valid');
+    await verifyNativeProviderEnvironment({ host, node, plist: await readFile(path.join(contents, 'Info.plist'), 'utf8'), temporary });
+    receipt.checks.push('native-provider-credential-allowlist');
     assert.match(await readFile(path.join(contents, 'Info.plist'), 'utf8'), /CFBundleIconFile<\/key><string>NexusIDE\.icns/);
     const icon = await readFile(path.join(contents, 'Resources/NexusIDE.icns'));
     assert.equal(icon.subarray(0, 4).toString(), 'icns');
@@ -46,7 +87,8 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
     const run = JSON.parse(await checked(node, [path.join(payload, 'src/cli.js'), 'status', savedId]));
     assert.equal(run.status, 'completed'); assert.equal(run.agent, 'architect');
     receipt.checks.push('bundled-cli-demo', 'persisted-sqlite-history');
-    child = spawn(node, [path.join(payload, 'src/desktop-bootstrap.js'), '--workspace', workspace, '--data-root', dataRoot], { cwd: workspace, env, stdio: ['pipe', 'pipe', 'pipe'] });
+    const providerEnvironment = fixtureProviderEnvironment();
+    child = spawn(node, [path.join(payload, 'src/desktop-bootstrap.js'), '--workspace', workspace, '--data-root', dataRoot], { cwd: workspace, env: { ...env, ...providerEnvironment }, stdio: ['pipe', 'pipe', 'pipe'] });
     const exited = once(child, 'exit'); child.stderr.on('data', () => {});
     const lines = createInterface({ input: child.stdout });
     const [line] = await once(lines, 'line', { signal: AbortSignal.timeout(15000) });
@@ -64,6 +106,19 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
       return response.json();
     };
     assert.equal((await request('/api/state')).agents.length, 7);
+    const providers = (await request('/api/providers')).providers;
+    assert.deepEqual([...new Set(providers.map(provider => provider.keyEnv))].sort(), [...providerCredentialNames].sort());
+    assert.ok(providers.every(provider => provider.credential === 'available'));
+    const selection = await request('/api/providers/select', { provider: 'deepseek', model: 'deepseek-chat', route: 'default' });
+    const configText = await readFile(path.join(workspace, '.nexus', 'config', 'project.json'), 'utf8');
+    const config = JSON.parse(configText);
+    assert.equal(config.providers[config.routes.default].keyEnv, 'DEEPSEEK_API_KEY');
+    assert.equal(config.providers[config.routes.default].model, 'deepseek-chat');
+    for (const value of Object.values(providerEnvironment)) {
+      assert.equal(JSON.stringify({ providers, selection }).includes(value), false);
+      assert.equal(configText.includes(value), false);
+    }
+    receipt.checks.push('bundled-provider-picker-all-eight-keys', 'bundled-provider-selection-without-secret-persistence');
     const memory = await request('/api/memory', { text: 'Bundled memory lifecycle fixture.', layer: 'L2' });
     assert.equal(memory.revision, 1);
     assert.equal((await request('/api/memory/search', { query: 'lifecycle', mode: 'lexical' })).matches[0].id, memory.id);

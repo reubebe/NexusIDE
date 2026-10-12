@@ -1,5 +1,6 @@
 import { createFileEditor } from './file-editor.js';
 import { renderWhenChanged } from './render-cache.js';
+import { createProviderPicker } from './provider-picker.js';
 const $ = id => document.getElementById(id);
 const initialToken = location.hash.slice(1);
 if (/^[a-f0-9]{64}$/.test(initialToken)) { sessionStorage.setItem('nexus-token', initialToken); history.replaceState(null, '', '/'); }
@@ -16,7 +17,7 @@ let projectMemoryError = '';
 const MEMORY_PAGE_SIZE = 20;
 let currentDirectory = '.';
 const fileEditor = createFileEditor(api);
-window.nexusHasUnsavedChanges = () => fileEditor.dirty || memoryEditDirty;
+window.nexusHasUnsavedChanges = () => fileEditor.dirty || memoryEditDirty || providerPicker.dirty;
 const fileStatus = document.createElement('p');
 fileStatus.setAttribute('role', 'status');
 $('save-file').after(fileStatus);
@@ -79,6 +80,7 @@ function render() {
     if ([...$('agent-select').options].some(o => o.value === selected)) $('agent-select').value = selected;
   });
   renderMemoryAgentOptions();
+  providerPicker.setAgents(state.agents);
   renderWhenChanged($('agent-cards'), JSON.stringify(state.agents), () => $('agent-cards').replaceChildren(...state.agents.map(a => { const card = node('button', undefined, 'agent-card'); card.append(node('h3', a.name), node('p', a.instructions.slice(0, 125)), node('small', Object.entries(a.permissions).filter(([,v]) => v).map(([k]) => k).join(' · '))); card.onclick = action(async () => { $('agent-editor').value = JSON.stringify(a, null, 2); renderLoadout(a); await loadProjectMemories(true); }); return card; })));
   renderWhenChanged($('history-list'), JSON.stringify(state.runs), () => $('history-list').replaceChildren(...state.runs.map(r => { const row = node('div', undefined, 'row'), b = node('button', r.agent + ' · ' + r.status); b.onclick = action(async () => { const request = ++runRequest; selectedRun = undefined; renderDistillButton(); const run = await api('runs/' + r.id); if (request !== runRequest) return; selectedRun = run; $('transcript').textContent = JSON.stringify(run, null, 2); renderDistillButton(); }); row.append(b, node('small', new Date(r.started).toLocaleString())); return row; })));
   renderDistillButton();
@@ -422,5 +424,52 @@ $('memory-form').onsubmit = action(async () => {
     $('memory-text').value = ''; $('memory-expiry').value = ''; await refreshMemories(); $('notice').textContent = 'Memory saved.';
   } finally { button.disabled = false; }
 });
-$('save-config').onclick = action(async () => { await api('config', 'PUT', JSON.parse($('config-editor').value)); $('notice').textContent = 'Connections saved.'; });
-(async () => { try { await refresh(); $('config-editor').value = JSON.stringify(await api('config'), null, 2); } catch (e) { $('notice').textContent = e.message; } setInterval(() => refresh().catch(e => { $('notice').textContent = e.message; }), 2000); })();
+const option = (value, label) => { const o = node('option', label); o.value = value; return o; };
+const providerPicker = createProviderPicker(api, renderProviders);
+function renderProviders() {
+  const picker = providerPicker, p = picker.catalog.find(p => p.id === picker.provider);
+  renderWhenChanged($('provider-picker'), JSON.stringify(picker.catalog), () => {
+    $('provider-picker').replaceChildren(option('', 'Choose a provider'), ...picker.catalog.map(p => option(p.id, `${p.label} · ${p.credential === 'available' ? 'key detected' : p.credential === 'placeholder' ? 'example key' : 'key needed'}`)));
+  });
+  $('provider-picker').value = picker.provider;
+  $('provider-picker').disabled = picker.busy;
+  renderWhenChanged($('model-picker'), JSON.stringify([picker.provider, p?.credential, picker.loading, picker.models]), () => {
+    const placeholder = picker.loading ? 'Loading models…' : !p ? 'Choose a provider first' : p.credential !== 'available' ? 'API key needed' : 'Choose a model';
+    $('model-picker').replaceChildren(option('', placeholder), ...picker.models.map(id => option(id, id)), ...(!picker.loading && p?.credential === 'available' ? [option('__custom__', 'Enter a model ID…')] : []));
+  });
+  $('model-picker').value = picker.model;
+  $('model-picker').disabled = picker.busy || picker.loading || p?.credential !== 'available';
+  $('custom-model-label').hidden = picker.model !== '__custom__';
+  if ($('custom-model').value !== picker.customModel) $('custom-model').value = picker.customModel;
+  $('custom-model').disabled = picker.busy;
+  renderWhenChanged($('provider-route'), JSON.stringify(picker.agents.map(a => a.name)), () => {
+    $('provider-route').replaceChildren(option('default', 'Workspace default'), ...picker.agents.map(a => option(a.name, a.name)));
+  });
+  $('provider-route').value = picker.route;
+  $('provider-route').disabled = picker.busy;
+  $('provider-status').textContent = [picker.note, p?.note].filter(Boolean).join(' ');
+  $('provider-selection-status').textContent = picker.selectionStatus;
+  $('connect-provider').disabled = !picker.canConnect;
+  $('refresh-providers').disabled = picker.busy || picker.refreshing || picker.loading;
+  $('save-config').disabled = picker.busy || !picker.config || !picker.dirty;
+  if ($('config-editor').value !== picker.draft) $('config-editor').value = picker.draft;
+  $('config-status').textContent = picker.busy ? 'Saving connections…' : picker.dirty ? 'Unsaved advanced edits. Save these before choosing a model.' : picker.config ? 'Connections saved.' : 'Loading connections…';
+}
+$('config-editor').addEventListener('input', () => providerPicker.setDraft($('config-editor').value));
+$('provider-picker').onchange = action(() => providerPicker.selectProvider($('provider-picker').value));
+$('model-picker').onchange = () => { providerPicker.model = $('model-picker').value; renderProviders(); };
+$('custom-model').oninput = () => { providerPicker.customModel = $('custom-model').value; renderProviders(); };
+$('provider-route').onchange = () => { providerPicker.route = $('provider-route').value; renderProviders(); };
+$('refresh-providers').onclick = action(async () => {
+  if ($('refresh-providers').disabled) return;
+  const provider = providerPicker.provider, model = providerPicker.modelId;
+  await providerPicker.refreshProviders();
+  if (provider && provider === providerPicker.provider) await providerPicker.selectProvider(provider, model);
+});
+$('provider-form').onsubmit = action(async () => { if (!$('connect-provider').disabled) await providerPicker.connect(); });
+$('save-config').onclick = action(async () => {
+  if ($('save-config').disabled) return;
+  await providerPicker.saveConfig();
+  $('notice').textContent = providerPicker.dirty ? 'Connections saved. Newer edits are still unsaved.' : 'Connections saved.';
+});
+(async () => { try { await refresh(); await providerPicker.loadConfig(); await providerPicker.refreshProviders(); } catch (e) { $('notice').textContent = e.message; } setInterval(() => refresh().catch(e => { $('notice').textContent = e.message; }), 2000); })();

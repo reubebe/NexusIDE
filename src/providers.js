@@ -47,6 +47,42 @@ function validateCalls(calls) {
   return calls;
 }
 
+function googleSignature(source) {
+  if (source?.extra_content == null) return {};
+  if (!isObject(source.extra_content)) invalid('extra content must be an object.');
+  const google = source.extra_content.google;
+  if (google === undefined) return {};
+  if (!isObject(google)) invalid('Google extra content must be an object.');
+  if (google.thought_signature === undefined) return {};
+  if (typeof google.thought_signature !== 'string' || !google.thought_signature) invalid('thought signature must be a nonempty string.');
+  return { extra_content: { google: { thought_signature: google.thought_signature } } };
+}
+
+function compatibleMetadata(source) {
+  const metadata = googleSignature(source);
+  if (source?.reasoning_content !== undefined && source.reasoning_content !== null) {
+    if (typeof source.reasoning_content !== 'string') invalid('reasoning content must be text.');
+    metadata.reasoning_content = source.reasoning_content;
+  }
+  return metadata;
+}
+
+function compatibleMessages(messages) {
+  return messages.map(message => {
+    if (message.role === 'tool') return { role: 'tool', tool_call_id: message.id, content: message.content };
+    return {
+      role: message.role, content: message.content || null,
+      // Replay only documented continuation metadata. Never let raw response
+      // fields replace normalized roles, content, or validated tool arguments.
+      ...(message.role === 'assistant' ? compatibleMetadata(message.raw) : {}),
+      ...(message.calls?.length ? { tool_calls: message.calls.map(call => ({
+        id: call.id, type: 'function', function: { name: call.name, arguments: JSON.stringify(call.args) },
+        ...googleSignature(call),
+      })) } : {}),
+    };
+  });
+}
+
 function compatibleResult(data) {
   if (!isObject(data) || data.error || !Array.isArray(data.choices) || data.choices.length !== 1 || !isObject(data.choices[0])) invalid('expected one chat completion choice.');
   const choice = data.choices[0];
@@ -55,12 +91,12 @@ function compatibleResult(data) {
   if (!isObject(message) || (message.role !== undefined && message.role !== 'assistant')) invalid('expected an assistant message.');
   if (message.refusal) incomplete();
   if (message.content !== undefined && message.content !== null && typeof message.content !== 'string') invalid('message content must be text.');
-  if (message.tool_calls !== undefined && !Array.isArray(message.tool_calls)) invalid('tool calls must be an array.');
+  if (message.tool_calls != null && !Array.isArray(message.tool_calls)) invalid('tool calls must be an array or null.');
   const calls = validateCalls((message.tool_calls || []).map(call => {
     if (!isObject(call) || (call.type !== undefined && call.type !== 'function') || !isObject(call.function) || typeof call.function.arguments !== 'string') invalid('malformed function call.');
     let args;
     try { args = JSON.parse(call.function.arguments); } catch { invalid('function arguments are not valid JSON.'); }
-    return { id: call.id, name: call.function.name, args };
+    return { id: call.id, name: call.function.name, args, ...googleSignature(call) };
   }));
   // Some compatible servers omit this field; infer it only after validating the message.
   const finishReason = choice.finish_reason === undefined ? (calls.length ? 'tool_calls' : 'stop') : choice.finish_reason;
@@ -68,7 +104,8 @@ function compatibleResult(data) {
   if ((finishReason === 'tool_calls') !== Boolean(calls.length)) invalid('finish reason does not match the tool calls.');
   const text = message.content || '';
   if (!calls.length && !text.trim()) invalid('empty final response.');
-  return { ...usageResult(data.usage, 'prompt_tokens', 'completion_tokens'), text, calls, finishReason };
+  const raw = compatibleMetadata(message);
+  return { ...usageResult(data.usage, 'prompt_tokens', 'completion_tokens'), text, calls, finishReason, ...(Object.keys(raw).length ? { raw } : {}) };
 }
 
 function anthropicResult(data) {
@@ -171,7 +208,7 @@ export function createProvider(env = process.env, options = {}) {
         body = { model, max_tokens: maxOutputTokens, ...(system ? { system } : {}), messages: anthropicMessages(messages), ...(tools.length ? { tools: tools.map(t => ({ name: t.name, description: t.description, input_schema: t.parameters })) } : {}), ...(responseSchema ? { output_config: { format: { type: 'json_schema', schema: responseSchema.schema } } } : {}) };
       } else {
         if (key) headers.authorization = `Bearer ${key}`;
-        body = { model, [tokenLimitField]: maxOutputTokens, messages: messages.map(m => m.role === 'tool' ? { role: 'tool', tool_call_id: m.id, content: m.content } : { role: m.role, content: m.content || null, ...(m.calls?.length ? { tool_calls: m.calls.map(c => ({ id: c.id, type: 'function', function: { name: c.name, arguments: JSON.stringify(c.args) } })) } : {}) }), ...(tools.length ? { tools: tools.map(t => ({ type: 'function', function: t })) } : {}), ...(responseSchema ? { response_format: { type: 'json_schema', json_schema: { name: responseSchema.name, strict: true, schema: responseSchema.schema } } } : {}) };
+        body = { model, [tokenLimitField]: maxOutputTokens, messages: compatibleMessages(messages), ...(tools.length ? { tools: tools.map(t => ({ type: 'function', function: t })) } : {}), ...(responseSchema ? { response_format: { type: 'json_schema', json_schema: { name: responseSchema.name, strict: true, schema: responseSchema.schema } } } : {}) };
       }
       const timeout = AbortSignal.timeout(timeoutMs);
       const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;

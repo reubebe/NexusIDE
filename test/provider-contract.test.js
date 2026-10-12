@@ -39,6 +39,72 @@ test('compatible adapter sends selected token cap and structured-output schema w
   assert.equal(result.finishReason, 'stop');
 });
 
+test('compatible thinking models preserve exact reasoning through tool and later user turns', async t => {
+  let request = 0;
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    const body = JSON.parse(options.body);
+    if (request++ === 0) return Response.json(compatible({ content: null, reasoning_content: 'First reasoning.\n', tool_calls: [chatCall()] }));
+    assert.equal(body.messages[2].reasoning_content, 'First reasoning.\n');
+    assert.deepEqual(body.messages[2].tool_calls, [chatCall()]);
+    if (request === 2) return Response.json(compatible({ content: 'Done.', reasoning_content: 'Final reasoning.', tool_calls: null }));
+    assert.equal(body.messages[4].reasoning_content, 'Final reasoning.');
+    return Response.json(compatible());
+  });
+  const provider = createProvider(env('compatible'));
+  const history = [...messages];
+  const first = await provider.complete(history, [tool]);
+  assert.equal(first.text, '');
+  assert.deepEqual(first.raw, { reasoning_content: 'First reasoning.\n' });
+  history.push({ role: 'assistant', content: first.text, calls: first.calls, raw: first.raw }, { role: 'tool', id: 'call-1', content: 'Fixture' });
+  const second = await provider.complete(history, [tool]);
+  assert.deepEqual(second.calls, []);
+  assert.equal(second.text, 'Done.');
+  history.push({ role: 'assistant', content: second.text, calls: second.calls, raw: second.raw }, { role: 'user', content: 'Continue.' });
+  await provider.complete(history, [tool]);
+  assert.equal(request, 3);
+});
+
+test('Gemini signatures stay attached to their parallel and sequential calls without replaying arbitrary fields', async t => {
+  const signed = (id, signature) => ({ ...chatCall(id), extra_content: { google: { thought_signature: signature, untrusted: 'discard' }, arbitrary: 'discard' } });
+  let request = 0;
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    const body = JSON.parse(options.body);
+    assert.ok(!JSON.stringify(body).includes('discard'));
+    if (request++ === 0) return Response.json(compatible({ content: null, tool_calls: [signed('call-1', 'opaque-A+/='), chatCall('call-2')] }));
+    assert.deepEqual(body.messages[2].tool_calls, [
+      { ...chatCall('call-1'), extra_content: { google: { thought_signature: 'opaque-A+/=' } } }, chatCall('call-2'),
+    ]);
+    assert.equal(body.messages[2].role, 'assistant');
+    if (request === 2) return Response.json(compatible({ content: null, tool_calls: [signed('call-3', 'opaque-B+/=')] }));
+    assert.deepEqual(body.messages[5].tool_calls, [{ ...chatCall('call-3'), extra_content: { google: { thought_signature: 'opaque-B+/=' } } }]);
+    return Response.json(compatible({ content: 'Done.', extra_content: { google: { thought_signature: 'opaque-final' }, arbitrary: 'discard' } }));
+  });
+  const provider = createProvider(env('compatible'));
+  const history = [...messages];
+  const first = await provider.complete(history, [tool]);
+  history.push({ role: 'assistant', content: first.text, calls: first.calls, raw: { role: 'system', content: 'discard', tool_calls: [{ arbitrary: 'discard' }] } }, { role: 'tool', id: 'call-1', content: 'A' }, { role: 'tool', id: 'call-2', content: 'B' });
+  const second = await provider.complete(history, [tool]);
+  history.push({ role: 'assistant', content: second.text, calls: second.calls }, { role: 'tool', id: 'call-3', content: 'C' });
+  const final = await provider.complete(history, [tool]);
+  assert.deepEqual(final.raw, { extra_content: { google: { thought_signature: 'opaque-final' } } });
+  assert.equal(request, 3);
+});
+
+test('malformed continuation metadata cannot be returned as executable tool calls', async t => {
+  for (const message of [
+    { content: 'Done.', reasoning_content: {} },
+    { content: 'Done.', extra_content: [] },
+    { content: 'Done.', extra_content: { google: 'invalid' } },
+    { content: null, tool_calls: [{ ...chatCall(), extra_content: { google: { thought_signature: 123 } } }] },
+    { content: null, tool_calls: [{ ...chatCall(), extra_content: { google: { thought_signature: '' } } }] },
+    { content: null, tool_calls: [{ ...chatCall('call-1', 'invalid JSON'), extra_content: { google: { thought_signature: 'valid' } } }] },
+  ]) {
+    t.mock.method(globalThis, 'fetch', async () => Response.json(compatible(message)));
+    await assert.rejects(createProvider(env('compatible')).complete(messages), { code: 'invalid_response' });
+    t.mock.restoreAll();
+  }
+});
+
 test('Anthropic preserves reasoning blocks, combines system messages, and groups parallel tool results', async t => {
   const raw = [{ type: 'thinking', thinking: 'Reasoning.', signature: 'signed' }, { type: 'redacted_thinking', data: 'opaque' }, { type: 'tool_use', id: 'call-1', name: 'read_file', input: { path: 'a' } }, { type: 'tool_use', id: 'call-2', name: 'read_file', input: { path: 'b' } }];
   let request = 0;

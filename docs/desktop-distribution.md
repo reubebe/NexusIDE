@@ -25,7 +25,15 @@ Project state stays in `PROJECT/.nexus`. App-level recent-workspace metadata is 
 
 The native host starts only its bundled Node with a minimal environment. A private pipe carries the authenticated loopback URL; it is not placed in arguments, environment, preferences or logs. The host closes the service on quit/project switch, with bounded fallback if shutdown stalls. Existing unsaved-edit confirmation and WebKit origin restrictions remain. `nexus desktop` retains the CLI-owned session mode for terminal workflows.
 
-Finder does not inherit shell-exported API keys or PATH additions. Existing local Ollama profiles work while Ollama is running; cloud environment-key/vault-password setup and optional tools remain explicit. The bundled CLI can be invoked from a configured terminal using:
+Finder does not inherit shell-exported API keys or PATH additions. For the eight cloud presets, export the real API keys in a terminal, fully quit Nexus, then launch the installed native binary from that terminal:
+
+```sh
+/Applications/NexusIDE.app/Contents/MacOS/NexusIDE
+```
+
+The native host forwards only `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`, `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `ZHIPUAI_API_KEY`, and `DASHSCOPE_API_KEY` to its owned runtime. It does not read shell startup files, `.env` files, or the Keychain, and does not persist key values. **Connections → Choose your model** then detects those keys. `open -a NexusIDE` is not a substitute for directly launching the binary with inherited variables.
+
+Existing local Ollama profiles work while Ollama is running; vault-password setup and optional tools remain explicit. The bundled CLI can be invoked from a configured terminal using:
 
 ```sh
 "/Applications/NexusIDE.app/Contents/Resources/runtime/bin/node" \

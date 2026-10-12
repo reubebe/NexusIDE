@@ -4,6 +4,8 @@ NexusIDE runs project agents from a terminal, local dashboard, VS Code terminal,
 
 ## A visual tour
 
+**Connect a cloud model:** Export your provider's API key before starting Nexus, then open **Connections → Choose your model**. Pick a provider, scroll through its models, choose the workspace default or a particular agent, and click **Use this model**. OpenAI, Anthropic, Gemini, xAI, DeepSeek, Kimi, GLM, and Qwen have built-in presets. Missing keys and example values are clearly marked. See [provider setup](providers.md#choose-a-provider-in-the-dashboard) for environment variables, regional accounts, and macOS launch behavior.
+
 Start with [your first task](#2-open-the-dashboard), then learn to [configure an agent](#4-run-an-agent), [review a plan](#5-run-teams-and-review-isolated-changes), [connect research tools](#7-use-research-and-hobby-workflows), and [control memory](#9-save-and-inspect-memory).
 
 The screenshots below show the actual dashboard in an isolated demonstration project. Names, tasks, and notes are examples, not your private workspace. They illustrate the interface, not a live model connection, a completed research study, or release certification. Open any image to inspect it at full size.

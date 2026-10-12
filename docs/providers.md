@@ -1,5 +1,23 @@
 # Provider compatibility
 
+## Choose a provider in the dashboard
+
+Open **Connections → Choose your model**. Nexus detects `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`, `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `ZHIPUAI_API_KEY`, and `DASHSCOPE_API_KEY` in the runtime's environment. Example values such as `your-openai-key` are marked as placeholders.
+
+Select a provider, select a model from its account model list, choose the workspace default or an individual agent, and click **Use this model**. Loading a model list sends only an authenticated catalogue request, not project content or a generation request. A detected key is not proof of a valid account or model compatibility. Known media, embedding, and Responses-only model families are omitted; model IDs can also be entered manually when listing is unavailable. The current runtime uses Chat Completions or Anthropic Messages, so choose a text model with tool calling.
+
+Kimi, GLM, and Qwen have separate regional endpoints. Select the endpoint matching the account that issued your key. Nexus never tries different regions automatically. Unsupported endpoints and coding-plan accounts can still be configured under **Advanced connections & MCP**.
+
+Qwen accounts may require a workspace-specific base URL, which must be configured under Advanced connections. Some Qwen thinking models require streaming; Nexus currently uses non-streaming requests, so those models are not supported. The picker filters known mismatches but cannot certify every returned model. See [Alibaba's API requirements](https://www.alibabacloud.com/help/en/model-studio/deep-thinking).
+
+Only the environment variable name is saved, never its value. Start `nexus serve` or `nexus desktop` from the shell where the variables are exported. For the installed macOS app, launch `/Applications/NexusIDE.app/Contents/MacOS/NexusIDE` from that terminal after fully quitting any running instance; the native host forwards the eight supported keys. A macOS application opened from Finder does not automatically inherit terminal exports. After changing exports, relaunch the runtime from that terminal; the refresh button only checks its existing environment. Nexus does not read `.env` or import Keychain credentials automatically. See [desktop setup](desktop-distribution.md).
+
+Selections apply to new tasks and preserve existing provider profiles, MCP services, and unrelated routes. An agent's pinned `provider` takes precedence; remove that pin in **Agents** before assigning it through the picker. Existing agent routes also take precedence over the workspace default.
+
+Discovery uses the official [OpenAI models API](https://developers.openai.com/api/reference/resources/models/methods/list), [Anthropic models API](https://platform.claude.com/docs/en/api/models/list), [Gemini compatibility API](https://ai.google.dev/gemini-api/docs/openai), [Qwen Singapore catalogue API](https://www.alibabacloud.com/help/en/model-studio/list-models), and compatible provider model endpoints. A catalogue can include models your account cannot use. If a provider does not expose a list at the configured endpoint, Nexus offers manual model ID entry. Model listing and credential isolation have fixture coverage across the presets; live discovery was checked with OpenAI. This does not extend the generation verification matrix below to every provider.
+
+The October 2026 connection audit added regression coverage for native credential forwarding, asynchronous picker saves, and reasoning/tool-signature continuation metadata. A fresh OpenAI `gpt-4.1-mini` synthetic probe passed text, a two-call tool round trip, and structured output in four requests (441 input / 126 output tokens). Other cloud presets still need live tests with their own credentials. Installing the presets alone is not certification of every model or provider feature.
+
 Phase 2 checks the existing Anthropic Messages and compatible Chat Completions adapters with protocol fixtures and small live model conversations. The machine-readable [matrix](../integrations/provider-matrix.json) separates adapter coverage, historical live results, and targets without live evidence. These checks establish particular protocol behaviors; they do not measure coding quality or establish that every model from a provider works.
 
 ## Observed model results
