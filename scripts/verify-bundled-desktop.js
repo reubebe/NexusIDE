@@ -112,7 +112,7 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
       assert.ok(response.ok, `API request failed: ${route} (${response.status})`);
       return response.json();
     };
-    assert.equal((await request('/api/state')).agents.length, 7);
+    assert.equal((await request('/api/state')).agents.length, 28);
     const providers = (await request('/api/providers')).providers;
     assert.deepEqual([...new Set(providers.map(provider => provider.keyEnv))].sort(), Object.keys(providerEnvironment).sort());
     assert.ok(providers.every(provider => provider.credential === 'available'));

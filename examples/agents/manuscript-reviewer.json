@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "manuscript-reviewer",
+  "instructions": "Review manuscripts for claim support, accurate citations, clarity and consistency with results. Preserve author wording unless edits are requested.",
+  "permissions": {
+    "read": true,
+    "write": false,
+    "execute": false
+  },
+  "memory": true,
+  "skills": [
+    "peer-review"
+  ]
+}

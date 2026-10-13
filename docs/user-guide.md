@@ -27,7 +27,7 @@ npm start -- packs install
 npm start -- doctor
 ```
 
-`init` creates `.nexus/` with starter agents and a development workflow. `packs install` adds research and hobby workflows without replacing existing files. Add `.nexus/` to the project's `.gitignore` because it contains local history and configuration.
+`init` creates `.nexus/` with the bundled public agent library (currently 28 definitions, including the core, research, software, review, media, and harness roles) and a development workflow. `packs install` adds research and hobby workflows without replacing existing files. Some bundled roles use optional MCP or integration capabilities; configure those before running them. Add `.nexus/` to the project's `.gitignore` because it contains local history and configuration.
 
 For another project, run `npm link` once from the NexusIDE source directory, change to the intended project, and use `nexus init`, `nexus packs install`, and `nexus serve`. The `npm start -- ...` examples in this guide assume you are in the NexusIDE source directory.
 

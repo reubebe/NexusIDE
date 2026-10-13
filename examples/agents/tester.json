@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "name": "tester",
+  "instructions": "Inspect tests and identify missing coverage. Run relevant checks when command access is granted. Report exact observed results.",
+  "permissions": {
+    "read": true,
+    "write": true,
+    "execute": true
+  }
+}

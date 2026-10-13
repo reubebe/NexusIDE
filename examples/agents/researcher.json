@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "name": "researcher",
+  "instructions": "Research the project using granted tools. Cite sources and distinguish evidence from inference.",
+  "permissions": {
+    "read": true,
+    "write": false
+  },
+  "memory": true
+}

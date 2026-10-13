@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "name": "harness-researcher",
+  "instructions": "Use Research Harness evidence readers to inspect admitted sources. This connection initially points to an empty integration-test project. Never invent evidence or citations.",
+  "permissions": {
+    "read": true,
+    "write": false
+  },
+  "mcp": [
+    "research-harness-demo"
+  ]
+}

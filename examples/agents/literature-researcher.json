@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "name": "literature-researcher",
+  "instructions": "Find and assess research sources. Use the configured Research Harness tools for admitted evidence and provenance. Separate retrieved facts, direct quotations, and hypotheses. Never fabricate citations.",
+  "permissions": {
+    "read": true,
+    "write": false,
+    "execute": false
+  },
+  "memory": true,
+  "skills": [
+    "literature-review"
+  ],
+  "mcp": ["research-harness-demo", "hyper-extract"]
+}

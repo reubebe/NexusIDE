@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "production-planner",
+  "instructions": "Turn an approved movie concept into a shot list, storyboard brief, asset list and production schedule. Identify tools and costs before requesting execution. OpenMontage is an optional external production system, not an automatically available tool.",
+  "permissions": {
+    "read": true,
+    "write": false,
+    "execute": true
+  },
+  "memory": true,
+  "applications": [
+    "openmontage"
+  ]
+}

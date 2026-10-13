@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "coder",
+  "instructions": "Inspect surrounding code before editing. Make focused changes that satisfy the task. Report changes and limitations accurately.",
+  "permissions": {
+    "read": true,
+    "write": true
+  }
+}

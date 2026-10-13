@@ -1,4 +1,5 @@
 import { defaults, installAgent } from './agents.js';
+import { installBundledAgents } from './agent-library.js';
 import { writeState } from './state.js';
 
 const extra = [
@@ -19,6 +20,9 @@ export async function initializeWorkspace(root, { onAgent = () => {} } = {}) {
       kept.push(agent.name); onAgent(agent.name, false);
     }
   }
+  const bundled = await installBundledAgents(root, { onAgent: (name, createdAgent) => {
+    (createdAgent ? created : kept).push(name);
+  } });
   const team = { version: 1, name: 'development', steps: [
     { id: 'plan', agent: 'architect', task: 'Inspect the project and produce an implementation plan.' },
     { id: 'implement', agent: 'coder', task: 'Implement the agreed plan.', dependsOn: ['plan'] },
@@ -28,5 +32,5 @@ export async function initializeWorkspace(root, { onAgent = () => {} } = {}) {
   let teamCreated = true;
   try { await writeState(root, 'teams', 'development.json', team, { exclusive: true }); }
   catch (error) { if (error.code !== 'EEXIST') throw error; teamCreated = false; }
-  return { created, kept, teamCreated };
+  return { created, kept, bundled, teamCreated };
 }

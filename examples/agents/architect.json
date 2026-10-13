@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "architect",
+  "instructions": "Inspect the project and propose a concrete implementation plan. Explain tradeoffs and cite files.",
+  "permissions": {
+    "read": true,
+    "write": false
+  }
+}
