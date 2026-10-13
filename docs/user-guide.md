@@ -217,10 +217,12 @@ Research Harness and the included research skills support evidence-oriented work
 
 For the optional updated Research Harness reader:
 
-1. Review the [connection example](../integrations/research-harness.example.json) and [context-reader agent](../examples/harness-context-reader.json). Merge only the intended configuration into your project; set explicit environment and research-project paths.
+1. Review the [connection example](../integrations/research-harness.example.json) and [context-reader agent](../examples/harness-context-reader.json). Merge only the intended configuration into your project; set absolute paths for the Harness Python environment, Nexus's `integrations/research-harness-reader.py` bridge, and your research project. Install the agent with `nexus install examples/harness-context-reader.json` from the Nexus checkout.
 2. Select `harness-context-reader` only after configuring it for the intended project. The existing local profile targets a demo project, not a real manuscript.
 3. Approve the connection and each allowed MCP call after reading its request. Keep version/hash pins across paginated reads, and refresh stale data instead of removing a pin.
 4. Check findings against their source evidence. Read complete methods guidance, including assumptions and contraindications; review provenance without treating an inspection as successful reproduction.
+
+The updated reader supports Harness `0.16.0`: saved paper Q&A, reviewed study comparisons, causal worksheets, prompt experiment results and original-document citation checks. Try: “List saved workbench answers and explain their evidence and limitations.” The agent discovers records with `list_workbench_artifacts` and uses both `expected_version` and `expected_content_hash` for paged reads. Changed source/prompt references invalidate old pins; stale artifacts remain historical context. Citation offsets refer to extracted text, not PDF page numbers. Open original PDFs and create or approve work in the Harness workbench. Its saved AI accounts remain separate from Nexus's Connections settings.
 
 The reader cannot admit evidence, approve lessons, run arbitrary research code, or release a publication. See [Research Harness integration details](integrations.md#tool-services) for the tested source version, grants, and synthetic verification command.
 

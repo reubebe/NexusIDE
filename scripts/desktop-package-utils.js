@@ -40,6 +40,7 @@ export async function sha256(file) { return createHash('sha256').update(await re
 export async function copyPayload(source, destination, { directories = PACKAGE_DIRECTORIES, files = PACKAGE_FILES } = {}) {
   async function copyEntry(relative) {
     const name = path.basename(relative);
+    if (name === '__pycache__' || name.endsWith('.pyc')) return;
     if (['.nexus', '.git', 'node_modules', '.DS_Store'].includes(name) || (/^\.env(?:\.|$)/.test(name) && name !== '.env.example') || /\.(?:pem|p12|pfx|key)$/i.test(name)) throw new Error(`Private or generated file is not allowed in the source payload: ${relative}`);
     const from = path.join(source, relative), to = path.join(destination, relative);
     const stat = await lstat(from);

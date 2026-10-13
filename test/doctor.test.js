@@ -11,10 +11,12 @@ test('doctor reports bounded historical verification without echoing arbitrary r
   t.after(() => rm(root, { recursive: true, force: true }));
   assert.deepEqual(await verificationHistory(root), []);
   await writeState(root, 'verification', 'local-model.json', { verified: true, at: '2026-10-08T00:00:00Z', checks: ['synthetic-model-test'], error: 'private details', config: { key: 'private-key' } });
+  await writeState(root, 'verification', 'research-harness-current.json', { verified: true, at: '2026-10-13T00:00:00Z', checks: ['workbench-read-bridge'], harness: { source: 'private local path' } });
   await writeState(root, 'verification', 'codegraph.json', { verified: 'true', checks: Array(100).fill('x'.repeat(1000)) });
   await writeFile(path.join(root, '.nexus/verification/docker.json'), 'invalid-json');
   const reports = await verificationHistory(root);
   assert.equal(reports.find(r => r.name === 'local-model').recordedSuccess, true);
+  assert.equal(reports.find(r => r.name === 'research-harness-current').recordedSuccess, true);
   assert.equal(reports.find(r => r.name === 'docker').unreadable, true);
   const graph = reports.find(r => r.name === 'codegraph');
   assert.equal(graph.recordedSuccess, false);

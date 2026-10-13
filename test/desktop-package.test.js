@@ -58,10 +58,14 @@ test('positive payload allowlist excludes private state and developer dependenci
   await mkdir(path.join(source, 'src'), { recursive: true });
   await mkdir(path.join(source, '.nexus'), { recursive: true });
   await writeFile(path.join(source, 'src', 'main.js'), 'public');
+  await mkdir(path.join(source, 'src', '__pycache__'));
+  await writeFile(path.join(source, 'src', '__pycache__', 'reader.cpython-313.pyc'), 'generated');
+  await writeFile(path.join(source, 'src', 'reader.pyc'), 'generated');
   await writeFile(path.join(source, '.nexus', 'secret'), 'private');
   await writeFile(path.join(source, '.env'), 'private');
   await copyPayload(source, destination, { directories: ['src'], files: [] });
   assert.deepEqual(await readdir(destination), ['src']);
+  assert.deepEqual(await readdir(path.join(destination, 'src')), ['main.js']);
   assert.equal(await readFile(path.join(destination, 'src', 'main.js'), 'utf8'), 'public');
   await assert.rejects(copyPayload(source, destination, { directories: ['../'], files: [] }), /contained/);
   await writeFile(path.join(source, 'src', '.env'), 'nested-private-value');

@@ -8,7 +8,7 @@ import { runProcess } from './process.js';
 import { readState } from './state.js';
 import { providerMatrix } from './provider-verification.js';
 
-const verificationNames = ['workflow-audit', 'storage-scale', 'local-model', 'development', 'docker', 'vscode', 'zed', 'desktop', 'bundled-desktop', 'bundled-native-visual', 'integration-lifecycle', 'native-visual', 'dashboard-visual', 'responsive', 'semantic-memory', 'codegraph', 'codegraph-project', 'research-harness', 'research-evidence', 'tradingagents', 'openmontage', 'rea', 'hyper-extract'];
+const verificationNames = ['workflow-audit', 'storage-scale', 'local-model', 'development', 'docker', 'vscode', 'zed', 'desktop', 'bundled-desktop', 'bundled-native-visual', 'integration-lifecycle', 'native-visual', 'dashboard-visual', 'responsive', 'semantic-memory', 'codegraph', 'codegraph-project', 'research-harness', 'research-harness-current', 'research-evidence', 'tradingagents', 'openmontage', 'rea', 'hyper-extract'];
 export async function verificationHistory(root) {
   return (await Promise.all(verificationNames.map(async name => {
     try {

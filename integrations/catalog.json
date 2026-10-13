@@ -58,17 +58,19 @@
       "source": "https://github.com/reubebe/research-harness",
       "role": "Evidence provenance and research workflows",
       "status": "local-mcp-connection-verified",
-      "revision": "f63e95d",
-      "declaredVersion": "0.14.0-working-tree",
-      "note": "Updated local environment verified with synthetic MCP evidence/context checks; old configured 0.11.1 environment was replaced by the user's current environment without widening the four evidence-reader grants. Base revision has uncommitted desktop/version work; source fingerprint is recorded in .nexus/verification/research-harness-current.json. No real research workflow or desktop release is certified."
+      "revision": "9fd93cf",
+      "declaredVersion": "0.16.0",
+      "note": "Local 0.16.0 evidence/context compatibility verified with a synthetic project; source and Nexus reader bridge fingerprints are recorded in .nexus/verification/research-harness-current.json and shown by doctor. Four legacy evidence-reader grants are preserved. No real research workflow or Harness desktop release is certified."
     },
     {
       "id": "research-harness-agent",
       "source": "https://github.com/reubebe/research-harness",
       "role": "Opt-in research workflow agent MCP",
       "status": "read-review-tools-verified",
-      "revision": "f63e95d",
-      "note": "Critic-role context-reader profile grants ten explicit reads: evidence, bounded lessons, methods discovery/content, hash-pinned task outputs, provenance inspection and writing preferences. Synthetic transport, stale-pin rejection and unchanged project-state checks passed. Local profile still targets the demo project. Lesson approval, acquisition, mutation, execution and release are excluded."
+      "revision": "9fd93cf",
+      "declaredVersion": "0.16.0",
+      "adapter": "integrations/research-harness-reader.py",
+      "note": "Critic-role reader grants fifteen tools, adding saved Q&A/causal/prompt experiment discovery, version/context-hash-pinned artifact reads, exact citation/original-document metadata checks and reviewed study comparisons. Synthetic transport, changed-source rejection and unchanged-state checks passed. The local profile still targets the demo project. Generation, provider-vault access, prompt activation, acquisition, execution and release are excluded."
     },
     {
       "id": "codebase-memory",
