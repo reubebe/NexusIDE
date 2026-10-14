@@ -90,8 +90,8 @@ for (let i = 0; i < total; i += 1) {
   const rendered = spawnSync('rsvg-convert', ['-w', String(width), '-h', String(height), '-o', pngFile, svgFile], { stdio: 'inherit' });
   if (rendered.status !== 0) throw new Error('ImageMagick could not render an animation frame.');
 }
-const mp4 = path.join(outputDir, 'nexus-linkedin-demo.mp4');
-const gif = path.join(outputDir, 'nexus-linkedin-demo.gif');
+const mp4 = path.join(outputDir, 'nexus-linkedin-explainer.mp4');
+const gif = path.join(outputDir, 'nexus-linkedin-explainer.gif');
 for (const args of [
   ['-y', '-framerate', String(fps), '-i', path.join(frames, 'frame-%04d.png'), '-vf', 'format=yuv420p', '-c:v', 'libx264', '-movflags', '+faststart', mp4],
   ['-y', '-framerate', String(fps), '-i', path.join(frames, 'frame-%04d.png'), '-vf', 'fps=10,scale=480:-1:flags=lanczos', '-loop', '0', gif],
