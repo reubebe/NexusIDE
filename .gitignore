@@ -9,6 +9,7 @@ research-output/
 research-results/
 research-artifacts/
 dist/
+.tmp-linkedin-frames/
 *.vsix
 .env
 .env.*
