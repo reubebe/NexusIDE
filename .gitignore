@@ -1,6 +1,13 @@
 node_modules/
 .nexus/
+# Private research workspaces and local harness checkouts. The public Nexus
+# adapter, profile example, agents, docs, and tests live outside these paths.
 .research/
+research-harness/
+Research_Agent/
+research-output/
+research-results/
+research-artifacts/
 dist/
 *.vsix
 .env
