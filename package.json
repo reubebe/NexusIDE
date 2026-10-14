@@ -46,6 +46,7 @@
     "test": "node --test",
     "docs:captures": "node scripts/capture-user-guide.js",
     "media:linkedin": "node scripts/create-linkedin-demo.js",
+    "media:linkedin-usage": "npm run docs:captures && node scripts/create-linkedin-usage-demo.js",
     "brand:icon": "node scripts/generate-app-icon.js",
     "postinstall": "node scripts/setup-pty.js",
     "desktop:build": "node scripts/build-desktop.js",

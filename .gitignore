@@ -10,6 +10,7 @@ research-results/
 research-artifacts/
 dist/
 .tmp-linkedin-frames/
+.tmp-linkedin-usage.txt
 *.vsix
 .env
 .env.*
