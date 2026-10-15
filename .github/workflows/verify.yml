@@ -1,5 +1,10 @@
 name: Verify
-on: [push, pull_request]
+# Keep the full cross-platform verification out of the daily push path.
+# It runs weekly and can still be started manually when a release needs it.
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
