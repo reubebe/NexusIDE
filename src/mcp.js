@@ -45,7 +45,16 @@ export async function connectMcp(root, agent, approve, signal, workspaceRoot = r
       signal?.throwIfAborted();
       const result = await route.client.callTool({ name: route.name, arguments: args }, undefined, { timeout: 60000, signal });
       const serialized = JSON.stringify(result);
-      return serialized.length <= 100000 ? serialized : JSON.stringify({ truncated: true, warning: 'MCP result exceeded 100000 characters; request a narrower result.', preview: serialized.slice(0, 90000) });
+      if (serialized.length <= 100000) return serialized;
+      // Keep the failure flag outside the preview so truncation cannot hide an
+      // error from the model or the runtime's repeated-tool-failure guard.
+      const truncated = { isError: result.isError === true, truncated: true, warning: 'MCP result exceeded 100000 characters; request a narrower result.', preview: serialized.slice(0, 90000) };
+      const bounded = JSON.stringify(truncated);
+      if (bounded.length <= 100000) return bounded;
+      // Serializing a JSON preview escapes it again. Removing at least the
+      // overflow in characters also removes at least that many encoded chars.
+      truncated.preview = truncated.preview.slice(0, Math.max(0, truncated.preview.length - (bounded.length - 100000)));
+      return JSON.stringify(truncated);
     } };
   } catch (e) { await close(); throw e; }
 }

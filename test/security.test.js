@@ -54,6 +54,21 @@ test('configuration rejects plaintext key fields and malformed MCP grants', asyn
   await assert.rejects(saveConfig(root, { version: 1, providers: { p: { kind: 'compatible', model: 'test', apiKey: 'secret' } }, routes: {}, mcp: {} }), /unsupported fields/);
   await assert.rejects(saveConfig(root, { version: 1, providers: {}, routes: {}, mcp: { bad: { command: 'x', args: [], tools: '*'} } }), /Invalid MCP/);
 });
+test('file writes reject null bytes and invalid Unicode before approval or modification', async t => {
+  const root = await temp(t);
+  await writeFile(path.join(root, 'existing.txt'), 'preserved');
+  let approvals = 0;
+  for (const name of ['existing.txt', 'new.txt']) {
+    for (const content of ['binary\0text', 'invalid\ud800']) {
+      await assert.rejects(executeTool(root, defaults[1], 'write_file', { path: name, content }, async () => { approvals++; return true; }), /valid UTF-8 text/);
+    }
+  }
+  assert.equal(approvals, 0);
+  assert.equal(await readFile(path.join(root, 'existing.txt'), 'utf8'), 'preserved');
+  await assert.rejects(readFile(path.join(root, 'new.txt')), { code: 'ENOENT' });
+  await executeTool(root, defaults[1], 'write_file', { path: 'new.txt', content: 'Valid 🌎' }, async () => true);
+  assert.equal(await executeTool(root, defaults[0], 'read_file', { path: 'new.txt' }, async () => false), 'Valid 🌎');
+});
 test('code search excludes secrets and returns line references', async t => {
   const root = await temp(t); await writeFile(path.join(root, 'app.js'), 'first\nneedle here\n'); await writeFile(path.join(root, '.env'), 'needle secret');
   const result = await searchProject(root, 'needle');
@@ -74,6 +89,12 @@ test('external applications require permission and approval and preserve argumen
   assert.equal(await runApplication(root, agent, 'fixture', [], async () => false), 'Application declined.');
   const result = JSON.parse(await runApplication(root, agent, 'fixture', ['a;echo not-a-shell'], async () => true));
   assert.equal(result.output.trim(), 'a;echo not-a-shell');
+});
+test('application grants cannot resolve inherited object properties as profiles', async t => {
+  const root = await temp(t);
+  const { runApplication } = await import('../src/applications.js');
+  await saveConfig(root, { version: 1, providers: {}, routes: {}, mcp: {}, applications: {} });
+  await assert.rejects(runApplication(root, { applications: ['constructor'], permissions: { execute: true } }, 'constructor', [], async () => assert.fail('An unconfigured application must not request approval')), /Application is not configured: constructor/);
 });
 
 test('Git diff tool excludes protected tracked files', async t => {

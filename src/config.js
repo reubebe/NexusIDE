@@ -55,9 +55,9 @@ export async function saveConfig(root, config) { await writeState(root, 'config'
 export async function routeProvider(root, agent, { demo = false, providerName, env = process.env } = {}) {
   if (demo) return createProvider({ NEXUS_PROVIDER: 'demo' });
   const config = await loadConfig(root);
-  const selected = providerName || agent.provider || config.routes[agent.name] || config.routes.default;
+  const selected = providerName || agent.provider || (Object.hasOwn(config.routes, agent.name) ? config.routes[agent.name] : undefined) || config.routes.default;
   if (!selected) return createProvider(env);
-  const p = config.providers[selected];
+  const p = Object.hasOwn(config.providers, selected) ? config.providers[selected] : undefined;
   if (!p) throw new Error(`Unknown provider profile: ${selected}`);
   if (p.keyEnv && !env[p.keyEnv]) throw new Error(`Provider credential is unavailable: ${p.keyEnv}`);
   const provider = createProvider({ NEXUS_PROVIDER: p.kind, NEXUS_MODEL: p.model, NEXUS_BASE_URL: p.baseUrl, NEXUS_API_KEY: p.keySecret ? await getSecret(root, p.keySecret, env.NEXUS_VAULT_PASSWORD) : p.keyEnv ? env[p.keyEnv] : undefined }, Object.fromEntries(['timeoutMs', 'maxOutputTokens', 'tokenLimitField'].filter(k => p[k] !== undefined).map(k => [k, p[k]])));

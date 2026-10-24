@@ -6,6 +6,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { saveConfig } from '../src/config.js';
 import { connectMcp } from '../src/mcp.js';
+import { runAgent } from '../src/runtime.js';
+import { defaults } from '../src/agents.js';
+import { listState, readState } from '../src/state.js';
 
 test('MCP handshake exposes only granted tools and requires connection and call approval', async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'nexus-mcp-')); t.after(() => rm(root, { recursive: true, force: true }));
@@ -44,4 +47,41 @@ test('HTTP MCP supports explicit endpoints and tool grants', async t => {
   const client = await connectMcp(root, { mcp: ['fixture'] }, async () => true);
   try { assert.match(await client.call(client.tools[0].name, {}), /HTTP tool works/); }
   finally { await client.close(); }
+});
+
+test('oversized MCP results remain bounded and preserve failures through the runtime retry guard', async t => {
+  const { createServer } = await import('node:http');
+  const server = createServer(async (req, res) => {
+    if (req.method !== 'POST') { res.writeHead(405).end(); return; }
+    let body = ''; for await (const chunk of req) body += chunk;
+    const request = JSON.parse(body);
+    if (request.id === undefined) { res.writeHead(202).end(); return; }
+    let result = {};
+    if (request.method === 'initialize') result = { protocolVersion: '2025-03-26', capabilities: { tools: {} }, serverInfo: { name: 'oversized-fixture', version: '1' } };
+    else if (request.method === 'tools/list') result = { tools: [{ name: 'oversized', inputSchema: { type: 'object', properties: { failure: { type: 'boolean' } }, required: ['failure'] } }] };
+    else if (request.method === 'tools/call') result = { isError: request.params.arguments.failure, content: [{ type: 'text', text: '\\"\n'.repeat(25000) }] };
+    res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }));
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); });
+  const root = await mkdtemp(path.join(os.tmpdir(), 'nexus-mcp-truncation-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await saveConfig(root, { version: 1, providers: {}, routes: {}, mcp: { fixture: { transport: 'http', url: `http://127.0.0.1:${server.address().port}/mcp`, tools: ['oversized'] } } });
+  const client = await connectMcp(root, { mcp: ['fixture'] }, async () => true);
+  try {
+    for (const failure of [false, true]) {
+      const serialized = await client.call(client.tools[0].name, { failure });
+      const result = JSON.parse(serialized);
+      assert.equal(result.truncated, true);
+      assert.equal(result.isError, failure);
+      assert.ok(serialized.length <= 100000, 'escaped previews must fit the advertised context bound');
+    }
+  } finally { await client.close(); }
+  let requests = 0;
+  const provider = { name: 'fixture', model: 'fixture', complete: async (_messages, tools) => ({ text: '', calls: [{ id: String(++requests), name: tools.find(tool => tool.name.startsWith('mcp_')).name, args: { failure: true } }] }) };
+  await assert.rejects(runAgent({ root, agent: { ...defaults[0], mcp: ['fixture'] }, provider, task: 'Read the fixture.', approve: async () => true, maxContextChars: 1000000 }), /Stopped after 3 failed attempts/);
+  assert.equal(requests, 3);
+  const saved = await readState(root, 'runs', (await listState(root, 'runs'))[0]);
+  assert.equal(saved.status, 'failed');
+  assert.equal(saved.events.filter(event => event.type === 'repeated-tool-failure').length, 1);
 });

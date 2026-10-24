@@ -66,6 +66,8 @@ export async function executeTool(root, agent, name, args, approve, { signal, co
     } finally { await handle.close(); }
   }
   if (typeof args.content !== 'string' || Buffer.byteLength(args.content) > 100_000) throw new Error('Content must be text under 100 KB.');
+  const buffer = Buffer.from(args.content);
+  if (buffer.includes(0) || buffer.toString('utf8') !== args.content) throw new Error('Content must be valid UTF-8 text without null bytes.');
   let before = null;
   try {
     const stat = await lstat(file);
@@ -83,7 +85,6 @@ export async function executeTool(root, agent, name, args, approve, { signal, co
     if (!stat.isFile() || stat.nlink !== 1 || stat.size > 100000) throw new Error('Unsafe write target.');
     if (before !== null && (await boundedRead(handle, 100_000)).toString('utf8') !== before) throw new Error('File changed during approval; request a fresh edit.');
     await handle.truncate(0);
-    const buffer = Buffer.from(args.content);
     let offset = 0;
     while (offset < buffer.length) {
       const { bytesWritten } = await handle.write(buffer, offset, buffer.length - offset, offset);

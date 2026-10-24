@@ -66,7 +66,7 @@ async function executeWorkflow({ root, workflow, task, checkpoint = false, conti
     }
     while (Object.keys(record.steps).length < workflow.steps.length) {
       signal?.throwIfAborted();
-      let ready = workflow.steps.filter(s => !record.steps[s.id] && (s.dependsOn || []).every(d => record.steps[d]?.status === 'completed')).slice(0, concurrency);
+      let ready = workflow.steps.filter(s => !Object.hasOwn(record.steps, s.id) && (s.dependsOn || []).every(d => Object.hasOwn(record.steps, d) && record.steps[d].status === 'completed')).slice(0, concurrency);
       if (!ready.length) throw new Error('No runnable workflow steps.');
       // Shared-workspace writes and commands serialize. Read-only stages can overlap.
       if (!isolated && ready.some(s => { const a = prepared.get(s.id).agent; return a.permissions.write || a.permissions.execute || a.mcp?.length || a.applications?.length; })) ready = ready.slice(0, 1);
@@ -112,13 +112,13 @@ export async function resumeWorkflow({ root, id, approve = async () => false, si
   if (workflow.reviewPolicy || previous.checkpoint.settings.isolated) throw new Error('This workflow cannot be resumed.');
   const steps = {};
   for (const step of workflow.steps) {
-    const prior = previous.steps[step.id];
+    const prior = Object.hasOwn(previous.steps, step.id) ? previous.steps[step.id] : undefined;
     if (prior?.status === 'completed') steps[step.id] = prior;
     else if (prior?.startedExecution && unsafeStage(await loadAgent(root, step.agent))) throw new Error('An unfinished stage may have side effects. Inspect it and start a new task; it cannot be replayed.');
   }
   if (Object.keys(steps).length === workflow.steps.length) throw new Error('All stages completed; inspect the final record instead of resuming.');
-  for (const step of workflow.steps.filter(s => steps[s.id])) if ((step.dependsOn || []).some(d => !steps[d])) throw new Error('Checkpoint dependency history is inconsistent.');
-  if (!await approve({ type: 'workflow-resume', id, completed: Object.keys(steps), pending: workflow.steps.filter(s => !steps[s.id]).map(s => s.id), action: 'Continue pending stages; completed stages are not replayed.' })) throw new Error('Workflow resume declined.');
+  for (const step of workflow.steps.filter(s => Object.hasOwn(steps, s.id))) if ((step.dependsOn || []).some(d => !Object.hasOwn(steps, d))) throw new Error('Checkpoint dependency history is inconsistent.');
+  if (!await approve({ type: 'workflow-resume', id, completed: Object.keys(steps), pending: workflow.steps.filter(s => !Object.hasOwn(steps, s.id)).map(s => s.id), action: 'Continue pending stages; completed stages are not replayed.' })) throw new Error('Workflow resume declined.');
   signal?.throwIfAborted();
   if (JSON.stringify(await readState(root, 'workflows', `${id}.json`)) !== JSON.stringify(previous)) throw new Error('Workflow changed during approval.');
   return executeWorkflow({ root, workflow, task: previous.task, approve, signal, onEvent, commandMode, sandboxImage, ...previous.checkpoint.settings, checkpoint: true, continuation: { ...previous, steps } });

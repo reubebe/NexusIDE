@@ -62,6 +62,27 @@ test('worktrees isolate changes and report tracked and new files', async t => {
   await assert.rejects(createWorktree(root, 'task-one'));
   await assert.rejects(createWorktree(root, '../escape'));
 });
+test('process output preserves UTF-8 split across independent pipe chunks', async () => {
+  const result = await runProcess(process.execPath, ['-e', `
+    process.stdout.write(Buffer.from([0xf0, 0x9f]));
+    process.stderr.write(Buffer.from([0xc3]));
+    setTimeout(() => {
+      process.stderr.write(Buffer.from([0xa9]));
+      process.stdout.write(Buffer.from([0x8c, 0x8e]));
+    }, 40);
+  `]);
+  assert.equal(result.code, 0);
+  assert.equal(result.stopped, null);
+  assert.ok(result.output.includes('🌎'), result.output);
+  assert.ok(result.output.includes('é'), result.output);
+  assert.equal(result.output.length, 3);
+});
+test('process output byte cap omits an incomplete UTF-8 suffix', async () => {
+  const result = await runProcess(process.execPath, ['-e', 'process.stdout.write("🌎".repeat(100))'], { maxBytes: 5 });
+  assert.equal(result.stopped, 'output-limit');
+  assert.equal(result.output, '🌎');
+  assert.ok(Buffer.byteLength(result.output) <= 5);
+});
 test('runtime cancellation saves a cancelled transcript', async t => {
   const root = await temp(t);
   const controller = new AbortController();

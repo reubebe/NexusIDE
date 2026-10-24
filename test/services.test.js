@@ -9,7 +9,8 @@ import { remember, recall } from '../src/memory.js';
 import { importSkill, skillResource } from '../src/skills.js';
 import { importMarkdownAgent } from '../src/imports.js';
 import { defaults, installAgent } from '../src/agents.js';
-import { validateWorkflow, runWorkflow } from '../src/workflows.js';
+import { validateWorkflow, runWorkflow, resumeWorkflow } from '../src/workflows.js';
+import { defaultConfig, saveConfig, routeProvider } from '../src/config.js';
 import { startServer } from '../src/server.js';
 import { dockerArguments } from '../src/sandbox.js';
 
@@ -73,6 +74,33 @@ test('dashboard denies unauthenticated and cross-origin calls, accepts authentic
     await new Promise(r => setTimeout(r, 10));
   }
   assert.fail('Demo did not complete');
+});
+test('provider routes treat prototype names as ordinary user-defined names', async t => {
+  const root = await temp(t), agent = { ...defaults[0], name: 'constructor' };
+  assert.equal((await routeProvider(root, agent, { env: { NEXUS_PROVIDER: 'demo' } })).name, 'demo');
+  await assert.rejects(routeProvider(root, agent, { providerName: 'constructor' }), /Unknown provider profile: constructor/);
+  await saveConfig(root, { ...structuredClone(defaultConfig), providers: { constructor: { kind: 'demo', model: 'fixture' } }, routes: { constructor: 'constructor' } });
+  assert.equal((await routeProvider(root, agent)).profile, 'constructor');
+});
+test('workflow executes and resumes valid step names inherited by ordinary objects', async t => {
+  const root = await temp(t); await installAgent(root, defaults[0]);
+  const workflow = { version: 1, name: 'prototype-steps', steps: [
+    { id: 'constructor', agent: 'architect', task: 'Inspect the fixture' },
+    { id: 'toString', agent: 'architect', task: 'Review the fixture', dependsOn: ['constructor'], approval: true },
+  ] };
+  await assert.rejects(runWorkflow({ root, workflow, task: 'Fixture', demo: true, checkpoint: true }), /failed or declined/);
+  const { listState } = await import('../src/state.js');
+  const previous = await readState(root, 'workflows', (await listState(root, 'workflows'))[0]);
+  assert.equal(previous.steps.constructor.status, 'completed');
+  let reviewedPending;
+  const completed = await resumeWorkflow({ root, id: previous.id, approve: async request => {
+    if (request.type === 'workflow-resume') reviewedPending = request.pending;
+    return true;
+  } });
+  assert.deepEqual(reviewedPending, ['toString']);
+  assert.equal(completed.status, 'completed');
+  assert.equal(completed.steps.constructor.run, previous.steps.constructor.run);
+  assert.equal(completed.steps.toString.status, 'completed');
 });
 test('Docker execution requires digest pinning and disables network and privilege escalation', () => {
   assert.throws(() => dockerArguments('/tmp/project', '/tmp/project', 'node', [], 'node:latest', 'test'), /digest/);
