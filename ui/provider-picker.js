@@ -29,7 +29,15 @@ export function createProviderPicker(api, changed = () => {}) {
   return {
     catalog: [], agents: [], models: [], provider: '', model: '', customModel: '', route: 'default',
     note: 'Select a provider and account to see available models.', busy: false, loading: false, refreshing: false,
-    config: null, draft: '', saved: '', localService: 'unknown',
+    config: null, draft: '', saved: '', localService: 'unknown', guidance: null,
+    get localGuidance() {
+      if (!this.guidance || this.provider !== 'ollama') return '';
+      const h = this.guidance.hardware, model = this.guidance.models.find(m => m.model === this.modelId);
+      const advice = model?.status === 'exceeds-system-ram' ? 'Download size meets or exceeds system RAM; consider a smaller model.'
+        : model?.status === 'limited-headroom' ? 'Limited RAM headroom; consider a smaller model.'
+        : model?.status === 'below-system-ram' ? 'Size suggests some RAM headroom.' : 'Memory needs are unknown.';
+      return `${h.totalGiB ?? 'Unknown'} GiB system RAM${model ? ` · ${model.downloadGiB ?? 'Unknown'} GiB model download. ${advice}` : '.'} Runtime fit, speed and tool calling are unverified.`;
+    },
     get dirty() { return this.draft !== this.saved; },
     get modelId() { return this.model === '__custom__' ? this.customModel.trim() : this.model; },
     get credentialSummary() {
@@ -84,7 +92,7 @@ export function createProviderPicker(api, changed = () => {}) {
       const request = ++modelRequest;
       const p = this.catalog.find(p => p.id === id);
       this.provider = id; this.model = ''; this.customModel = ''; this.models = [];
-      this.localService = 'unknown';
+      this.localService = 'unknown'; this.guidance = null;
       this.loading = !!p && (p.local || p.credential === 'available');
       this.note = !p ? 'Select a provider and account to see available models.'
         : p.local ? 'Checking Ollama for installed local models… No API key is needed.'
@@ -96,7 +104,7 @@ export function createProviderPicker(api, changed = () => {}) {
         const result = await api(`providers/models?provider=${encodeURIComponent(id)}`);
         if (request !== modelRequest) return;
         this.models = result.models; this.note = result.note;
-        if (p.local) this.localService = 'ready';
+        if (p.local) { this.localService = 'ready'; this.guidance = result.guidance || null; }
       } catch (error) {
         if (request !== modelRequest) return;
         this.note = error.message; this.model = p.local ? '' : '__custom__';

@@ -103,6 +103,25 @@ Open Ontologies remains a domain-specific modeling reference. Edge0 remains an
 experimental external runtime; Praxist overlaps Nexus orchestration and has a
 custom Fair Source license. These are not dependencies. CL4R1T4S was not adopted.
 
+### Checkpoints, local model guidance and harness evaluation
+
+[LazyCodex](https://github.com/code-yeongyu/lazycodex) informed Nexus-native
+[workflow checkpoints](workflow-checkpoints.md), with explicit continuation,
+unchanged-input checks and no replay of completed stages. Its installer and
+external orchestration stack are not dependencies. Runtime repeated-failure
+protection applies to ordinary agent runs as well.
+
+[Odysseus](https://github.com/odysseus-dev/odysseus) and its credited llmfit project
+informed [local RAM guidance](local-model-fit.md). Nexus currently compares
+installed download sizes against system RAM. Full GPU sizing, automatic model
+recommendation and an Odysseus data connector are not implemented.
+
+[RRSI](https://github.com/google-research/rrsi) informed an
+[offline evidence check](rrsi.md) for small harness changes: fixed manifests,
+held-out cases, noise/cost gates and duplicate-hypothesis history. No self-editing
+search, benchmark dependencies or paid model sweeps were installed. Source
+references and the exact scope are recorded in the individual guides.
+
 ### Selected advanced integrations
 
 [REA](https://github.com/morluto/rea) is installed at revision `b5c2954ad67f0280732df043d5d9702f3d202819` with a private Node 24.11 runtime because its engine requirement rejects the system Node 22.18. Nexus completed a real MCP handshake and grants only fifteen selected static/evidence tools to the `reverse-engineer` agent. Target mutation and runtime/browser capture tools are not granted. Analyze only software the user owns or is authorized to inspect.

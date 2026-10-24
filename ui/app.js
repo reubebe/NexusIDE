@@ -461,6 +461,8 @@ function renderProviders() {
   $('provider-route').value = picker.route;
   $('provider-route').disabled = picker.busy;
   $('provider-status').textContent = [picker.note, p?.note].filter(Boolean).join(' ');
+  $('local-model-guidance').textContent = picker.localGuidance;
+  $('local-model-guidance').hidden = !picker.localGuidance;
   $('provider-credential-summary').textContent = picker.credentialSummary;
   $('provider-selection-status').textContent = picker.selectionStatus;
   $('connect-provider').disabled = !picker.canConnect;

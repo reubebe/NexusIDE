@@ -203,6 +203,18 @@ npm start -- worktree diff TASK_NAME
 
 Teams use dependency-ordered workflows. Use `--isolated` to give workflow steps separate Git worktrees; agents exchange reports, and their code changes are not automatically combined. Review each diff before bringing work into your branch. Worktrees require a Git repository with a committed starting revision.
 
+For supported file-tool teams, add `--checkpoint` to save resumable boundaries,
+then use `nexus team resume WORKFLOW_ID` after inspecting a stopped run. Completed
+stages are skipped; changed inputs or uncertain unfinished writes block resume.
+See [checkpoint limits and retry protection](workflow-checkpoints.md). All agent
+runs now stop after three failed calls with identical tool inputs.
+
+**Connections → Ollama** also shows [local memory guidance](local-model-fit.md)
+for the selected model; `nexus providers local` gives the same information in the
+terminal. To assess a measured change to agent instructions or orchestration,
+use the optional [offline harness evaluation](rrsi.md). It makes no model calls
+and never applies candidate changes automatically.
+
 To incorporate committed work, run `npm start -- worktree merge TASK_NAME`. NexusIDE shows the exact revisions, file list and diff for approval, then checks them again before fast-forwarding the current branch. It refuses dirty workspaces, divergent history, protected paths, links, binary changes and configured Git content filters. Commit the reviewed source changes yourself first; the merge command does not create commits, push, or delete worktrees.
 
 ![Task lifecycle from a written goal to a proposed plan, reviewed workflow execution, permission checks and approvals, then a recorded result and reviewed changes.](assets/guide/task-flow.svg)

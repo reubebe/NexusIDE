@@ -4,6 +4,33 @@
   "policy": "Imports preserve provenance and do not execute installers, hooks, or scripts. External services require explicit configuration and grants.",
   "integrations": [
     {
+      "id": "lazycodex",
+      "source": "https://github.com/code-yeongyu/lazycodex",
+      "revision": "dd063158bcbf0d31c4c762def90dbb2251222b2c",
+      "license": "MIT",
+      "role": "Durable workflow reference",
+      "status": "pattern-adapted",
+      "note": "Original Nexus checkpoint/resume and repeated-tool-failure protection. No upstream code or installer used. CLI checkpoint mode has explicit safety limits. See docs/workflow-checkpoints.md."
+    },
+    {
+      "id": "odysseus",
+      "source": "https://github.com/odysseus-dev/odysseus",
+      "revision": "a0c93f38ef196aff5c2bdb90ba2c64419254d012",
+      "license": "AGPL-3.0",
+      "role": "Local hardware guidance reference",
+      "status": "pattern-adapted",
+      "note": "Original Nexus RAM/download-size advisory inspired by the local hardware workflow and credited upstream llmfit. No source copied, runtime installed, external connector or GPU fit estimator. See docs/local-model-fit.md."
+    },
+    {
+      "id": "rrsi",
+      "source": "https://github.com/google-research/rrsi",
+      "revision": "be50316e1db05914068a973f322770ef08ed7ba1",
+      "license": "Apache-2.0; third_party has separate terms",
+      "role": "Harness improvement evaluation reference",
+      "status": "pattern-adapted",
+      "note": "Original offline evidence gate with noise/cost checks, held-out cases, fixed manifests and hypothesis history. No source copied or autonomous evolution. Reports assess user-supplied evidence, not live verified benchmarks. See docs/rrsi.md."
+    },
+    {
       "id": "cortex",
       "role": "Read-only curated knowledge",
       "status": "optional-reader-adapter",

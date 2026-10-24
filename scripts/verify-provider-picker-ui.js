@@ -88,6 +88,9 @@ try {
   await evaluate('document.getElementById("provider-picker").value="ollama"; document.getElementById("provider-picker").dispatchEvent(new Event("change", {bubbles:true}))');
   await until('!document.getElementById("model-picker").disabled && [...document.getElementById("model-picker").options].some(o=>o.value==="gpt-oss:20b")', 'real installed local model');
   await evaluate('document.getElementById("model-picker").value="gpt-oss:20b"; document.getElementById("model-picker").dispatchEvent(new Event("change", {bubbles:true})); document.getElementById("provider-route").value="coder"; document.getElementById("provider-route").dispatchEvent(new Event("change", {bubbles:true}))');
+  assert.match(await evaluate('document.getElementById("local-model-guidance").textContent'), /GiB system RAM/);
+  assert.match(await evaluate('document.getElementById("local-model-guidance").textContent'), /model download/);
+  assert.match(await evaluate('document.getElementById("local-model-guidance").textContent'), /tool calling are unverified/);
   await until('!document.getElementById("connect-provider").disabled', 'save enabled');
   await evaluate('document.getElementById("provider-form").requestSubmit()');
   await until('document.getElementById("provider-selection-status").textContent.includes("coder: gpt-oss:20b")', 'saved local route');
@@ -105,7 +108,7 @@ try {
     receipt.checks.push(`connections-${width}-no-overflow`);
   }
   assert.deepEqual(browserErrors, []); assert.deepEqual(blocked, []);
-  receipt.checks.push('synthetic-gemini-key-detected', 'other-cloud-keys-cleared', 'real-ollama-model-list', 'fixture-coder-route-saved', 'local-profile-without-api-key', 'no-default-route-change', 'no-credential-value-exposure', 'no-browser-errors', 'no-model-inference'); receipt.verified = true;
+  receipt.checks.push('synthetic-gemini-key-detected', 'other-cloud-keys-cleared', 'real-ollama-model-list', 'local-memory-guidance-with-limitations', 'fixture-coder-route-saved', 'local-profile-without-api-key', 'no-default-route-change', 'no-credential-value-exposure', 'no-browser-errors', 'no-model-inference'); receipt.verified = true;
 } catch (error) { receipt.error = error.message; process.exitCode = 1; }
 finally {
   socket?.close();

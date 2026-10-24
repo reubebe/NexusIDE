@@ -1,0 +1,249 @@
+{
+  "version": 1,
+  "experiment": "synthetic-format-example",
+  "baselineRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "candidateRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "hypothesis": "Synthetic example: removing duplicate context improves score and reduces tokens.",
+  "edits": [
+    {
+      "component": "context",
+      "description": "Demonstration only; no real source change or measured outcome."
+    }
+  ],
+  "review": {
+    "reviewer": "synthetic-example",
+    "leakageChecked": true,
+    "notes": "Synthetic format fixture, not an actual leakage review."
+  },
+  "trialsPerCase": 3,
+  "cases": [
+    {
+      "id": "development-1",
+      "split": "development",
+      "baseline": [
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        }
+      ],
+      "candidate": [
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        }
+      ]
+    },
+    {
+      "id": "development-2",
+      "split": "development",
+      "baseline": [
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        }
+      ],
+      "candidate": [
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        }
+      ]
+    },
+    {
+      "id": "development-3",
+      "split": "development",
+      "baseline": [
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        }
+      ],
+      "candidate": [
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        }
+      ]
+    },
+    {
+      "id": "heldout-1",
+      "split": "heldout",
+      "baseline": [
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        }
+      ],
+      "candidate": [
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        }
+      ]
+    },
+    {
+      "id": "heldout-2",
+      "split": "heldout",
+      "baseline": [
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        }
+      ],
+      "candidate": [
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        }
+      ]
+    },
+    {
+      "id": "heldout-3",
+      "split": "heldout",
+      "baseline": [
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.5,
+          "tokens": 1000,
+          "criticalFailure": false
+        }
+      ],
+      "candidate": [
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        },
+        {
+          "score": 0.8,
+          "tokens": 900,
+          "criticalFailure": false
+        }
+      ]
+    }
+  ]
+}

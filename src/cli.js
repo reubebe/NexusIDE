@@ -10,7 +10,7 @@ import { remember, forget, listMemories, updateMemory, memoryHistory } from './m
 import { searchMemory } from './memory-search.js';
 import { draftMemory, listMemoryDrafts, reviewMemoryDraft } from './memory-distillation.js';
 import { writeState, readState, listState, safeName, recentState } from './state.js';
-import { validateWorkflow, loadWorkflow, runWorkflow } from './workflows.js';
+import { validateWorkflow, loadWorkflow, runWorkflow, resumeWorkflow } from './workflows.js';
 import { terminalApproval, print } from './approval.js';
 import { importMarkdownAgent } from './imports.js';
 import { setSecret, listSecrets } from './vault.js';
@@ -33,6 +33,7 @@ const help = `NexusIDE · One runtime. Any agent. Any model.
   nexus team install <team.json>          Import workflow DAG
   nexus team run <name> "task"            Run workflow
   nexus team status [id]                  Inspect workflows
+  nexus team resume <id>                  Continue a safe saved workflow checkpoint
   nexus skills import <directory>         Import SKILL.md and resources
   nexus skills scan <directory>           Statically scan before importing a skill
   nexus skills audit [name]               Check stored integrity and rescan installed skills
@@ -58,8 +59,10 @@ const help = `NexusIDE · One runtime. Any agent. Any model.
   nexus config show                       Show provider/MCP configuration
   nexus config import <file.json>          Configure profiles and routes
   nexus providers                         Show provider compatibility evidence
+  nexus providers local                   Inspect installed Ollama models and RAM guidance
   nexus providers check <profile>         Run bounded synthetic model checks
   nexus providers check-env               Check an explicit environment model
+  nexus harness evaluate <evidence.json>   Assess measured harness changes offline
   nexus worktree create|diff <name>        Create or inspect worktree
   nexus worktree list                      List worktrees
   nexus worktree merge <name>              Review and approve a fast-forward merge
@@ -87,7 +90,7 @@ const help = `NexusIDE · One runtime. Any agent. Any model.
 
 Run options: --demo, --provider <profile>, --worktree <name>, --resume <id>,
   --allow-commands, --sandbox-image <image@sha256:digest>
-Team options: --demo, --allow-commands, --isolated, --concurrency <1-4>
+Team options: --demo, --allow-commands, --isolated, --concurrency <1-4>, --checkpoint
 Memory add options: --layer L1|L2|L3, --category <category>
 Memory list options: --status all|active|archived, --offset N, --limit N
 Memory history/drafts options: --offset N, --limit N
@@ -101,7 +104,7 @@ Provider env: NEXUS_PROVIDER, NEXUS_MODEL, NEXUS_API_KEY, NEXUS_BASE_URL.`;
 export function parseOptions(args) {
   const options = {}, positional = [];
   const values = new Set(['provider', 'worktree', 'resume', 'sandbox-image', 'concurrency', 'agent', 'port', 'mode', 'layer', 'category', 'status', 'offset', 'limit', 'revision', 'engine', 'brain', 'python']);
-  const flags = new Set(['demo', 'allow-commands', 'isolated', 'force', 'all-scopes']);
+  const flags = new Set(['demo', 'allow-commands', 'isolated', 'force', 'all-scopes', 'checkpoint']);
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--') { positional.push(...args.slice(i + 1)); break; }
     if (!args[i].startsWith('--')) { positional.push(args[i]); continue; }
@@ -150,7 +153,18 @@ async function main() {
     } finally { process.off('SIGINT', cancel); process.off('SIGTERM', cancel); }
   }
   if (command === 'doctor') { const { doctor } = await import('./doctor.js'); return print(JSON.stringify(await doctor(root), null, 2)); }
+  if (command === 'harness') {
+    if (args[0] !== 'evaluate' || args.length !== 2 || Object.keys(options).length) throw new Error('Use nexus harness evaluate <evidence.json>.');
+    const { evaluateHarnessCandidate, readHarnessEvaluationInput } = await import('./harness-evaluation.js');
+    const result = await evaluateHarnessCandidate(root, await readHarnessEvaluationInput(args[1]));
+    if (result.status === 'rejected' || result.repeated) process.exitCode = 1;
+    return print(JSON.stringify(result, null, 2));
+  }
   if (command === 'providers') {
+    if (args[0] === 'local' && args.length === 1) {
+      const { discoverModels } = await import('./provider-catalog.js');
+      return print(JSON.stringify(await discoverModels('ollama'), null, 2));
+    }
     const { providerMatrix, verifyProvider, verifyEnvironmentProvider } = await import('./provider-verification.js');
     if (!args.length) return print(JSON.stringify(await providerMatrix(root), null, 2));
     const controller = new AbortController();
@@ -297,9 +311,11 @@ async function main() {
     return { ...(options.offset !== undefined ? { offset: Number(options.offset) } : {}), ...(options.limit !== undefined ? { limit: Number(options.limit) } : {}) };
   }
   const isTeam = command === 'team' && args[0] === 'run';
-  if (command !== 'run' && command !== 'plan' && !isTeam) throw new Error('Unknown command. Use --help.');
+  const isTeamResume = command === 'team' && args[0] === 'resume' && args.length === 2;
+  if (command !== 'run' && command !== 'plan' && !isTeam && !isTeamResume) throw new Error('Unknown command. Use --help.');
+  if (isTeamResume && Object.keys(options).length) throw new Error('Team resume uses the checkpoint settings; do not pass new run options.');
   const task = args.slice(command === 'plan' ? 0 : isTeam ? 2 : 1).join(' ').trim();
-  if (!task) throw new Error('Provide a task.');
+  if (!task && !isTeamResume) throw new Error('Provide a task.');
   const controller = new AbortController();
   const cancel = () => controller.abort(new Error('Run cancelled.'));
   process.on('SIGINT', cancel); process.on('SIGTERM', cancel);
@@ -310,8 +326,11 @@ async function main() {
       const result = await planTask({ ...common, demo: options.demo });
       print(JSON.stringify(result.workflow, null, 2));
       print(`Plan saved as ${result.name}. Review it, then use nexus team run with that name and your task.`);
+    } else if (isTeamResume) {
+      const result = await resumeWorkflow({ ...common, id: args[1] });
+      print(`Workflow ${result.id}: ${result.status}`);
     } else if (isTeam) {
-      const result = await runWorkflow({ ...common, workflow: await loadWorkflow(root, args[1]), demo: options.demo, allowCommands: options['allow-commands'], isolated: options.isolated, concurrency: Number(options.concurrency || 2) });
+      const result = await runWorkflow({ ...common, workflow: await loadWorkflow(root, args[1]), demo: options.demo, allowCommands: options['allow-commands'], isolated: options.isolated, checkpoint: options.checkpoint === true, concurrency: Number(options.concurrency || 2) });
       print(`Workflow ${result.id}: ${result.status}`);
     } else {
       const agent = await loadAgent(root, args[0]);

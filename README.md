@@ -34,6 +34,11 @@ workspace. Cortex setup needs explicit engine and brain paths. The Code map uses
 the existing optional codebase-memory-mcp connection. These are opt-in additions
 to the 28 default agents; private knowledge and external engines are not bundled.
 
+New native adaptations include [safe workflow checkpoints](docs/workflow-checkpoints.md),
+[local-model memory guidance](docs/local-model-fit.md), and an
+[RRSI-inspired offline improvement check](docs/rrsi.md). The runtime also stops
+exact repeated tool failures early. These do not require another agent runtime.
+
 ## Architecture
 
 One shared runtime connects your interfaces, agents, models, approved tools, and local project state. This is the same system map shown in **About** inside the app.

@@ -1,5 +1,6 @@
 import { readProviderJson } from './providers.js';
 import { createHash } from 'node:crypto';
+import { localModelGuidance } from './local-model-fit.js';
 
 // Fixed endpoints prevent a browser request from forwarding an environment key
 // to an arbitrary host. Regional accounts must be selected explicitly.
@@ -73,7 +74,8 @@ export async function discoverModels(id, { env = process.env, fetchImpl = fetch 
         .map(item => item?.name || item?.model)
         .filter(model => typeof model === 'string' && modelIdPattern.test(model) && isAgentModel(model)
           && !/embed|^bge(?:-|:)/i.test(model) && !cloudModel(model)))].sort();
-      return { models, local: true, service: 'ready', note: models.length
+      const guidance = localModelGuidance(models.map(name => ({ name, size: data.models.find(item => (item?.name || item?.model) === name && !item.remote_host && !item.remote_model)?.size })));
+      return { models, guidance, local: true, service: 'ready', note: models.length
         ? 'Ollama is running locally. Choose an installed text model with tool calling; this list does not verify agent compatibility. No API key is needed.'
         : 'Ollama is running, but no installed local text models were found. Pull a tool-capable model in Ollama, then refresh models. No API key is needed.' };
     } catch {
