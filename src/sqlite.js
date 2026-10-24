@@ -7,10 +7,16 @@ import { setTimeout as delay } from 'node:timers/promises';
 const SCHEMA_VERSION = 2;
 const sameFile = (a, b) => a.dev === b.dev && a.ino === b.ino;
 
-function regularFile(file, { optional = false } = {}) {
+function regularFile(file, { optional = false, retryUnlinked = false } = {}) {
   let stat;
-  try { stat = lstatSync(file); }
-  catch (error) { if (optional && error.code === 'ENOENT') return null; throw error; }
+  for (let attempt = 0; attempt < (retryUnlinked ? 3 : 1); attempt++) {
+    try { stat = lstatSync(file); }
+    catch (error) { if (optional && error.code === 'ENOENT') return null; throw error; }
+    // A concurrent SQLite close can unlink a sidecar during macOS lstat,
+    // yielding a regular inode with zero links. Recheck the pathname, boundedly;
+    // never accept that snapshot or relax checks on a replacement file.
+    if (!retryUnlinked || !stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 0) break;
+  }
   if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1) throw new Error('SQLite state requires singly linked regular files; symbolic links are refused.');
   if (process.platform !== 'win32' && (stat.mode & 0o077)) throw new Error('SQLite state files require private permissions (chmod 600 with NexusIDE stopped).');
   return stat;
@@ -27,7 +33,7 @@ function secureSidecars(file) {
     // Never open/close SQLite's files ourselves: closing any descriptor for an
     // inode releases this process's POSIX locks, including other connections'.
     // SQLite inherits the database's 0600 mode when creating its sidecars.
-    regularFile(file + suffix, { optional: true });
+    regularFile(file + suffix, { optional: true, retryUnlinked: true });
   }
 }
 

@@ -163,6 +163,59 @@ test('SQLite rejects symlinks and hard links for its database and every sidecar'
   }
 });
 
+test('SQLite rechecks transient unlinked sidecars without accepting unsafe replacements', async t => {
+  // Reproduce the syscall snapshots observed during concurrent WAL cleanup,
+  // without relying on the OS scheduler to hit the unlink/lstat race every run.
+  // The child isolates the built-in fs mock from other tests and SQLite users.
+  const program = `import fs from 'node:fs';
+    import assert from 'node:assert/strict';
+    import path from 'node:path';
+    import { syncBuiltinESMExports } from 'node:module';
+    const [root, suffix, scenario] = process.argv.slice(1);
+    const file = path.join(fs.realpathSync(root), '.nexus', 'storage.sqlite');
+    const original = fs.lstatSync, baseline = original(file);
+    const snapshot = patch => Object.assign(Object.create(Object.getPrototypeOf(baseline)), baseline, patch);
+    let probes = 0;
+    fs.lstatSync = (name, ...args) => {
+      if (name !== file + suffix) return original(name, ...args);
+      probes++;
+      if (probes === 1 || scenario === 'persistent') return snapshot({ nlink: 0 });
+      if (probes === 2) {
+        if (scenario === 'missing') throw Object.assign(new Error('removed'), { code: 'ENOENT' });
+        if (scenario === 'replacement') return snapshot({ nlink: 1 });
+        if (scenario === 'hardlink') return snapshot({ nlink: 2 });
+        if (scenario === 'symlink') return snapshot({ mode: 0o120600, nlink: 1 });
+        if (scenario === 'public') return snapshot({ mode: 0o100644, nlink: 1 });
+      }
+      return original(name, ...args);
+    };
+    syncBuiltinESMExports();
+    const { openDatabase } = await import(${JSON.stringify(sqliteModule)});
+    if (scenario === 'missing' || scenario === 'replacement') {
+      const db = await openDatabase(root);
+      assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
+      db.close();
+      assert.ok(probes >= 2);
+    } else {
+      await assert.rejects(openDatabase(root), scenario === 'public' ? /private permissions/ : /singly linked|symbolic links/);
+      assert.equal(probes, !suffix ? 1 : scenario === 'persistent' ? 3 : 2);
+    }`;
+  for (const suffix of ['-wal', '-shm', '-journal']) {
+    for (const scenario of ['missing', 'replacement', 'hardlink', 'symlink', 'persistent', ...(process.platform === 'win32' ? [] : ['public'])]) {
+      await t.test(`${suffix} ${scenario}`, async subtest => {
+        const root = await workspace(subtest);
+        (await openDatabase(root)).close();
+        await execute(process.execPath, ['--input-type=module', '-e', program, root, suffix, scenario], { timeout: 10000 });
+      });
+    }
+  }
+  await t.test('main database remains strict', async subtest => {
+    const root = await workspace(subtest);
+    (await openDatabase(root)).close();
+    await execute(process.execPath, ['--input-type=module', '-e', program, root, '', 'persistent'], { timeout: 10000 });
+  });
+});
+
 test('SQLite refuses a newer schema without modifying its contents', async t => {
   const root = await workspace(t);
   const db = await openDatabase(root);
