@@ -198,6 +198,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
     var allowExit = false
     var checkingClose = false
     var checkingNavigation = false
+    var sessionNavigationPending = false
     init(url: URL?, selectedPath: String?) { self.url = url; self.selectedPath = selectedPath }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -248,7 +249,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
         NSApplication.shared.mainMenu = menu
         NSApplication.shared.activate(ignoringOtherApps: true)
         if let url = url {
-            web.load(URLRequest(url: url))
+            loadSession(url)
             // CLI mode does not own the server; the launcher owns its lifetime.
             DispatchQueue.global().async {
                 _ = FileHandle.standardInput.readDataToEndOfFile()
@@ -263,6 +264,12 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
     // native shell the navigation controls a browser normally supplies.
     @objc func goBack() { if web.canGoBack { web.goBack() } }
     @objc func goForward() { if web.canGoForward { web.goForward() } }
+
+    func loadSession(_ session: URL) {
+        url = session
+        sessionNavigationPending = true
+        web.load(URLRequest(url: session))
+    }
 
     @objc func chooseProject() {
         guard !checkingClose && !checkingNavigation else { return }
@@ -304,10 +311,9 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
         host.start(onReady: { url, root in
             DispatchQueue.main.async {
                 guard !self.allowExit, self.bootstrap === host else { return }
-                self.url = url
                 if self.selectedPath == nil || forceSelection { defaults.set(root, forKey: "NexusIDEWorkspace") }
                 self.window.title = "NexusIDE — \(project.lastPathComponent)"
-                self.web.load(URLRequest(url: url))
+                self.loadSession(url)
             }
         }, onFailure: { message in
             DispatchQueue.main.async { if self.bootstrap === host { self.startupFailed(message) } }
@@ -383,6 +389,13 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
         guard let url = url, let target = navigationAction.request.url, navigationAction.targetFrame?.isMainFrame == true,
               target.scheme == url.scheme, target.host == url.host, target.port == url.port,
               target.user == nil, target.password == nil else { decisionHandler(.cancel); return }
+        // Project switching already confirmed discard before stopping the old
+        // runtime. WebKit can update webView.url before replacing that dirty
+        // document, so track the first trusted navigation explicitly.
+        if sessionNavigationPending {
+            sessionNavigationPending = false
+            decisionHandler(.allow); return
+        }
         guard let current = webView.url else { decisionHandler(.allow); return }
         // In-page anchors do not discard the document. Other navigation,
         // including native Back/Forward, must protect dashboard drafts.

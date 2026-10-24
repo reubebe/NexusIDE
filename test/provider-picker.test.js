@@ -28,6 +28,28 @@ test('picker loads saved routes without making cloud requests, and respects pinn
   assert.equal(picker.route, 'default');
 });
 
+test('prototype-named agents inherit only explicitly configured routes and profiles', async () => {
+  const current = config();
+  const picker = await ready(async route => route === 'config' ? current : { providers: catalog });
+  picker.setAgents([{ name: 'constructor' }]); picker.route = 'constructor';
+  assert.match(picker.selectionStatus, /constructor: offline-script/);
+  assert.match(picker.selectionStatus, /Inherited from the workspace default/);
+  current.providers.constructor = { kind: 'demo', model: 'explicit-constructor-model' };
+  current.routes.constructor = 'constructor';
+  assert.match(picker.selectionStatus, /constructor: explicit-constructor-model/);
+  assert.match(picker.selectionStatus, /Applies to new tasks/);
+});
+
+test('missing prototype-named pinned profiles are reported as unavailable instead of inherited objects', async () => {
+  const picker = await ready(async route => route === 'config' ? config() : { providers: catalog });
+  for (const provider of ['constructor', 'toString', '__proto__']) {
+    picker.setAgents([{ name: 'coder', provider }]); picker.route = 'coder';
+    assert.match(picker.selectionStatus, /provider profile .* is unavailable/);
+    assert.doesNotMatch(picker.selectionStatus, /undefined|runtime environment settings/);
+    assert.equal(picker.canConnect, false);
+  }
+});
+
 test('provider save preserves advanced edits typed while it is in flight and blocks competing saves', async () => {
   const saving = deferred(); let current = config();
   const picker = await ready(async (route, method, body) => {

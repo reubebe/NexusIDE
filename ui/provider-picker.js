@@ -54,12 +54,15 @@ export function createProviderPicker(api, changed = () => {}) {
     get selectionStatus() {
       if (!this.config) return 'Loading saved connections…';
       const agent = this.agents.find(a => a.name === this.route);
-      const profile = agent?.provider || this.config.routes[this.route] || this.config.routes.default;
-      const configured = this.config.providers[profile];
+      const route = Object.hasOwn(this.config.routes, this.route) ? this.config.routes[this.route] : undefined;
+      const fallback = Object.hasOwn(this.config.routes, 'default') ? this.config.routes.default : undefined;
+      const profile = agent?.provider || route || fallback;
+      const configured = profile && Object.hasOwn(this.config.providers, profile) ? this.config.providers[profile] : undefined;
       const label = this.route === 'default' ? 'Workspace default' : this.route;
+      if (profile && !configured) return `${label}: provider profile "${profile}" is unavailable. Edit Connections or the agent definition to select an existing profile.`;
       if (!configured) return `${label}: using the runtime environment settings. No model route saved.`;
       const source = agent?.provider ? 'Pinned in the agent definition; edit Agents to change it.'
-        : this.route !== 'default' && !this.config.routes[this.route] ? 'Inherited from the workspace default.' : 'Applies to new tasks.';
+        : this.route !== 'default' && !route ? 'Inherited from the workspace default.' : 'Applies to new tasks.';
       return `${label}: ${configured.model} · ${connectionLabel(configured, profile, this.catalog)}. ${source}`;
     },
     setDraft(value) { this.draft = value; changed(); },

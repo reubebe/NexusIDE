@@ -1,6 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createFileEditor } from '../ui/file-editor.js';
+import { createFileEditor, createFileBrowser } from '../ui/file-editor.js';
+
+test('file browser ignores stale listings and retains the displayed directory after failure', async () => {
+  const pending = [];
+  const browser = createFileBrowser(() => new Promise((resolve, reject) => pending.push({ resolve, reject })));
+  const first = browser.open('old'), next = browser.open('new');
+  pending[1].resolve({ entries: ['correct.txt'] }); assert.equal(await next, true);
+  pending[0].resolve({ entries: ['wrong.txt'] }); assert.equal(await first, false);
+  assert.equal(browser.path, 'new'); assert.deepEqual(browser.entries, ['correct.txt']);
+  const failed = browser.open('unavailable'); pending[2].reject(new Error('Unavailable'));
+  await assert.rejects(failed, /Unavailable/);
+  assert.equal(browser.path, 'new'); assert.deepEqual(browser.entries, ['correct.txt']);
+  const stale = browser.open('slow'), latest = browser.open('.');
+  pending[3].reject(new Error('Old error')); assert.equal(await stale, false);
+  pending[4].resolve({ entries: ['root.txt'] }); await latest;
+  assert.equal(browser.path, '.');
+});
 
 test('file editor preserves edits made during save and uses the acknowledged hash for the next save', async () => {
   let finish;

@@ -10,6 +10,17 @@ import { remember } from '../src/memory.js';
 import { saveConfig } from '../src/config.js';
 import { importSkill } from '../src/skills.js';
 
+test('dashboard exposes the installed app version rather than the workspace package version', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'nexus-version-dashboard-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, 'package.json'), JSON.stringify({ version: 'workspace-version' }));
+  const metadata = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  const app = await startServer({ root, port: 0 }); t.after(() => app.close());
+  const response = await fetch(new URL(app.url).origin + '/api/state', { headers: { authorization: `Bearer ${app.token}` } });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).version, metadata.version);
+});
+
 test('dashboard skill audit requires authentication and reports coverage without returning source contents', async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'nexus-skill-dashboard-'));
   t.after(() => rm(root, { recursive: true, force: true }));

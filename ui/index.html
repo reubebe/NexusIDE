@@ -108,7 +108,7 @@
           <label>Maximum memories<input id="loadout-items" type="number" min="1" max="20" value="8" required></label>
           <label>Context character limit<input id="loadout-chars" type="number" min="256" max="20000" value="12000" required></label>
         </div><div id="loadout-selection" hidden><label>Selected project memories<select id="loadout-ids" multiple size="5" aria-describedby="loadout-hint loadout-status"></select><small id="loadout-hint">Hold Command on Mac or Control on Windows to select more than one. Expired memories are excluded from recall.</small></label><p id="loadout-status" class="helper" role="status"></p><button id="loadout-more" type="button" class="text-button" hidden>Load more memories</button></div><div class="checks loadout-layers"><span>Include</span><label><input type="checkbox" value="L1" data-loadout-layer checked> Facts & decisions</label><label><input type="checkbox" value="L2" data-loadout-layer checked> Summaries</label><label><input type="checkbox" value="L3" data-loadout-layer checked> Preferences</label></div></fieldset>
-        <label class="agent-json-label">Full definition<textarea id="agent-editor" rows="18" spellcheck="false" aria-label="Agent definition"></textarea></label><div class="editor-actions"><button id="save-agent" class="primary">Save agent</button></div></section>
+        <label class="agent-json-label">Full definition<textarea id="agent-editor" rows="18" spellcheck="false" aria-label="Agent definition" aria-describedby="agent-status"></textarea></label><div class="editor-actions"><button id="save-agent" class="primary" disabled>Save agent</button><button id="reload-agent" class="text-button" disabled>Reload agent</button></div><p id="agent-status" class="helper" role="status">Select an agent to edit its definition.</p></section>
     </section>
 
     <section id="history" class="tab" hidden>
@@ -173,7 +173,7 @@
         </section>
         <figure class="architecture-figure"><a href="/illustrations/architecture.svg" aria-label="Open the NexusIDE architecture diagram at full size"><img src="/illustrations/architecture.svg" width="960" height="1050" alt="NexusIDE architecture: interfaces connect to the shared agent runtime; permission-controlled tools, model providers, and local project state support execution." aria-describedby="architecture-caption"></a><figcaption id="architecture-caption">How Nexus fits together. <a href="/illustrations/architecture.svg">Open full-size diagram ↗</a></figcaption></figure>
       </div>
-      <section class="about-status"><div><span class="soft-pill">Development build</span><h2>Built to be inspected.</h2><p>NexusIDE is a local-first prototype. Developer ID signing, notarization, clean-machine certification, and production-pilot validation remain separate release gates.</p></div><a class="secondary" href="/guide#first-task">Start with an offline task →</a></section>
+      <section class="about-status"><div><span id="about-version" class="soft-pill">Development build</span><h2>Built to be inspected.</h2><p>NexusIDE is a local-first prototype. Developer ID signing, notarization, clean-machine certification, and production-pilot validation remain separate release gates.</p></div><a class="secondary" href="/guide#first-task">Start with an offline task →</a></section>
     </section>
 
     <section id="terminal" class="tab" hidden>
@@ -181,6 +181,6 @@
       <section class="workflow-section"><header class="section-heading"><span>01</span><div><h2>Local shell</h2><p>Runs directly under your account. It is not an agent sandbox.</p></div><div class="terminal-actions"><button id="terminal-start" class="secondary">Start terminal</button><button id="terminal-stop" class="text-button">Stop</button></div></header><pre id="terminal-output" aria-live="polite">Terminal is stopped.</pre><form id="terminal-form"><label>Command input<input id="terminal-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type a command and press Enter"></label><button class="primary">Send</button></form></section>
     </section>
   </main>
-  <footer class="site-footer"><div class="wrap"><span>NexusIDE · A clearer way to work with agents.</span><span id="project-path"></span></div></footer>
+  <footer class="site-footer"><div class="wrap"><span><span id="app-version">NexusIDE</span> · A clearer way to work with agents.</span><span id="project-path"></span></div></footer>
 </body>
 </html>

@@ -1,3 +1,23 @@
+// Ignore stale directory responses and retain the displayed path on failures.
+export function createFileBrowser(api) {
+  let request = 0;
+  return {
+    path: '.', entries: [],
+    async open(path = this.path) {
+      const current = ++request;
+      try {
+        const result = await api('files?path=' + encodeURIComponent(path));
+        if (current !== request) return false;
+        this.path = path; this.entries = result.entries;
+        return true;
+      } catch (error) {
+        if (current !== request) return false;
+        throw error;
+      }
+    },
+  };
+}
+
 // Keep a saved snapshot separate from the draft, including during async requests.
 export function createFileEditor(api) {
   return {

@@ -1,4 +1,5 @@
-import { createFileEditor } from './file-editor.js';
+import { createFileEditor, createFileBrowser } from './file-editor.js';
+import { createAgentEditor } from './agent-editor.js';
 import { renderWhenChanged } from './render-cache.js';
 import { createProviderPicker } from './provider-picker.js';
 import { createCodeMap } from './code-map.js';
@@ -16,9 +17,20 @@ let draftOffset = 0, draftTotal = 0, draftPageCount = 0;
 let projectMemoryRequest = 0, projectMemoryOffset = 0, projectMemoryTotal = 0, projectMemoryLoading = false;
 let projectMemoryError = '';
 const MEMORY_PAGE_SIZE = 20;
-let currentDirectory = '.';
+const fileBrowser = createFileBrowser(api);
 const fileEditor = createFileEditor(api);
-window.nexusHasUnsavedChanges = () => fileEditor.dirty || memoryEditDirty || providerPicker.dirty;
+const agentEditor = createAgentEditor(api);
+window.nexusHasUnsavedChanges = () => fileEditor.dirty || agentEditor.dirty || memoryEditDirty || providerPicker.dirty;
+function renderAgentEditor() {
+  if ($('agent-editor').value !== agentEditor.draft) $('agent-editor').value = agentEditor.draft;
+  $('agent-editor').disabled = agentEditor.loading;
+  $('memory-loadout').disabled = agentEditor.loading || !agentEditor.name;
+  $('save-agent').disabled = agentEditor.busy || !agentEditor.dirty;
+  $('reload-agent').disabled = agentEditor.busy || !agentEditor.name;
+  $('agent-status').textContent = agentEditor.loading ? 'Reloading agent…' : agentEditor.busy ? 'Saving agent…' : agentEditor.dirty ? 'Unsaved agent edits' : agentEditor.name ? 'No unsaved agent edits' : 'Select an agent to edit its definition.';
+}
+$('agent-editor').addEventListener('input', () => { agentEditor.draft = $('agent-editor').value; renderAgentEditor(); });
+renderAgentEditor();
 const fileStatus = document.createElement('p');
 fileStatus.setAttribute('role', 'status');
 $('save-file').after(fileStatus);
@@ -81,6 +93,8 @@ $('terminal-form').onsubmit = action(async () => { const input = $('terminal-inp
 pollTerminal().catch(() => {});
 function render() {
   $('project-path').textContent = state.root;
+  $('app-version').textContent = `NexusIDE v${state.version}`;
+  $('about-version').textContent = `Version ${state.version} · Development build`;
   $('stats').replaceChildren(...[[state.agents.length, 'AVAILABLE AGENTS'], [state.runs.length, 'RUN RECORDS'], [state.skills.length, 'INSTALLED SKILLS']].map(([count, label]) => { const n = node('div', undefined, 'stat'); n.append(node('strong', count), node('span', label)); return n; }));
   const selected = $('agent-select').value;
   const nextOptionsKey = JSON.stringify([state.agents.map(a => a.name), state.teams]);
@@ -90,7 +104,7 @@ function render() {
   });
   renderMemoryAgentOptions();
   providerPicker.setAgents(state.agents);
-  renderWhenChanged($('agent-cards'), JSON.stringify(state.agents), () => $('agent-cards').replaceChildren(...state.agents.map(a => { const card = node('button', undefined, 'agent-card'); card.append(node('h3', a.name), node('p', a.instructions.slice(0, 125)), node('small', Object.entries(a.permissions).filter(([,v]) => v).map(([k]) => k).join(' · '))); card.onclick = action(async () => { $('agent-editor').value = JSON.stringify(a, null, 2); renderLoadout(a); await loadProjectMemories(true); }); return card; })));
+  renderWhenChanged($('agent-cards'), JSON.stringify(state.agents), () => $('agent-cards').replaceChildren(...state.agents.map(a => { const card = node('button', undefined, 'agent-card'); card.append(node('h3', a.name), node('p', a.instructions.slice(0, 125)), node('small', Object.entries(a.permissions).filter(([,v]) => v).map(([k]) => k).join(' · '))); card.onclick = action(async () => { agentEditor.select(a); renderAgentEditor(); renderLoadout(a); await loadProjectMemories(true); }); return card; })));
   renderWhenChanged($('history-list'), JSON.stringify(state.runs), () => $('history-list').replaceChildren(...state.runs.map(r => { const row = node('div', undefined, 'row'), b = node('button', r.agent + ' · ' + r.status); b.onclick = action(async () => { const request = ++runRequest; selectedRun = undefined; renderDistillButton(); const run = await api('runs/' + r.id); if (request !== runRequest) return; selectedRun = run; $('transcript').textContent = JSON.stringify(run, null, 2); renderDistillButton(); }); row.append(b, node('small', new Date(r.started).toLocaleString())); return row; })));
   renderDistillButton();
   $('skills').replaceChildren(...state.skills.map(s => {
@@ -232,6 +246,7 @@ function openMemoryEditor(article, memory) {
   article.querySelector('.memory-inline-editor')?.remove();
   const form = node('form', undefined, 'memory-inline-editor'), text = node('textarea'), fields = node('div', undefined, 'memory-fields');
   text.rows = 4; text.required = true; text.maxLength = 16000; text.value = memory.text;
+  text.setAttribute('aria-label', 'Memory text');
   const layer = node('select'), category = node('select'), expiry = node('input');
   layer.append(...Object.entries(layerLabels).map(([value, label]) => memoryOption(value, `${value} · ${label}`))); layer.value = memory.layer || 'L1';
   populateCategories(category, layer.value, memory.category); layer.onchange = () => populateCategories(category, layer.value);
@@ -315,9 +330,10 @@ function invalidateRecallPreview() {
 async function refreshMemories() { invalidateRecallPreview(); await Promise.all([refreshMemoryList(), refreshDrafts()]); memoryLoaded = true; }
 async function loadProjectMemories(reset = false) {
   if (projectMemoryLoading && !reset) return;
+  const agent = JSON.parse($('agent-editor').value);
   const request = ++projectMemoryRequest;
   if (reset) { projectMemories = []; projectMemoryOffset = 0; projectMemoryTotal = 0; }
-  projectMemoryLoading = true; projectMemoryError = ''; renderLoadout(JSON.parse($('agent-editor').value));
+  projectMemoryLoading = true; projectMemoryError = ''; renderLoadout(agent);
   try {
     const { memories, total } = await api(`memory?status=active&limit=100&offset=${projectMemoryOffset}`);
     if (request !== projectMemoryRequest) return;
@@ -332,7 +348,7 @@ async function loadProjectMemories(reset = false) {
 }
 function renderLoadout(agent) {
   const loadout = agent.memoryLoadout || {}, ids = loadout.ids || [];
-  $('memory-loadout').disabled = false;
+  $('memory-loadout').disabled = agentEditor.loading;
   $('loadout-project').value = loadout.project || 'all'; $('loadout-items').value = loadout.maxItems ?? 8; $('loadout-chars').value = loadout.maxChars ?? 12000;
   $('loadout-selection').hidden = $('loadout-project').value !== 'selected';
   $('loadout-more').hidden = !projectMemoryLoading && !projectMemoryError && projectMemoryOffset >= projectMemoryTotal;
@@ -349,7 +365,7 @@ function updateLoadout(report = true) {
   const definition = JSON.parse($('agent-editor').value);
   definition.memoryLoadout = { project: $('loadout-project').value, ids: [...$('loadout-ids').selectedOptions].map(o => o.value), layers: [...document.querySelectorAll('[data-loadout-layer]:checked')].map(input => input.value), maxItems: Number($('loadout-items').value), maxChars: Number($('loadout-chars').value) };
   $('loadout-selection').hidden = definition.memoryLoadout.project !== 'selected';
-  $('agent-editor').value = JSON.stringify(definition, null, 2);
+  agentEditor.draft = JSON.stringify(definition, null, 2); renderAgentEditor();
 }
 for (const input of $('memory-loadout').querySelectorAll('input,select')) input.onchange = action(async () => updateLoadout());
 for (const input of [$('loadout-items'), $('loadout-chars')]) input.oninput = () => { try { updateLoadout(false); } catch {} };
@@ -390,14 +406,14 @@ $('memory-index').onclick = action(async () => {
   try { const result = await api('memory/index', 'POST', {}); $('memory-search-status').textContent = `Indexed ${result.indexed} memories: ${result.embedded} updated, ${result.reused} reused.`; }
   finally { $('memory-index').disabled = false; }
 });
-async function loadFiles() {
-  const result = await api('files?path=' + encodeURIComponent(currentDirectory));
-  $('folder-path').textContent = currentDirectory;
-  $('file-list').replaceChildren(...result.entries.map(entry => {
+async function loadFiles(path = fileBrowser.path) {
+  if (!await fileBrowser.open(path)) return;
+  $('folder-path').textContent = path;
+  $('file-list').replaceChildren(...fileBrowser.entries.map(entry => {
     const b = node('button', entry, 'file-entry');
     b.onclick = action(async () => {
-      const relative = (currentDirectory === '.' ? '' : currentDirectory + '/') + entry.replace(/\/$/, '');
-      if (entry.endsWith('/')) { currentDirectory = relative; await loadFiles(); }
+      const relative = (path === '.' ? '' : path + '/') + entry.replace(/\/$/, '');
+      if (entry.endsWith('/')) await loadFiles(relative);
       else {
         if (fileEditor.dirty) throw new Error('Save your changes, or use Reload file to discard them, before opening another file.');
         const opening = fileEditor.open(relative); renderFileEditor();
@@ -406,7 +422,7 @@ async function loadFiles() {
     }); return b;
   }));
 }
-$('parent-folder').onclick = action(async () => { currentDirectory = currentDirectory.includes('/') ? currentDirectory.slice(0, currentDirectory.lastIndexOf('/')) : '.'; await loadFiles(); });
+$('parent-folder').onclick = action(async () => { const path = fileBrowser.path; await loadFiles(path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '.'); });
 $('save-file').onclick = action(async () => {
   const saving = fileEditor.save(); renderFileEditor();
   try { await saving; $('notice').textContent = fileEditor.dirty ? 'File saved. Newer edits are still unsaved.' : 'File saved.'; }
@@ -422,8 +438,18 @@ const planButton = node('button', 'Plan this task first →', 'subtle'); planBut
 planButton.onclick = action(async () => { const result = await api('run', 'POST', { mode: 'plan', task: $('task').value, demo: $('demo').checked }); activeJob = result.id; await refresh(); });
 $('cancel').onclick = action(async () => { await api('cancel', 'POST', { id: activeJob }); await refresh(); });
 $('save-agent').onclick = action(async () => {
+  if ($('save-agent').disabled) return;
   if (!$('memory-loadout').disabled) for (const input of [$('loadout-items'), $('loadout-chars')]) if (!input.reportValidity()) return;
-  await api('agent', 'PUT', JSON.parse($('agent-editor').value)); invalidateRecallPreview(); await refresh(); $('notice').textContent = 'Agent saved.';
+  const saving = agentEditor.save(); renderAgentEditor();
+  try { await saving; invalidateRecallPreview(); await refresh(); $('notice').textContent = agentEditor.dirty ? 'Agent saved. Newer edits are still unsaved.' : 'Agent saved.'; }
+  finally { renderAgentEditor(); }
+});
+$('reload-agent').onclick = action(async () => {
+  if ($('reload-agent').disabled) return;
+  if (agentEditor.dirty && !window.confirm('Discard unsaved agent edits and reload the saved definition?')) return;
+  const loading = agentEditor.reload(); renderAgentEditor();
+  try { const agent = await loading; renderAgentEditor(); renderLoadout(agent); await loadProjectMemories(true); }
+  finally { renderAgentEditor(); }
 });
 $('memory-form').onsubmit = action(async () => {
   const button = $('memory-form').querySelector('button'); if (button.disabled) return; button.disabled = true;
