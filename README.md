@@ -8,7 +8,7 @@
 
 Build a team of specialized AI agents for coding and research—with shared project memory, reviewable actions, and one runtime across your terminal, desktop, and editor.
 
-[Visual user guide](docs/user-guide.md) · [Quick start](#start) · [Architecture](#architecture) · [Project status](#project-status)
+[Illustrated user guide](docs/user-guide.md) · [VS Code / Zed setup](docs/user-guide.md#13-connect-vs-code-and-zed) · [Quick start](#start) · [Architecture](#architecture) · [Project status](#project-status)
 
 > **Development preview:** a working local prototype, not a production-certified release. Agent portability and model support depend on the available adapters; see [compatibility and implementation boundaries](docs/architecture.md).
 

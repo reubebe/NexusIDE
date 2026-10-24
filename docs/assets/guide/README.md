@@ -15,3 +15,34 @@ The architecture diagram lives in `ui/illustrations/architecture.svg` so the Abo
 The canonical Nexus star is `ui/brand/nexus-symbol.svg`. On macOS, `npm run brand:icon` derives the committed PNG and ICNS from that vector using an isolated Chrome profile, `sips`, and `iconutil`. Packaging copies the committed icon; it does not need Chrome.
 
 After visual changes, inspect the generated images as well as the automated checks. Do not replace these with captures of a real project or put session-token URLs in documentation.
+
+## Comprehensive Markdown reference
+
+`docs/user-guide.md` has 20 chapters and 22 illustration placements. The main
+reference uses normal Markdown, local images and SVGs rather than a remote image
+service or an AI-generated screenshot. It includes a contents table, Mac/Windows
+setup, multi-account routing, Ollama, agent permissions, teams, checkpoints,
+research/tool integrations, memory, files, terminal, VS Code/Zed, search, backup,
+troubleshooting and worked examples.
+
+Rebuild the additional diagrams and numbered screenshot wrappers with:
+
+```sh
+python3 scripts/generate-guide-illustrations.py --render
+```
+
+That standard-library script writes SVG markup and embeds approved local PNGs in
+the two annotated SVGs. It does not start a model, external service or browser,
+install software, or read project notes/credentials. The Connections screenshot
+is a synthetic-account capture with real local Ollama catalog metadata, not a
+cloud inference result. If its private verification capture is absent, the script
+reuses the committed `connections.png` instead. The Workspace fixture contains
+three sample agents; the current fresh-install library contains 28 definitions.
+
+The optional `--render` step uses `rsvg-convert` to export the annotated SVGs as
+standalone PNGs, so their embedded screenshots render in more Markdown viewers.
+Omit that flag to regenerate only SVG sources. The renderer is a maintainer tool,
+not a prerequisite to read the guide. Keep images and their relative
+paths together when sharing the Markdown. Ordinary images are PNG; diagrams stay
+editable SVG. The app's compact HTML tour links to the full Markdown reference;
+a previously built DMG retains the guide that was bundled at build time.
