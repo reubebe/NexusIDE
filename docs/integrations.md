@@ -82,6 +82,27 @@ Historical real-abstract checks remain in `research-evidence.json` and are not r
 
 ## Other reviewed sources
 
+### October additions
+
+The optional [Cortex connector](cortex.md) reads a separately installed, pinned
+Cortex engine and selected Markdown brain through three bounded MCP tools.
+Private notes and the engine remain outside the Nexus distribution. Returned
+review labels and hashes preserve provenance; they do not certify correctness.
+
+The [independent review team](independent-review.md) adapts the author/reviewer
+pattern from Claudex Loop in Nexus's own runtime. Plan review and final inspection
+require a different configured model from the corresponding author. Evidence
+quotes are checked against the plan or files actually read during the review.
+
+[Anatomy](anatomy.md) contributes a small MIT-licensed SVG toolkit, copied at a
+pinned revision with attribution and an offline example. It is optional and its
+illustrator agent cannot run commands by default. [Code map](code-map.md) adds a
+focused visual navigator to the existing codebase-memory index.
+
+Open Ontologies remains a domain-specific modeling reference. Edge0 remains an
+experimental external runtime; Praxist overlaps Nexus orchestration and has a
+custom Fair Source license. These are not dependencies. CL4R1T4S was not adopted.
+
 ### Selected advanced integrations
 
 [REA](https://github.com/morluto/rea) is installed at revision `b5c2954ad67f0280732df043d5d9702f3d202819` with a private Node 24.11 runtime because its engine requirement rejects the system Node 22.18. Nexus completed a real MCP handshake and grants only fifteen selected static/evidence tools to the `reverse-engineer` agent. Target mutation and runtime/browser capture tools are not granted. Analyze only software the user owns or is authorized to inspect.

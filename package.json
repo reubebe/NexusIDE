@@ -17,6 +17,8 @@
     "scripts/verify-vscode.js",
     "scripts/verify-semantic-memory.js",
     "scripts/verify-codegraph.js",
+    "scripts/verify-code-map-ui.js",
+    "scripts/verify-provider-picker-ui.js",
     "scripts/verify-responsive.js",
     "scripts/capture-user-guide.js",
     "scripts/generate-app-icon.js",

@@ -65,6 +65,18 @@ An action requiring approval appears under activity with **Approve** and **Decli
 
 For the dashboard, export a real key such as `OPENAI_API_KEY`, then launch Nexus from the same terminal and choose **Connections → Provider / account → Model → Use this model**. The standard key is Account 1. A second export named `OPENAI_API_KEY2` adds Account 2; the same numbering works for all eight provider variables through `99`. You can use Account 2 without setting Account 1, and route different agents to different accounts. Each model list belongs to its selected account. Nexus does not switch accounts automatically after an error or quota limit. See [all eight numbered-key examples](providers.md#multiple-accounts-with-numbered-keys).
 
+**Detected credentials** lists accounts available in the running Nexus environment,
+while the saved connection summary shows the model actually assigned to the selected
+agent. Finding a key does not automatically change your default model or prove API
+access. `nexus doctor` also reports environment credentials separately from saved
+connections and prior compatibility results; it never prints key values.
+
+For local models, start Ollama and choose **Connections → Ollama → Model → Use
+this model**. Nexus lists installed local text models from `127.0.0.1:11434` without
+an API key. It does not download models or start Ollama automatically. If the service
+is unavailable, open Ollama or run `ollama serve`, then use **Refresh providers**.
+Model listing alone does not prove tool-calling compatibility.
+
 For an installed macOS app, fully quit Nexus, then run `/Applications/NexusIDE.app/Contents/MacOS/NexusIDE` from the terminal containing those exports. Finder does not inherit them. Relaunch after changing exports; refreshing the picker cannot import changes made to another process's environment.
 
 ### Windows setup
@@ -95,7 +107,7 @@ npm install
 npm start
 ```
 
-The native packaged desktop application is currently macOS-only. On Windows, use the CLI or browser dashboard. Ollama can be used locally on Windows as an OpenAI-compatible service; start Ollama, pull a tool-capable model such as `gpt-oss:20b`, and configure its local endpoint under **Advanced connections & MCP** or with a compatible profile. Windows managed integrations and a native Windows installer remain future work.
+The native packaged desktop application is currently macOS-only. On Windows, use the CLI or browser dashboard. Start Ollama, install a tool-capable model, and select **Ollama** in Connections. Use **Advanced connections & MCP** for a different local endpoint. Windows managed integrations and a native Windows installer remain future work.
 
 For Anthropic, export a provider and API key in your shell:
 
@@ -113,6 +125,43 @@ This workspace now has a verified `local-ollama` profile using the already-insta
 Inspect saved compatibility evidence with `nexus providers`. To test your exact profile, run `nexus providers check NAME`; this sends only synthetic prompts and tool results, up to six requests, and may incur provider charges. It does not change your default route. Profiles can set `maxOutputTokens`, `timeoutMs`, and the compatible endpoint's `tokenLimitField`. See [provider compatibility](providers.md) for configuration, historical live results, credential isolation and untested targets.
 
 ## 4. Run an agent
+
+### Optional knowledge, review, and illustration tools
+
+In an initialized source workspace:
+
+```sh
+npm start -- extras install review
+npm start -- extras install anatomy
+npm start -- extras install cortex --engine /absolute/path/cortex/cortex.py --brain /absolute/path/cortex/brain
+```
+
+Use `nexus extras ...` from other projects after `npm link`. Each command keeps
+existing definitions. The four optional agents are additional to the 28 defaults.
+
+- **Cortex:** select `cortex-reader` to query your separately installed brain.
+  Discovery and reads carry source hashes and draft/verified labels. Only notes
+  are exposed; writes and verification are unavailable. This adapter currently
+  requires macOS or Linux. [Setup and limits](cortex.md).
+- **Independent review:** select the `independent-review` team with Offline demo
+  off. Assign different models to architect/plan-critic and
+  coder/implementation-inspector in Connections first. Account changes for the
+  same model do not qualify. Review has bounded rounds and a build approval gate;
+  current source must support final inspection. [Workflow details](independent-review.md).
+- **Code map:** open the new tab, review the local graph connection, allow queries,
+  and load indexes. Search a symbol to follow direct callers and callees or open
+  its source. It uses codebase-memory-mcp, not a second graph index. Coverage and
+  recorded indexing time are shown; confirm claims in current source. [Setup](code-map.md).
+- **Illustrations:** select `technical-illustrator` for an explanatory SVG.
+  Its optional Anatomy subset has a geometry kit and a working gauge example;
+  file writes require approval, and command execution starts disabled.
+  [Resources and limitations](anatomy.md).
+
+In an installed macOS app, the same CLI is bundled. From your project directory,
+invoke `/Applications/NexusIDE.app/Contents/Resources/runtime/bin/node` followed
+by `/Applications/NexusIDE.app/Contents/Resources/app/src/cli.js` and the `extras`
+arguments above. Reopen the workspace to see installed agents. Python and Cortex
+remain separate installations. The public application contains no private brain.
 
 ```sh
 npm start -- agents

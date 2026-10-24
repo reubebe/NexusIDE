@@ -28,6 +28,7 @@
         <button data-tab="settings">Connections</button>
         <button data-tab="terminal">Terminal</button>
         <button data-tab="files">Project files</button>
+        <button data-tab="code-map">Code map</button>
         <button data-tab="about">About</button>
       </nav>
       <div class="header-actions"><span class="status-pill"><i></i>Local runtime</span></div>
@@ -90,6 +91,13 @@
       </div>
     </section>
 
+    <section id="code-map" class="tab" hidden>
+      <header class="page-heading"><h1>Code map</h1><p>Find a function. Follow its callers and callees.<br>Open the source to check what the graph shows.</p></header>
+      <section class="workflow-section"><h2>Connect your code index</h2><p id="code-map-connection" class="helper" role="status">Open this tab to check the local graph connection.</p><pre id="code-map-command" hidden></pre><label class="code-map-consent"><input id="code-map-approved" type="checkbox" disabled> Allow the displayed local process and read queries for this view</label><div class="editor-actions"><button id="code-map-connect" class="secondary" disabled>Load indexes</button><button id="code-map-refresh" class="text-button">Refresh connection</button></div></section>
+      <form id="code-map-form" class="code-map-controls"><label>Index<select id="code-map-project" required disabled><option value="">Load indexes first</option></select></label><label>Function or symbol<input id="code-map-query" type="text" required maxlength="120" placeholder="For example, runAgent" disabled></label><button id="code-map-search" class="primary" disabled>Find symbol</button></form>
+      <p id="code-map-status" class="helper" role="status"></p><p id="code-map-freshness" class="helper"></p><div id="code-map-results" class="code-map-results"></div><section id="code-map-neighbors" hidden aria-label="Function relationships"></section>
+    </section>
+
     <section id="agents" class="tab" hidden>
       <header class="page-heading"><h1>Your agents</h1><p>Persistent roles with explicit tools and permissions.<br>Select one to review its definition.</p></header>
       <div class="section-heading"><span>01</span><div><h2>Agent library</h2><p>Choose the right role for the work.</p></div></div>
@@ -131,7 +139,8 @@
 
     <section id="settings" class="tab" hidden>
       <header class="page-heading"><h1>Connections</h1><p>Connect model providers and approved tool services.</p></header>
-      <section class="workflow-section"><header class="section-heading"><span>01</span><div><h2>Choose your model</h2><p>Connect using API keys already available to Nexus.</p></div></header>
+      <section class="workflow-section"><header class="section-heading"><span>01</span><div><h2>Choose your model</h2><p>Choose a local model or connect with a detected provider account.</p></div></header>
+        <p id="provider-credential-summary" class="helper" role="status">Checking available credentials…</p>
         <form id="provider-form" class="form-grid">
           <label>Provider / account<select id="provider-picker" required><option value="">Choose a provider / account</option></select></label>
           <p id="provider-status" class="helper" role="status">Checking environment…</p>
@@ -141,7 +150,7 @@
           <div class="editor-actions"><button id="connect-provider" class="primary" disabled>Use this model</button><button id="refresh-providers" type="button" class="secondary">Refresh providers</button></div>
           <p id="provider-selection-status" class="helper" role="status"></p>
         </form>
-        <p class="helper">Add a second account with a numbered export such as OPENAI_API_KEY2. The standard key is Account 1; numbered keys 2–99 appear as separate choices. Keys are used only by the runtime to authenticate with your selected account; their values are never displayed or saved in connection settings. Start Nexus from the terminal where your keys are exported. After changing exports, relaunch Nexus. Choose the region matching your API account.</p>
+        <p class="helper">A detected key makes an account available; choose a model and select Use this model to assign it. Detection and model listing do not verify generation access. Ollama needs a running local server and an installed model. Add a second cloud account with a numbered export such as OPENAI_API_KEY2; accounts 2–99 appear separately. Key values are never displayed or saved in connection settings. Start Nexus from the terminal where your keys are exported and relaunch after changing exports. Choose the region matching your API account.</p>
       </section>
       <section class="workflow-section"><details><summary>Advanced connections & MCP</summary><p class="helper">Edit custom endpoints, existing profiles, and tool services. Use environment variable names for secrets.</p><textarea id="config-editor" rows="24" spellcheck="false" aria-label="Connection configuration" aria-describedby="config-status"></textarea><div class="editor-actions"><button id="save-config" class="primary" disabled>Save connections</button></div><p id="config-status" class="helper" role="status">Loading connections…</p></details></section>
     </section>

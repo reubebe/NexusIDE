@@ -1,7 +1,7 @@
 {
   "version": 1,
   "protocolSuite": "nexus-provider-contract-v1",
-  "reviewed": "2026-10-09",
+  "reviewed": "2026-10-24",
   "scope": "Non-streaming text and client function tools. Adapter fixture coverage does not establish live model compatibility.",
   "adapters": [
     {
@@ -23,7 +23,7 @@
     { "id": "ollama", "adapter": "compatible", "baseUrl": "http://127.0.0.1:11434/v1", "model": "gpt-oss:20b", "evidence": "live-check-passed", "checkedAt": "2026-10-09T12:53:27.583Z", "tokenLimitField": "max_tokens", "maxOutputTokens": 4096, "text": "passed", "toolRoundTrip": "passed", "multipleToolCalls": "not-observed", "structuredOutput": "passed", "requests": 5, "inputTokens": 930, "outputTokens": 982, "receipt": ".nexus/provider-checks/local-ollama.json" },
     { "id": "openai", "adapter": "compatible", "baseUrl": "https://api.openai.com/v1", "model": "gpt-4.1-mini-2025-04-14", "evidence": "live-check-passed", "checkedAt": "2026-10-09T12:53:40.330Z", "tokenLimitField": "max_completion_tokens", "maxOutputTokens": 512, "text": "passed", "toolRoundTrip": "passed", "multipleToolCalls": "observed", "structuredOutput": "passed", "requests": 4, "inputTokens": 453, "outputTokens": 138, "receipt": ".nexus/provider-checks/environment-bda755a08fe32d82.json" },
     { "id": "anthropic", "adapter": "anthropic", "baseUrl": "https://api.anthropic.com/v1", "model": null, "evidence": "fixture-only", "liveBlocker": "No configured profile or available Anthropic credential" },
-    { "id": "gemini", "adapter": "compatible", "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai", "model": null, "evidence": "fixture-only", "liveBlocker": "No configured profile or available Google credential; compatibility endpoint only" },
+    { "id": "gemini", "adapter": "compatible", "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai", "model": "gemini-3.8-flash", "evidence": "live-check-failed", "checkedAt": "2026-10-24", "text": "failed", "toolRoundTrip": "failed", "multipleToolCalls": "observed", "structuredOutput": "not-run", "requests": 3, "liveBlocker": "Environment detection and model listing succeeded; synthetic generation encountered HTTP 503 and a 90-second probe deadline before completing the tool round trip. No project content sent.", "receipt": ".nexus/verification/gemini-integration-audit.json" },
     { "id": "other-compatible", "adapter": "compatible", "model": null, "evidence": "fixture-only", "liveBlocker": "No endpoint/model selected" }
   ]
 }

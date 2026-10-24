@@ -19,7 +19,12 @@ const catalog = [
   ...(id === 'qwen' ? { modelsUrl: 'https://dashscope-intl.aliyuncs.com/api/v1/models' } : {}),
   ...(id.startsWith('qwen') ? { note: 'For accounts requiring a workspace-specific endpoint, use Advanced connections. Streaming-only models are not supported by the current agent runtime.' } : {}) }));
 
+const ollama = { id: 'ollama', providerId: 'ollama', label: 'Ollama', kind: 'compatible', baseUrl: 'http://127.0.0.1:11434/v1', local: true, credential: 'not-required', service: 'unknown' };
+const modelIdPattern = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,199}$/;
+const cloudModel = id => /(?:-|:)cloud(?:[:/.-]|$)/i.test(id);
+
 function preset(id) {
+  if (id === 'ollama') return { ...ollama };
   // A preset ID chooses a provider-owned key name, never an arbitrary env var.
   const match = typeof id === 'string' && /^([a-z][a-z-]*)(?::([2-9]|[1-9][0-9]))?$/.exec(id);
   const found = match && catalog.find(p => p.id === match[1]);
@@ -35,13 +40,13 @@ export function credentialStatus(value) {
 }
 
 export function discoverProviders(env = process.env) {
-  return catalog.flatMap(base => {
+  return [...catalog.flatMap(base => {
     const accounts = [preset(base.id)];
     for (let account = 2; account <= 99; account++) {
       if (Object.hasOwn(env, base.keyEnv + account)) accounts.push(preset(`${base.id}:${account}`));
     }
     return accounts.map(p => ({ ...p, credential: credentialStatus(env[p.keyEnv]) }));
-  });
+  }), { ...ollama }];
 }
 
 export function isAgentModel(id, provider = '') {
@@ -56,6 +61,25 @@ export function isAgentModel(id, provider = '') {
 
 export async function discoverModels(id, { env = process.env, fetchImpl = fetch } = {}) {
   const p = preset(id);
+  if (p.local) {
+    try {
+      // Only the local service is queried. Never forward environment keys or
+      // follow redirects, and bound both response bytes and request duration.
+      const response = await fetchImpl(new URL('http://127.0.0.1:11434/api/tags'), { signal: AbortSignal.timeout(5000), redirect: 'error' });
+      if (!response.ok) throw new Error('Local service unavailable.');
+      const data = await readProviderJson(response, 1024 * 1024);
+      if (!Array.isArray(data.models) || data.models.length > 2000) throw new Error('Invalid local model list.');
+      const models = [...new Set(data.models.filter(item => !item?.remote_host && !item?.remote_model)
+        .map(item => item?.name || item?.model)
+        .filter(model => typeof model === 'string' && modelIdPattern.test(model) && isAgentModel(model)
+          && !/embed|^bge(?:-|:)/i.test(model) && !cloudModel(model)))].sort();
+      return { models, local: true, service: 'ready', note: models.length
+        ? 'Ollama is running locally. Choose an installed text model with tool calling; this list does not verify agent compatibility. No API key is needed.'
+        : 'Ollama is running, but no installed local text models were found. Pull a tool-capable model in Ollama, then refresh models. No API key is needed.' };
+    } catch {
+      throw new Error('Could not reach Ollama at 127.0.0.1:11434 or read its model list. Open Ollama or run ollama serve, then refresh models. No API key is needed.');
+    }
+  }
   if (credentialStatus(env[p.keyEnv]) !== 'available') throw new Error(`Set a real ${p.keyEnv} before loading models.`);
   const headers = p.kind === 'anthropic'
     ? { 'x-api-key': env[p.keyEnv], 'anthropic-version': '2023-06-01' }
@@ -92,13 +116,14 @@ export async function discoverModels(id, { env = process.env, fetchImpl = fetch 
 
 export function applyProviderSelection(config, { provider, model, route = 'default' }, env = process.env) {
   const p = preset(provider);
-  if (credentialStatus(env[p.keyEnv]) !== 'available') throw new Error(`Set a real ${p.keyEnv} before connecting.`);
-  if (typeof model !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,199}$/.test(model)) throw new Error('Enter a valid model ID.');
+  if (!p.local && credentialStatus(env[p.keyEnv]) !== 'available') throw new Error(`Set a real ${p.keyEnv} before connecting.`);
+  if (typeof model !== 'string' || !modelIdPattern.test(model)) throw new Error('Enter a valid model ID.');
+  if (p.local && cloudModel(model)) throw new Error('Choose an installed local Ollama model. Cloud models are not part of this local connection.');
   if (typeof route !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(route)) throw new Error('Invalid agent route.');
   const next = structuredClone(config);
   // Reuse identical selections without growing configuration on every click.
   // Profiles are immutable here: changing a route never changes another route.
-  const profile = { kind: p.kind, model, baseUrl: p.baseUrl, keyEnv: p.keyEnv, ...(p.providerId === 'openai' ? { tokenLimitField: 'max_completion_tokens' } : {}), maxOutputTokens: 4096 };
+  const profile = { kind: p.kind, model, baseUrl: p.baseUrl, ...(p.keyEnv ? { keyEnv: p.keyEnv } : {}), ...(p.providerId === 'openai' ? { tokenLimitField: 'max_completion_tokens' } : {}), maxOutputTokens: 4096 };
   const fingerprint = createHash('sha256').update(JSON.stringify(profile)).digest('hex').slice(0, 16);
   const stem = `picker-${p.providerId}-${fingerprint}`;
   let name = stem, suffix = 1;

@@ -7,8 +7,15 @@ import { listSkills } from './skills.js';
 import { runProcess } from './process.js';
 import { readState } from './state.js';
 import { providerMatrix } from './provider-verification.js';
+import { discoverProviders } from './provider-catalog.js';
 
-const verificationNames = ['workflow-audit', 'storage-scale', 'local-model', 'development', 'docker', 'vscode', 'zed', 'desktop', 'bundled-desktop', 'bundled-native-visual', 'integration-lifecycle', 'native-visual', 'dashboard-visual', 'responsive', 'semantic-memory', 'codegraph', 'codegraph-project', 'research-harness', 'research-harness-current', 'research-evidence', 'tradingagents', 'openmontage', 'rea', 'hyper-extract'];
+const verificationNames = ['workflow-audit', 'storage-scale', 'local-model', 'development', 'docker', 'vscode', 'zed', 'desktop', 'bundled-desktop', 'bundled-native-visual', 'integration-lifecycle', 'native-visual', 'dashboard-visual', 'responsive', 'semantic-memory', 'codegraph', 'codegraph-project', 'cortex', 'research-harness', 'research-harness-current', 'research-evidence', 'tradingagents', 'openmontage', 'rea', 'hyper-extract'];
+export function providerEnvironment(env = process.env) {
+  // Credential presence is independent of saved connections and verification.
+  // Explicit projection prevents keys or unrelated environment values leaking.
+  return discoverProviders(env).filter(provider => !provider.local && provider.keyEnv)
+    .map(({ id, label, keyEnv, credential }) => ({ id, label, keyEnv, credential }));
+}
 export async function verificationHistory(root) {
   return (await Promise.all(verificationNames.map(async name => {
     try {
@@ -42,8 +49,9 @@ export async function doctor(root) {
   let docker = 'not-installed';
   if (await executableAvailable('docker')) { const result = await runProcess('docker', ['info', '--format', '{{.ServerVersion}}'], { cwd: root, timeoutMs: 3000 }); docker = result.code === 0 && /^\d+\.\d+\.\d+[\w.+-]*$/.test(result.output.trim()) ? `running: ${result.output.trim()}` : 'daemon-unavailable'; }
   return { node: process.version, root, agents: agents.length, skills: skills.length, missingSkills, docker, connections,
+    environmentProviders: providerEnvironment(),
     providerCompatibility: (await providerMatrix(root)).profiles.map(({ name, evidence, lastChecked, receipt }) => ({ name, evidence, lastChecked, receipt })),
     embeddings: config.embeddings ? { configured: true, model: config.embeddings.model, liveVerified: false } : { configured: false },
     verificationHistory: await verificationHistory(root),
-    notes: ['Executable availability does not prove integration compatibility.', 'Doctor does not call model APIs or start external MCP/application servers.', 'Verification history is locally recorded evidence from earlier checks, not a fresh check or proof that current configuration is unchanged.'] };
+    notes: ['Executable availability does not prove integration compatibility.', 'Environment provider status describes keys inherited by this process, independently of saved connections. An available key has not been authenticated or verified for model access.', 'Doctor does not call model APIs or start external MCP/application servers.', 'Verification history is locally recorded evidence from earlier checks, not a fresh check or proof that current configuration is unchanged.'] };
 }

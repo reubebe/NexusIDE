@@ -41,6 +41,17 @@ flowchart TD
 
 ## Integration progress
 
+The optional Cortex reader exposes hash-pinned, bounded, redacted note retrieval
+from a separately installed Python engine. Independent review is an opt-in
+four-stage workflow with distinct configured author/reviewer models, limited
+plan revisions, source-backed JSON verdicts and a final fresh inspector. Its
+shared workspace requirement is explicit; per-stage isolated worktrees and demo
+mode are rejected. The Code map adds focused caller/callee navigation over the
+existing codebase-memory-mcp backend. Anatomy is a small optional SVG skill
+adaptation with retained upstream license and provenance. Setup uses
+`nexus extras install`; see the user guide. These features do not add a second
+research orchestrator, a new graph engine, or a new model provider.
+
 This workspace has development agents, research/trading/movie packs, selected imported Agency Agents and seven imported skills. Advanced connections include Research Harness, code graph, REA and Hyper-Extract; definitions and grants remain private local `.nexus` state, not bundled source. CLI-Anything is imported as an instruction skill for the non-executing planner. A bounded static scanner records skill findings; scan results and hashes are not a safety certificate.
 
 Research Harness first passed a connection/read check, then a real-abstract evidence retrieval and local-model summary check. See `.nexus/verification/research-harness.json` and `research-evidence.json`. This does not validate an entire research study or its conclusions.

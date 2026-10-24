@@ -61,6 +61,7 @@ test('positive payload allowlist excludes private state and developer dependenci
   await mkdir(path.join(source, 'src', '__pycache__'));
   await writeFile(path.join(source, 'src', '__pycache__', 'reader.cpython-313.pyc'), 'generated');
   await writeFile(path.join(source, 'src', 'reader.pyc'), 'generated');
+  await writeFile(path.join(source, 'src', '.DS_Store'), 'Finder metadata');
   await writeFile(path.join(source, '.nexus', 'secret'), 'private');
   await writeFile(path.join(source, '.env'), 'private');
   await copyPayload(source, destination, { directories: ['src'], files: [] });

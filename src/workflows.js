@@ -5,6 +5,7 @@ import { routeProvider, loadConfig } from './config.js';
 import { createWorktree } from './worktrees.js';
 import { readState, writeState, safeName } from './state.js';
 import { currentOwner } from './recovery.js';
+import { validateReviewPolicy, runIndependentReview } from './independent-review.js';
 
 export function validateWorkflow(workflow) {
   if (workflow.version !== 1 || !Array.isArray(workflow.steps) || !workflow.steps.length || workflow.steps.length > 30) throw new Error('Workflow needs version 1 and 1–30 steps.');
@@ -23,6 +24,7 @@ export function validateWorkflow(workflow) {
     if (!ready.length) throw new Error('Workflow has a cycle or missing dependency.');
     ready.forEach(s => done.add(s.id));
   }
+  if (workflow.reviewPolicy !== undefined) validateReviewPolicy(workflow);
   return workflow;
 }
 export async function runWorkflow({ root, workflow, task, approve = async () => false, onEvent = () => {}, demo = false, allowCommands = false, signal, concurrency = 2, isolated = false, ...options }) {
@@ -41,6 +43,11 @@ export async function runWorkflow({ root, workflow, task, approve = async () => 
   }
   try {
     await save();
+    if (workflow.reviewPolicy !== undefined) {
+      await runIndependentReview({ root, workflow, task, prepared, record, save, config, approve, onEvent, signal, isolated, demo, options });
+      record.status = 'completed';
+      return record;
+    }
     while (Object.keys(record.steps).length < workflow.steps.length) {
       signal?.throwIfAborted();
       let ready = workflow.steps.filter(s => !record.steps[s.id] && (s.dependsOn || []).every(d => record.steps[d]?.status === 'completed')).slice(0, concurrency);

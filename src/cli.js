@@ -68,6 +68,7 @@ const help = `NexusIDE · One runtime. Any agent. Any model.
   nexus terminal                          Interactive terminal wrapper
   nexus acp [--demo]                       Editor Agent Client Protocol bridge
   nexus packs install                     Install research and hobby teams
+  nexus extras install cortex|review|anatomy  Set up optional knowledge, review or illustration tools
   nexus integrations                      Show integration catalog
   nexus integration status [name]         Check optional runtime installation
   nexus integration install <name>        Install TradingAgents or OpenMontage
@@ -99,7 +100,7 @@ Provider env: NEXUS_PROVIDER, NEXUS_MODEL, NEXUS_API_KEY, NEXUS_BASE_URL.`;
 
 export function parseOptions(args) {
   const options = {}, positional = [];
-  const values = new Set(['provider', 'worktree', 'resume', 'sandbox-image', 'concurrency', 'agent', 'port', 'mode', 'layer', 'category', 'status', 'offset', 'limit', 'revision']);
+  const values = new Set(['provider', 'worktree', 'resume', 'sandbox-image', 'concurrency', 'agent', 'port', 'mode', 'layer', 'category', 'status', 'offset', 'limit', 'revision', 'engine', 'brain', 'python']);
   const flags = new Set(['demo', 'allow-commands', 'isolated', 'force', 'all-scopes']);
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--') { positional.push(...args.slice(i + 1)); break; }
@@ -122,6 +123,11 @@ async function main() {
   if (command === 'acp') { const { startAcp } = await import('./acp.js'); return startAcp({ demo: options.demo, allowCommands: options['allow-commands'] }); }
   if (command === 'packs' && args[0] === 'install') { const { installPacks } = await import('./packs.js'); return print(await installPacks(root)); }
   if (command === 'integrations') return print(await readFile(new URL('../integrations/catalog.json', import.meta.url), 'utf8'));
+  if (command === 'extras') {
+    if (args[0] !== 'install' || args.length !== 2) throw new Error('Use nexus extras install cortex --engine /path/cortex.py --brain /path/brain [--python python3], or nexus extras install review|anatomy.');
+    const { installOptionalIntegration } = await import('./optional-integrations.js');
+    return print(JSON.stringify(await installOptionalIntegration(root, args[1], options), null, 2));
+  }
   if (command === 'integration') {
     const controller = new AbortController();
     const cancel = () => controller.abort(new Error('Integration operation cancelled.'));

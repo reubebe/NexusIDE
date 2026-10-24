@@ -12,9 +12,58 @@ test('catalog detects only named keys and distinguishes example credentials with
   assert.equal(result.find(p => p.id === 'openai').credential, 'available');
   assert.equal(result.find(p => p.id === 'anthropic').credential, 'placeholder');
   assert.equal(result.find(p => p.id === 'gemini').credential, 'missing');
-  assert.equal(new Set(result.map(p => p.keyEnv)).size, 8);
+  assert.equal(new Set(result.filter(p => !p.local).map(p => p.keyEnv)).size, 8);
   assert.ok(!JSON.stringify(result).includes('private-test-value'));
   assert.ok(!JSON.stringify(result).includes('other-secret'));
+});
+
+test('Ollama discovery uses only the fixed local endpoint without keys, redirects, or cloud models', async () => {
+  const local = discoverProviders({ OLLAMA_API_KEY: 'private-cloud-key', OPENAI_API_KEY: 'private-openai-key' }).find(p => p.id === 'ollama');
+  assert.equal(local.local, true); assert.equal(local.credential, 'not-required'); assert.equal(local.service, 'unknown');
+  assert.equal(Object.hasOwn(local, 'keyEnv'), false);
+  const result = await discoverModels('ollama', { env: { OLLAMA_HOST: 'https://example.com', OPENAI_API_KEY: 'private-key' }, fetchImpl: async (url, options) => {
+    assert.equal(String(url), 'http://127.0.0.1:11434/api/tags');
+    assert.equal(options.headers, undefined); assert.equal(options.redirect, 'error'); assert.ok(options.signal instanceof AbortSignal);
+    return Response.json({ models: [{ name: 'qwen3:8b' }, { model: 'gpt-oss:20b' }, { name: 'qwen3:8b' }, { name: 'nomic-embed-text:latest' },
+      { name: 'qwen3:cloud' }, { name: 'gpt-oss:120b-cloud' }, { name: 'remote-model', remote_host: 'https://ollama.com' }, { name: '<script>' }] });
+  } });
+  assert.deepEqual(result.models, ['gpt-oss:20b', 'qwen3:8b']);
+  assert.equal(result.service, 'ready'); assert.match(result.note, /does not verify agent compatibility/);
+  await assert.rejects(discoverModels('ollama:2', { fetchImpl: () => assert.fail('Local provider has no numbered accounts') }), /Unknown provider/);
+});
+
+test('Ollama discovery gives safe recovery instructions for absent service, malformed lists and oversized responses', async () => {
+  for (const fetchImpl of [async () => { throw new Error('private transport details'); }, async () => Response.json({ error: 'private body' }, { status: 503 }),
+    async () => Response.json({ models: null }), async () => Response.json({ models: [], padding: 'x'.repeat(1024 * 1024) })]) {
+    await assert.rejects(discoverModels('ollama', { env: {}, fetchImpl }), error => {
+      assert.match(error.message, /Open Ollama or run ollama serve/); assert.doesNotMatch(error.message, /private/); return true;
+    });
+  }
+  const empty = await discoverModels('ollama', { env: {}, fetchImpl: async () => Response.json({ models: [] }) });
+  assert.equal(empty.service, 'ready'); assert.deepEqual(empty.models, []); assert.match(empty.note, /Pull a tool-capable model/);
+});
+
+test('Ollama selection is explicit and immutable, has no key, and sends no cloud credentials at runtime', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'nexus-local-provider-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const config = structuredClone(defaultConfig);
+  const selected = applyProviderSelection(config, { provider: 'ollama', model: 'gpt-oss:20b', route: 'coder' }, {});
+  validateConfig(selected);
+  assert.deepEqual(config, defaultConfig); assert.equal(selected.routes.default, config.routes.default);
+  const profile = selected.providers[selected.routes.coder];
+  assert.equal(profile.baseUrl, 'http://127.0.0.1:11434/v1'); assert.equal(Object.hasOwn(profile, 'keyEnv'), false);
+  assert.deepEqual(applyProviderSelection(selected, { provider: 'ollama', model: 'gpt-oss:20b', route: 'coder' }, {}), selected);
+  const again = applyProviderSelection(selected, { provider: 'ollama', model: 'qwen3:8b', route: 'default' }, {});
+  assert.equal(again.routes.coder, selected.routes.coder);
+  await saveConfig(root, selected);
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.equal(String(url), 'http://127.0.0.1:11434/v1/chat/completions'); assert.equal(options.headers.authorization, undefined);
+    return Response.json({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: 'Local reply.' } }] });
+  });
+  const provider = await routeProvider(root, { name: 'coder' }, { env: { OPENAI_API_KEY: 'private-cloud-key', NEXUS_API_KEY: 'another-private-key' } });
+  await provider.complete([{ role: 'user', content: 'Test.' }]);
+  assert.deepEqual(provider.sensitiveValues, []);
+  assert.throws(() => applyProviderSelection(config, { provider: 'ollama', model: 'gpt-oss:120b-cloud' }, {}), /installed local/);
 });
 
 test('numbered accounts are discovered independently, ordered numerically, and never expose key values', () => {
@@ -32,7 +81,7 @@ test('numbered accounts are discovered independently, ordered numerically, and n
 });
 
 test('all provider and region presets use the selected account for model discovery, without falling back', async () => {
-  for (const p of discoverProviders({})) {
+  for (const p of discoverProviders({}).filter(p => !p.local)) {
     const env = { [p.keyEnv]: 'first-private-key', [p.keyEnv + '2']: 'second-private-key' };
     const result = await discoverModels(`${p.id}:2`, { env, fetchImpl: async (url, options) => {
       assert.equal(options.headers[p.kind === 'anthropic' ? 'x-api-key' : 'authorization'], p.kind === 'anthropic' ? 'second-private-key' : 'Bearer second-private-key');
@@ -74,7 +123,7 @@ test('two accounts can route separate agents to the same model with distinct run
 });
 
 test('each preset uses only its own credential and fixed HTTPS endpoint', async () => {
-  for (const p of discoverProviders({})) {
+  for (const p of discoverProviders({}).filter(p => !p.local)) {
     let requested;
     const result = await discoverModels(p.id, { env: { [p.keyEnv]: 'fixture-secret' }, fetchImpl: async (url, options) => {
       requested = String(url);

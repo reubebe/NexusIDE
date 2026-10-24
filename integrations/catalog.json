@@ -1,8 +1,31 @@
 {
   "version": 1,
-  "reviewed": "2026-10-07",
+  "reviewed": "2026-10-24",
   "policy": "Imports preserve provenance and do not execute installers, hooks, or scripts. External services require explicit configuration and grants.",
   "integrations": [
+    {
+      "id": "cortex",
+      "role": "Read-only curated knowledge",
+      "status": "optional-reader-adapter",
+      "adapter": "integrations/cortex-reader.py",
+      "note": "Explicit local engine and brain paths; engine SHA-256 pin; three bounded read tools with source hashes and review labels. Validated against Cortex 0.2 using synthetic notes. Engine and private brain are not bundled. See docs/cortex.md."
+    },
+    {
+      "id": "anatomy",
+      "source": "https://github.com/wheresryan22/anatomy",
+      "role": "Technical SVG illustrations",
+      "status": "optional-bundled-subset",
+      "revision": "1482e8469b0a9e0d8cc18ea2740a01423d29ae80",
+      "license": "MIT",
+      "note": "Eight-file subset with provenance, geometry kit and offline dial example. Install with nexus extras install anatomy; technical-illustrator has no execution grant. See docs/anatomy.md."
+    },
+    {
+      "id": "claudex-loop",
+      "source": "https://github.com/chaseai-yt/claudex-loop",
+      "role": "Independent author/reviewer workflow reference",
+      "status": "pattern-adapted",
+      "note": "Nexus-native plan, plan review, build and final inspection with distinct model IDs, bounded revisions and source-checked evidence. No external coordinator or CLI dependency. Install with nexus extras install review. See docs/independent-review.md."
+    },
     {
       "id": "agency-agents",
       "source": "https://github.com/msitarzewski/agency-agents",
@@ -77,7 +100,7 @@
       "source": "https://github.com/DeusData/codebase-memory-mcp",
       "role": "Persistent code intelligence",
       "status": "local-mcp-verified",
-      "note": "macOS arm64 release installed with checksum and GitHub build-attestation verification. Synthetic MCP indexing, function search, caller trace and index-root containment passed. Read-only codebase-navigator configured; real src-only index queried successfully. See docs/codegraph.md.",
+      "note": "macOS arm64 release installed with checksum and GitHub build-attestation verification. Synthetic MCP indexing, function search, caller trace and index-root containment passed. Read-only codebase-navigator configured; real src-only index queried successfully. Nexus Code map adds a consent-gated symbol and relationship view using this same backend. See docs/codegraph.md and docs/code-map.md.",
       "revision": "v0.11.0"
     },
     {
@@ -85,7 +108,7 @@
       "source": "https://github.com/colbymchenry/codegraph",
       "role": "Alternative code graph",
       "status": "mcp-config-template",
-      "note": "Use as an alternative to codebase-memory to avoid duplicate indexes."
+      "note": "Alternative template only; not installed or used by Nexus Code map. The selected backend remains codebase-memory-mcp to avoid duplicate indexes."
     },
     {
       "id": "browser-use",

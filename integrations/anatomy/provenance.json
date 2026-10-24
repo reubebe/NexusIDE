@@ -1,0 +1,19 @@
+{
+  "source": "https://github.com/wheresryan22/anatomy",
+  "revision": "1482e8469b0a9e0d8cc18ea2740a01423d29ae80",
+  "license": "MIT",
+  "upstreamCopyright": "Copyright (c) 2026 Ryan",
+  "adaptation": "Nexus SVG subset: original geometry kit, stylesheet and dial example; new concise Nexus instructions and SVG-only inline helper.",
+  "copiedFiles": {
+    "kit/iso-kit.mjs": "6d3ecc725d30c3b0346da309cf61dfa5a65017c23620bbd4093009d4fb104018",
+    "kit/iso.css": "ef19bac5a42ba9be42b56b2c1cf7fc7e21d332a8060765e9ca1d987b8ab23924",
+    "examples/dial-indicator/build.mjs": "e4eaa2324af7f2630650ca72e52a78d56159213a786e14fba8321344789f990d",
+    "LICENSE": "87c078ab9d90a3044f359e6b563d4e6afea7aa060897cf4f21618687b3856796"
+  },
+  "excluded": [
+    "WebGL and 3D engines",
+    "large generated HTML and PDF files",
+    "other examples",
+    "browser automation and publishing tools"
+  ]
+}

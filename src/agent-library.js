@@ -12,9 +12,10 @@ export async function bundledAgents() {
   return Promise.all(files.map(async file => validateAgent(JSON.parse(await readFile(path.join(libraryRoot, file), 'utf8')))));
 }
 
-export async function installBundledAgents(root, { onAgent = () => {} } = {}) {
+export async function installBundledAgents(root, { onAgent = () => {}, exclude = [] } = {}) {
   const created = [], kept = [];
   for (const agent of await bundledAgents()) {
+    if (exclude.includes(agent.name)) continue;
     try {
       await installAgent(root, agent); created.push(agent.name); onAgent(agent.name, true);
     } catch (error) {

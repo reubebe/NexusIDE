@@ -26,6 +26,14 @@ Build a team of specialized AI agents for coding and research—with shared proj
 
 Start with a development team—architect → coder → reviewer—or assemble research, trading-research, and movie-planning workflows using the optional packs and explicitly configured integrations. External tools and model services require their own setup.
 
+Optional additions include [Cortex knowledge retrieval](docs/cortex.md),
+[independent plan and implementation reviews](docs/independent-review.md),
+the [Code map](docs/code-map.md), and [Anatomy technical illustrations](docs/anatomy.md).
+Use `nexus extras install review` or `nexus extras install anatomy` in an initialized
+workspace. Cortex setup needs explicit engine and brain paths. The Code map uses
+the existing optional codebase-memory-mcp connection. These are opt-in additions
+to the 28 default agents; private knowledge and external engines are not bundled.
+
 ## Architecture
 
 One shared runtime connects your interfaces, agents, models, approved tools, and local project state. This is the same system map shown in **About** inside the app.
@@ -38,7 +46,7 @@ One shared runtime connects your interfaces, agents, models, approved tools, and
 
 NexusIDE includes a working agent runtime, SQLite-backed history and retrieval, editor adapters, and a self-contained **macOS development app**. The app is ad-hoc signed, not Developer ID signed or notarized. Windows and Linux desktop builds remain future work.
 
-The [workflow audit](docs/audit-2026-10-08.md), [provider matrix](docs/providers.md), and [security boundaries](SECURITY.md) document what has been checked and what remains unverified. Release preparation includes [signing/notarization tooling](docs/macos-release.md), an [isolated install/recovery rehearsal](docs/release-testing.md), and [internal security review](docs/security-review-2026-10-09.md). Apple enrollment, genuine clean-device acceptance, and a [consented production pilot](docs/production-pilot.md) remain release gates; automated passes are not production certification.
+The latest [integration and connection audit](docs/audit-2026-10-24.md), earlier [workflow audit](docs/audit-2026-10-08.md), [provider matrix](docs/providers.md), and [security boundaries](SECURITY.md) document what has been checked and what remains unverified. Release preparation includes [signing/notarization tooling](docs/macos-release.md), an [isolated install/recovery rehearsal](docs/release-testing.md), and [internal security review](docs/security-review-2026-10-09.md). Apple enrollment, genuine clean-device acceptance, and a [consented production pilot](docs/production-pilot.md) remain release gates; automated passes are not production certification.
 
 Explore the [illustrated user guide](docs/user-guide.md) for task planning, agent configuration, memory, approvals, and the Research Harness connection—or try the offline walkthrough below.
 

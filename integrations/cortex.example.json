@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "providers": {},
+  "routes": {},
+  "mcp": {
+    "cortex": {
+      "command": "/ABSOLUTE/PATH/TO/python3",
+      "args": ["-I", "-B", "/ABSOLUTE/PATH/NexusIDE/integrations/cortex-reader.py", "--engine", "/ABSOLUTE/PATH/cortex/cortex.py", "--engine-sha256", "REPLACE_WITH_REVIEWED_ENGINE_SHA256", "--brain", "/ABSOLUTE/PATH/cortex/brain"],
+      "tools": ["cortex_find", "cortex_read", "cortex_context"],
+      "envKeys": []
+    }
+  }
+}

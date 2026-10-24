@@ -160,3 +160,63 @@ test('failed save releases busy state without discarding the advanced draft', as
   await assert.rejects(picker.saveConfig(), /Workspace busy/);
   assert.equal(picker.busy, false); assert.equal(picker.dirty, true);
 });
+
+const ollama = { id: 'ollama', label: 'Ollama', kind: 'compatible', baseUrl: 'http://127.0.0.1:11434/v1', local: true, credential: 'not-required', service: 'unknown' };
+
+test('local picker checks installed models on selection, requires an explicit save, and labels its saved route', async () => {
+  const listing = deferred(), requests = [], selections = [];
+  let current = config();
+  const picker = createProviderPicker(async (route, method, body) => {
+    requests.push(route);
+    if (route === 'config') return structuredClone(current);
+    if (route === 'providers') return { providers: [...catalog, ollama] };
+    if (route === 'providers/models?provider=ollama') return listing.promise;
+    assert.equal(route, 'providers/select'); assert.equal(method, 'POST'); selections.push(body);
+    current.providers.ollama = { kind: ollama.kind, baseUrl: ollama.baseUrl, model: body.model };
+    current.routes[body.route] = 'ollama';
+  });
+  await picker.loadConfig(); await picker.refreshProviders();
+  assert.deepEqual(requests, ['config', 'providers']); assert.equal(picker.localService, 'unknown');
+  const loading = picker.selectProvider('ollama');
+  assert.equal(picker.canConnect, false); assert.match(picker.note, /No API key/);
+  listing.resolve({ models: ['gpt-oss:20b'], note: 'Installed local models.' }); await loading;
+  assert.equal(picker.localService, 'ready'); assert.equal(picker.model, ''); assert.equal(picker.canConnect, false);
+  assert.deepEqual(selections, []); assert.equal(current.routes.default, 'local');
+  picker.model = '__custom__'; picker.customModel = 'not-installed'; assert.equal(picker.canConnect, false);
+  picker.model = 'gpt-oss:20b'; assert.equal(picker.canConnect, true);
+  await picker.connect();
+  assert.deepEqual(selections, [{ provider: 'ollama', model: 'gpt-oss:20b', route: 'default' }]);
+  assert.match(picker.selectionStatus, /gpt-oss:20b · Ollama \(local · no API key\)/);
+});
+
+test('local service errors block saving, can recover, and do not overwrite a later cloud selection', async () => {
+  let list = async () => { throw new Error('Open Ollama or run ollama serve, then refresh models.'); };
+  const picker = createProviderPicker(async route => {
+    if (route === 'config') return config();
+    if (route === 'providers') return { providers: [...catalog, ollama] };
+    if (route.endsWith('ollama')) return list();
+    return { models: ['cloud-model'], note: 'Cloud listing.' };
+  });
+  await picker.loadConfig(); await picker.refreshProviders();
+  await picker.selectProvider('ollama', 'gpt-oss:20b');
+  assert.equal(picker.localService, 'unavailable'); assert.equal(picker.model, ''); assert.equal(picker.canConnect, false); assert.match(picker.note, /Open Ollama/);
+  list = async () => ({ models: ['gpt-oss:20b'], note: 'Ready.' });
+  await picker.selectProvider('ollama', 'gpt-oss:20b'); assert.equal(picker.canConnect, true);
+  const pending = deferred(); list = () => pending.promise;
+  const localRequest = picker.selectProvider('ollama');
+  await picker.selectProvider('gemini'); picker.model = 'cloud-model';
+  pending.resolve({ models: ['gpt-oss:20b'], note: 'Stale local response.' }); await localRequest;
+  assert.equal(picker.localService, 'unknown'); assert.equal(picker.provider, 'gemini'); assert.equal(picker.note, 'Cloud listing.'); assert.equal(picker.canConnect, true);
+});
+
+test('credential summary separates environment detection from access verification and local service', async () => {
+  const picker = createProviderPicker(async route => route === 'config' ? config() : { providers: [ollama,
+    { id: 'gemini', label: 'Google · Gemini · Account 1', keyEnv: 'GEMINI_API_KEY', credential: 'available' },
+    { id: 'openai', label: 'OpenAI', keyEnv: 'OPENAI_API_KEY', credential: 'missing' }] });
+  await picker.loadConfig(); await picker.refreshProviders();
+  assert.match(picker.credentialSummary, /Google · Gemini · Account 1 \(GEMINI_API_KEY\)/);
+  assert.match(picker.credentialSummary, /does not verify account access/);
+  assert.match(picker.credentialSummary, /Ollama needs no API key/);
+  assert.doesNotMatch(picker.credentialSummary, /OPENAI_API_KEY/);
+  picker.catalog = [ollama]; assert.match(picker.credentialSummary, /No cloud API keys detected/);
+});

@@ -1,6 +1,7 @@
 import { createFileEditor } from './file-editor.js';
 import { renderWhenChanged } from './render-cache.js';
 import { createProviderPicker } from './provider-picker.js';
+import { createCodeMap } from './code-map.js';
 const $ = id => document.getElementById(id);
 const initialToken = location.hash.slice(1);
 if (/^[a-f0-9]{64}$/.test(initialToken)) { sessionStorage.setItem('nexus-token', initialToken); history.replaceState(null, '', '/'); }
@@ -43,7 +44,14 @@ async function api(path, method = 'GET', data) {
 }
 const node = (tag, text, className) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (className) n.className = className; return n; };
 const action = fn => async event => { event?.preventDefault(); try { $('notice').textContent = ''; await fn(); } catch (e) { $('notice').textContent = e.message; } };
-const titles = { workspace: 'Tasks', files: 'Project files', agents: 'Agents', history: 'Run library', memory: 'Memory', settings: 'Connections', terminal: 'Terminal', about: 'About Nexus' };
+const codeMap = createCodeMap({ api, openSource: async (file, lines) => {
+  const opening = fileEditor.open(file); renderFileEditor();
+  try { await opening; showTab('files'); renderFileEditor();
+    const line = Number.parseInt(lines, 10);
+    if (line > 0) { const editor = $('file-content'), start = editor.value.split('\n').slice(0, line - 1).join('\n').length + (line > 1 ? 1 : 0); editor.focus(); editor.setSelectionRange(start, start); editor.scrollTop = Math.max(0, (line - 4) * 20); }
+  } finally { renderFileEditor(); }
+} });
+const titles = { workspace: 'Tasks', files: 'Project files', agents: 'Agents', history: 'Run library', memory: 'Memory', settings: 'Connections', terminal: 'Terminal', about: 'About Nexus', 'code-map': 'Code map' };
 function showTab(tab) {
   if (!Object.hasOwn(titles, tab)) return;
   for (const section of document.querySelectorAll('.tab')) section.hidden = section.id !== tab;
@@ -54,6 +62,7 @@ function showTab(tab) {
   $('page-title').textContent = titles[tab];
   if (tab === 'files') action(() => loadFiles())();
   if (tab === 'memory') action(() => refreshMemories())();
+  if (tab === 'code-map') codeMap.load();
 }
 for (const button of document.querySelectorAll('[data-tab]')) button.onclick = () => showTab(button.dataset.tab);
 if (initialToken === 'about') showTab('about');
@@ -429,16 +438,20 @@ const providerPicker = createProviderPicker(api, renderProviders);
 function renderProviders() {
   const picker = providerPicker, p = picker.catalog.find(p => p.id === picker.provider);
   renderWhenChanged($('provider-picker'), JSON.stringify(picker.catalog), () => {
-    $('provider-picker').replaceChildren(option('', 'Choose a provider / account'), ...picker.catalog.map(p => option(p.id, `${p.label} · ${p.credential === 'available' ? 'key detected' : p.credential === 'placeholder' ? 'example key' : 'key needed'}`)));
+    $('provider-picker').replaceChildren(option('', 'Choose a provider / account'), ...picker.catalog.map(p => option(p.id, `${p.label} · ${p.local ? 'local · no API key' : p.credential === 'available' ? 'key detected' : p.credential === 'placeholder' ? 'example key' : 'key needed'}`)));
   });
   $('provider-picker').value = picker.provider;
   $('provider-picker').disabled = picker.busy;
-  renderWhenChanged($('model-picker'), JSON.stringify([picker.provider, p?.credential, picker.loading, picker.models]), () => {
-    const placeholder = picker.loading ? 'Loading account models…' : !p ? 'Choose a provider / account first' : p.credential !== 'available' ? 'API key needed' : 'Choose a model';
-    $('model-picker').replaceChildren(option('', placeholder), ...picker.models.map(id => option(id, id)), ...(!picker.loading && p?.credential === 'available' ? [option('__custom__', 'Enter a model ID…')] : []));
+  renderWhenChanged($('model-picker'), JSON.stringify([picker.provider, p?.credential, picker.loading, picker.localService, picker.models]), () => {
+    let placeholder = 'Choose a provider / account first';
+    if (picker.loading) placeholder = p?.local ? 'Loading local models…' : 'Loading account models…';
+    else if (p?.local) placeholder = picker.localService !== 'ready' ? 'Start Ollama, then refresh models'
+      : picker.models.length ? 'Choose an installed local model' : 'No local text models installed';
+    else if (p) placeholder = p.credential !== 'available' ? 'API key needed' : 'Choose a model';
+    $('model-picker').replaceChildren(option('', placeholder), ...picker.models.map(id => option(id, id)), ...(!picker.loading && !p?.local && p?.credential === 'available' ? [option('__custom__', 'Enter a model ID…')] : []));
   });
   $('model-picker').value = picker.model;
-  $('model-picker').disabled = picker.busy || picker.loading || p?.credential !== 'available';
+  $('model-picker').disabled = picker.busy || picker.loading || (p?.local ? picker.localService !== 'ready' || !picker.models.length : p?.credential !== 'available');
   $('custom-model-label').hidden = picker.model !== '__custom__';
   if ($('custom-model').value !== picker.customModel) $('custom-model').value = picker.customModel;
   $('custom-model').disabled = picker.busy;
@@ -448,6 +461,7 @@ function renderProviders() {
   $('provider-route').value = picker.route;
   $('provider-route').disabled = picker.busy;
   $('provider-status').textContent = [picker.note, p?.note].filter(Boolean).join(' ');
+  $('provider-credential-summary').textContent = picker.credentialSummary;
   $('provider-selection-status').textContent = picker.selectionStatus;
   $('connect-provider').disabled = !picker.canConnect;
   $('refresh-providers').disabled = picker.busy || picker.refreshing || picker.loading;

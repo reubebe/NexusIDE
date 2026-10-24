@@ -27,6 +27,21 @@ Choose each account separately to load its own model list. Model availability an
 
 ### Launch and regional endpoints
 
+**Connections → Ollama** lists installed local text models from the fixed
+`127.0.0.1:11434` service. Start Ollama and install a tool-capable model first;
+Nexus neither starts the server nor downloads models from this picker. No key is
+needed, and selecting the provider makes no inference request. Choose a listed
+model and save the intended route. Explicit remote/cloud models and known
+embedding models are excluded from this local list. Custom endpoints remain
+available under Advanced connections.
+
+The detected-credential summary and `nexus doctor` show available environment
+accounts separately from saved routes. Detection, model discovery and successful
+generation are different checks. The clearer status separation and local preset
+were informed by Research Harness's connection design. Nexus retains its own
+account numbering, environment references and encrypted vault; it does not read
+the Harness vault or import credentials from it.
+
 Kimi, GLM, and Qwen have separate regional endpoints. Select the endpoint matching the account that issued your key. Nexus never tries different regions automatically. Unsupported endpoints and coding-plan accounts can still be configured under **Advanced connections & MCP**.
 
 Qwen accounts may require a workspace-specific base URL, which must be configured under Advanced connections. Some Qwen thinking models require streaming; Nexus currently uses non-streaming requests, so those models are not supported. The picker filters known mismatches but cannot certify every returned model. See [Alibaba's API requirements](https://www.alibabacloud.com/help/en/model-studio/deep-thinking).
@@ -54,7 +69,16 @@ Selections apply to new tasks and preserve existing provider profiles, MCP servi
 
 Discovery uses the official [OpenAI models API](https://developers.openai.com/api/reference/resources/models/methods/list), [Anthropic models API](https://platform.claude.com/docs/en/api/models/list), [Gemini compatibility API](https://ai.google.dev/gemini-api/docs/openai), [Qwen Singapore catalogue API](https://www.alibabacloud.com/help/en/model-studio/list-models), and compatible provider model endpoints. A catalogue can include models your account cannot use. If a provider does not expose a list at the configured endpoint, Nexus offers manual model ID entry. Model listing and credential isolation have fixture coverage across the presets; live discovery was checked with OpenAI. This does not extend the generation verification matrix below to every provider.
 
-The October 2026 connection audit added regression coverage for native credential forwarding, asynchronous picker saves, and reasoning/tool-signature continuation metadata. A fresh OpenAI `gpt-4.1-mini` synthetic probe passed text, a two-call tool round trip, and structured output in four requests (441 input / 126 output tokens). Other cloud presets still need live tests with their own credentials. Installing the presets alone is not certification of every model or provider feature.
+The October 2026 connection audit added regression coverage for native credential forwarding, asynchronous picker saves, and reasoning/tool-signature continuation metadata. An OpenAI `gpt-4.1-mini` synthetic probe passed text, a two-call tool round trip, and structured output in four requests (441 input / 126 output tokens). Installing the presets alone is not certification of every model or provider feature.
+
+On October 24, Gemini environment detection and model discovery succeeded.
+Generation against the listed `gemini-2.5-flash` returned HTTP 404 (both with and
+without the `models/` prefix). A bounded `gemini-3.8-flash` synthetic probe observed
+multiple tool calls but encountered HTTP 503 and a timeout before completing its
+tool round trip. Gemini is therefore **detected, not fully verified**. These
+checks sent no project content. Ollama was started and `gpt-oss:20b` passed a fresh
+synthetic runtime check using `list_files` and `read_file` to return an observed
+fixture value. This does not validate every installed local model.
 
 Phase 2 checks the existing Anthropic Messages and compatible Chat Completions adapters with protocol fixtures and small live model conversations. The machine-readable [matrix](../integrations/provider-matrix.json) separates adapter coverage, historical live results, and targets without live evidence. These checks establish particular protocol behaviors; they do not measure coding quality or establish that every model from a provider works.
 

@@ -19,6 +19,7 @@ import { planTask } from './planner.js';
 import { rebuildMemoryIndex } from './semantic-memory.js';
 import { commandEnvironment } from './process.js';
 import { discoverProviders, discoverModels, applyProviderSelection } from './provider-catalog.js';
+import { codeMapStatus, queryCodeMap } from './code-map.js';
 
 // Public help contains bundled, non-project assets only. Never resolve a request
 // path against the workspace or use a directory-wide static file fallback.
@@ -26,7 +27,7 @@ const publicAssets = new Map([
   ['/', ['ui/index.html', 'text/html']],
   ['/guide', ['ui/guide.html', 'text/html']],
   ['/user-guide.md', ['docs/user-guide.md', 'text/plain']],
-  ...['app.js', 'file-editor.js', 'render-cache.js', 'provider-picker.js'].map(name => ['/' + name, ['ui/' + name, 'text/javascript']]),
+  ...['app.js', 'file-editor.js', 'render-cache.js', 'provider-picker.js', 'code-map.js'].map(name => ['/' + name, ['ui/' + name, 'text/javascript']]),
   ...['style.css', 'guide.css'].map(name => ['/' + name, ['ui/' + name, 'text/css']]),
   ...['brand/nexus-symbol.svg', 'illustrations/architecture.svg'].map(name => ['/' + name, ['ui/' + name, 'image/svg+xml']]),
   ...['task-flow.svg', 'research-flow.svg'].map(name => ['/guide-assets/' + name, ['docs/assets/guide/' + name, 'image/svg+xml']]),
@@ -87,6 +88,16 @@ export async function startServer({ root, port = 4317 }) {
       if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return send(res, 401, { error: 'Open the dashboard using the URL printed by nexus serve.' });
       if (req.method === 'GET' && pathname === '/api/state') return send(res, 200, { root, agents: await listAgents(root), skills: await listSkills(root), runs: await summary('runs'), workflows: await summary('workflows'), teams: await listState(root, 'teams'), memories: await recall(root), jobs: [...jobs.values()].map(({ controller, ...j }) => j), approvals: [...approvals.values()].map(({ resolve, timer, ...a }) => a) });
       if (req.method === 'GET' && pathname === '/api/config') return send(res, 200, await loadConfig(root));
+      if (req.method === 'GET' && pathname === '/api/code-map') return send(res, 200, await codeMapStatus(root));
+      if (req.method === 'POST' && pathname === '/api/code-map') {
+        const input = await body(req), controller = new AbortController();
+        const aborted = () => { if (!res.writableEnded) controller.abort(); };
+        res.once('close', aborted);
+        const query = queryCodeMap(root, input, { signal: controller.signal });
+        executions.add(query);
+        try { return send(res, 200, await query); }
+        finally { executions.delete(query); res.off('close', aborted); }
+      }
       if (req.method === 'GET' && pathname === '/api/providers') return send(res, 200, { providers: discoverProviders() });
       if (req.method === 'GET' && pathname === '/api/providers/models') return send(res, 200, await discoverModels(url.searchParams.get('provider')));
       if (req.method === 'POST' && pathname === '/api/providers/select') {

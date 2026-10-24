@@ -34,9 +34,7 @@ test('shared first-run setup creates missing defaults without replacing project 
   await writeState(root, 'config', 'project.json', { private: 'Keep configuration untouched.' });
   const again = await initializeWorkspace(root);
   assert.deepEqual(again.created, []);
-  // The seven core definitions are attempted once before the bundled
-  // library, so the idempotent second pass records 35 existing entries.
-  assert.equal(again.kept.length, 35);
+  assert.equal(again.kept.length, 28);
   assert.equal(again.teamCreated, false);
   assert.equal((await loadAgent(root, 'architect')).instructions, architect.instructions);
   assert.deepEqual(await readState(root, 'teams', 'development.json'), team);

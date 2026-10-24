@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "name": "independent-review",
+  "reviewPolicy": { "maxPlanRounds": 2, "maxModelRequests": 80 },
+  "steps": [
+    { "id": "plan", "agent": "architect", "task": "Inspect the project and write a concrete plan with acceptance checks." },
+    { "id": "plan-review", "agent": "plan-critic", "task": "Challenge the plan against source evidence and the user's requirements.", "dependsOn": ["plan"] },
+    { "id": "build", "agent": "coder", "task": "Implement the approved plan and report observed checks and limitations.", "dependsOn": ["plan-review"], "approval": true },
+    { "id": "inspect", "agent": "implementation-inspector", "task": "Independently inspect current code, changes and acceptance criteria.", "dependsOn": ["build"] }
+  ]
+}

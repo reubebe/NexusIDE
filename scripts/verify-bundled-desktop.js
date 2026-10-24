@@ -114,8 +114,10 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
     };
     assert.equal((await request('/api/state')).agents.length, 28);
     const providers = (await request('/api/providers')).providers;
-    assert.deepEqual([...new Set(providers.map(provider => provider.keyEnv))].sort(), Object.keys(providerEnvironment).sort());
-    assert.ok(providers.every(provider => provider.credential === 'available'));
+    const cloudProviders = providers.filter(provider => !provider.local);
+    assert.deepEqual([...new Set(cloudProviders.map(provider => provider.keyEnv))].sort(), Object.keys(providerEnvironment).sort());
+    assert.ok(cloudProviders.every(provider => provider.credential === 'available'));
+    assert.ok(providers.some(provider => provider.id === 'ollama' && provider.local && provider.credential === 'not-required' && !provider.keyEnv));
     for (const id of ['openai', 'anthropic', 'gemini', 'xai', 'deepseek', 'moonshot', 'moonshot-cn', 'zhipu', 'zai', 'qwen', 'qwen-cn']) {
       assert.ok(providers.some(provider => provider.id === id), `Missing default account: ${id}`);
       assert.ok(providers.some(provider => provider.id === `${id}:2`), `Missing second account: ${id}`);

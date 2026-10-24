@@ -20,8 +20,9 @@ export async function initializeWorkspace(root, { onAgent = () => {} } = {}) {
       kept.push(agent.name); onAgent(agent.name, false);
     }
   }
-  const bundled = await installBundledAgents(root, { onAgent: (name, createdAgent) => {
+  const bundled = await installBundledAgents(root, { exclude: [...created, ...kept], onAgent: (name, createdAgent) => {
     (createdAgent ? created : kept).push(name);
+    onAgent(name, createdAgent);
   } });
   const team = { version: 1, name: 'development', steps: [
     { id: 'plan', agent: 'architect', task: 'Inspect the project and produce an implementation plan.' },

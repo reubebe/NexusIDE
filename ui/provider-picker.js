@@ -2,6 +2,10 @@
 function connectionLabel(configured, profile, catalog) {
   const sameEndpoint = p => p.kind === configured.kind
     && p.baseUrl?.replace(/\/+$/, '') === configured.baseUrl?.replace(/\/+$/, '');
+  if (!configured.keySecret && !configured.keyEnv) {
+    const local = catalog.find(p => p.local && sameEndpoint(p));
+    if (local) return `${local.label} (local · no API key)`;
+  }
   if (!configured.keySecret && configured.keyEnv) {
     const exact = catalog.find(p => sameEndpoint(p) && p.keyEnv === configured.keyEnv);
     if (exact) {
@@ -25,12 +29,18 @@ export function createProviderPicker(api, changed = () => {}) {
   return {
     catalog: [], agents: [], models: [], provider: '', model: '', customModel: '', route: 'default',
     note: 'Select a provider and account to see available models.', busy: false, loading: false, refreshing: false,
-    config: null, draft: '', saved: '',
+    config: null, draft: '', saved: '', localService: 'unknown',
     get dirty() { return this.draft !== this.saved; },
     get modelId() { return this.model === '__custom__' ? this.customModel.trim() : this.model; },
+    get credentialSummary() {
+      const detected = this.catalog.filter(p => !p.local && p.credential === 'available');
+      const local = this.catalog.some(p => p.local) ? ' Local Ollama needs no API key.' : '';
+      return `${detected.length ? `Detected credentials: ${detected.map(p => `${p.label || p.id} (${p.keyEnv})`).join('; ')}. Detection does not verify account access.` : 'No cloud API keys detected in the Nexus environment.'}${local}`;
+    },
     get canConnect() {
+      const selected = this.catalog.find(p => p.id === this.provider);
       return !!this.config && !this.busy && !this.loading && !this.refreshing && !this.dirty
-        && this.catalog.find(p => p.id === this.provider)?.credential === 'available'
+        && (selected?.local ? this.localService === 'ready' && this.models.includes(this.modelId) : selected?.credential === 'available')
         && !!this.modelId && !this.agents.find(a => a.name === this.route)?.provider;
     },
     get selectionStatus() {
@@ -74,8 +84,10 @@ export function createProviderPicker(api, changed = () => {}) {
       const request = ++modelRequest;
       const p = this.catalog.find(p => p.id === id);
       this.provider = id; this.model = ''; this.customModel = ''; this.models = [];
-      this.loading = !!p && p.credential === 'available';
+      this.localService = 'unknown';
+      this.loading = !!p && (p.local || p.credential === 'available');
       this.note = !p ? 'Select a provider and account to see available models.'
+        : p.local ? 'Checking Ollama for installed local models… No API key is needed.'
         : p.credential !== 'available' ? `${p.keyEnv}: ${p.credential === 'placeholder' ? 'contains an example value. Replace it with your real API key' : 'not found in the Nexus environment'}. Relaunch Nexus after exporting it.`
         : `${p.keyEnv} detected. Loading account models…`;
       changed();
@@ -84,12 +96,14 @@ export function createProviderPicker(api, changed = () => {}) {
         const result = await api(`providers/models?provider=${encodeURIComponent(id)}`);
         if (request !== modelRequest) return;
         this.models = result.models; this.note = result.note;
+        if (p.local) this.localService = 'ready';
       } catch (error) {
         if (request !== modelRequest) return;
-        this.note = error.message; this.model = '__custom__';
+        this.note = error.message; this.model = p.local ? '' : '__custom__';
+        if (p.local) this.localService = 'unavailable';
       } finally {
         if (request === modelRequest) {
-          if (preferredModel) {
+          if (preferredModel && (!p.local || this.models.includes(preferredModel))) {
             this.model = this.models.includes(preferredModel) ? preferredModel : '__custom__';
             if (this.model === '__custom__') this.customModel = preferredModel;
           }
