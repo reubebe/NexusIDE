@@ -769,24 +769,120 @@ and add only the grants you intend to support.
 
 ### 6.2 Import a skill directory
 
-The directory must contain `SKILL.md`:
+A skill package contains `SKILL.md` and may include scripts, references, or other
+resources. `SKILL.md` needs YAML frontmatter with a valid `name` and `description`.
+Run these commands inside the project that should receive the skill.
+
+**First, scan the downloaded directory without importing it:**
 
 ```sh
 nexus skills scan /absolute/path/skill-directory
+```
+
+This local check reads the package and prints a JSON report. It does not execute
+its scripts, contact a model, or install the package. Read the findings and the
+actual files before deciding whether to import. Check the source, revision,
+license, commands, and destinations that would receive data. The scanner cannot
+establish the publisher's identity or determine whether every instruction is safe.
+
+**After reviewing it, import and inspect the saved copy:**
+
+```sh
 nexus skills import /absolute/path/skill-directory
 nexus skills list
 nexus skills inspect SKILL_NAME
 nexus skills audit SKILL_NAME
 ```
 
-Read the source, resources, provenance and license. The static scanner identifies
-selected patterns; a clean scan is not a safety certificate. Scripts are stored as
-resources, not executed by import. Assign the imported name in the agent's
-`skills` list. A skill's `allowed-tools` text does not grant runtime permissions.
+Replace `SKILL_NAME` with the `name` from the package's frontmatter. Import stores
+the instructions and resources in this project's `.nexus`, records a digest, and
+runs the same static scan. **Findings do not automatically block import.** Import
+does not execute scripts or install their dependencies; you still decide whether
+the package is suitable.
 
-Run `nexus skills audit` without a name for all installed packages. Changed resource
-digests or cached instructions are refused by the runtime. Integrity consistency
-is not publisher authentication.
+**Assign only the reviewed skill to an agent:** open **Agents**, select the role,
+add the imported name to its JSON `skills` array, and select **Save agent**. For
+example, if its name is `writing-review`, use `"skills": ["writing-review"]`.
+Keep any other assigned skills you intend to retain. A skill's `allowed-tools`
+or hook text does not grant runtime permissions. Commands and external tools
+still require Nexus's applicable grants and approvals.
+
+#### What the native scanner checks
+
+Nexus uses its own local scanner, `nexus-static-v2`. It searches readable UTF-8
+files for seven groups of indicators:
+
+| Indicator | Example of what it flags |
+| --- | --- |
+| Download and execute | A `curl` or `wget` download piped directly into a shell |
+| Embedded credentials | Text shaped like selected API keys or access tokens |
+| Instruction overrides | Requests to ignore previous, system, or developer instructions |
+| Destructive commands | Selected deletion, disk-formatting, or unsafe permission patterns |
+| Credential access | References to common key files, credential stores, or `.env` files |
+| Network transfer | Selected commands or API calls capable of sending data |
+| Dynamic code | Selected uses of `eval` or JavaScript's `Function` constructor |
+
+A finding is a reason to inspect the surrounding code. A credential-file reference
+in documentation, for example, can be legitimate. Conversely, an unfamiliar,
+obfuscated, or differently written harmful command may not match a rule. The
+scanner does not execute the code, trace all data flows, check dependency
+vulnerabilities, or provide an LLM security review.
+
+#### How to read scan results
+
+The CLI report includes `engine`, `verdict`, severity `counts`, and `findings`
+with a file, line number, rule, and title. It also reports `coverage` so you can
+see which resources were inspected, skipped, or left unvisited.
+
+| CLI verdict | Meaning and next action |
+| --- | --- |
+| `high-risk-indicators` | At least one high-severity pattern matched. Inspect every finding before deciding whether to use the package. |
+| `review-recommended` | Medium-severity patterns matched. Check whether each behavior is intended and appropriately restricted. |
+| `no-known-indicators` | No selected pattern matched and scan coverage is complete. This is not a safety certificate. |
+| `incomplete-review` | No matched indicator took precedence, but coverage is incomplete. Review the omitted resources separately. |
+
+Check coverage **regardless of verdict**. A high-risk or review-recommended result
+can also have skipped files or truncated findings. Binary and non-UTF-8 resources
+are skipped. Findings stop at 500; `truncated` and `unvisitedFiles` identify the
+remaining coverage limit. Package intake separately refuses symlinks, hard links,
+unsupported file types, more than 500 file/directory entries, or over 10 MB of
+resource contents. Refusal means the package was not fully scanned or imported.
+
+#### Audit an installed skill in the dashboard
+
+1. Open **Memory** in the browser dashboard or macOS app.
+2. Expand **Installed skills** near the bottom of the page.
+3. Select **Audit skill** beside the package you want to inspect.
+4. Read the integrity result, inspected-file count, high/medium indicator counts,
+   skipped-resource notice, and any finding-limit warning. Expand **Review
+   indicators** when findings are present to see their file and line references.
+
+The button checks the **saved imported copy**, not the original download folder.
+It does not import a new directory, update the skill, execute resources, or change
+agent permissions. To review a package before import, use `nexus skills scan`.
+
+The equivalent terminal command is `nexus skills audit SKILL_NAME`; omit the name
+to audit all installed skills. An audit returns separate integrity and scan
+results. `matches-record` means the saved resources match their recorded digest
+and instructions. `unverified` means that consistency could not be established;
+read the error before using the skill. Neither result authenticates its publisher.
+Someone who can rewrite local state can also replace its digest.
+
+The runtime checks stored skill consistency when loading an assigned skill and
+refuses mismatched resources or cached instructions. This is an integrity check,
+not a fresh comprehensive security scan. Restore the reviewed original record or
+review and import a replacement under a new skill name if the stored copy fails.
+Scan findings are reported as data; a successful CLI exit alone is not a security
+approval or a substitute for reading the report.
+
+#### Is this NVIDIA SkillSpector?
+
+NVIDIA's [SkillSpector](https://github.com/NVIDIA/skillspector) is listed as an
+optional reference in Nexus's integration catalog. **SkillSpector is not installed,
+bundled, or called by these commands or the Audit skill button.** Nexus's native
+scanner is a narrower static pattern checker, not an equivalent implementation
+of SkillSpector's broader analysis pipeline. For the integration status and scope,
+see [the integration notes](integrations.md).
 
 Personal imports stored in `.nexus` are not automatically included in a fresh
 installation or public source download. An optional role present in the developer's
