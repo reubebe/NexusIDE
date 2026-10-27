@@ -1,6 +1,10 @@
 # Integration review
 
-Reviewed source READMEs and selected interface files on 2026-10-04. These are compatibility assessments, not audits of every upstream source file. Nothing in a repository’s popularity or license establishes that its code is safe. See the machine-readable [catalog](../integrations/catalog.json) for all requested projects and their actual status.
+Reviewed source READMEs and selected interface files on 2026-10-04. These are compatibility assessments, not audits of every upstream source file. Nothing in a repository’s popularity or license establishes that its code is safe. See the machine-readable [catalog](../integrations/catalog.json) for the earlier integration candidates and their actual status.
+
+## Consolidated recommendations and visualization request
+
+The [27 October repository comparison](repository-recommendations-2026-10-27.md) brings together SkillSpector, Reef, Superfile, video-use, nnInteractive Agent, Hallmark, Earshot, Iris, Three.js, and Graphify. It records the requested visualization capability, implementation priorities, existing Nexus overlap, and prerequisites. These are proposals, not installed integrations.
 
 ## Additional candidates reviewed on 2026-10-07
 
