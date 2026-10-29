@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "name": "evidence-review",
+  "steps": [
+    {
+      "id": "correctness",
+      "agent": "change-verifier",
+      "task": "Review changed code and callers; record verified findings and coverage."
+    },
+    {
+      "id": "security",
+      "agent": "security-analyst",
+      "task": "Review the same change for security conditions and evidence."
+    },
+    {
+      "id": "reconcile",
+      "agent": "change-verifier",
+      "task": "Recheck candidate findings against source and reconcile duplicates or disagreements; report incomplete coverage.",
+      "dependsOn": [
+        "correctness",
+        "security"
+      ]
+    }
+  ]
+}

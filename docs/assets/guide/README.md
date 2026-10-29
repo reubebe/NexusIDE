@@ -37,7 +37,7 @@ install software, or read project notes/credentials. The Connections screenshot
 is a synthetic-account capture with real local Ollama catalog metadata, not a
 cloud inference result. If its private verification capture is absent, the script
 reuses the committed `connections.png` instead. The Workspace fixture contains
-three sample agents; the current fresh-install library contains 28 definitions.
+three sample agents; the current fresh-install library contains 35 definitions.
 
 The optional `--render` step uses `rsvg-convert` to export the annotated SVGs as
 standalone PNGs, so their embedded screenshots render in more Markdown viewers.

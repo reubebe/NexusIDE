@@ -112,7 +112,7 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
       assert.ok(response.ok, `API request failed: ${route} (${response.status})`);
       return response.json();
     };
-    assert.equal((await request('/api/state')).agents.length, 28);
+    assert.equal((await request('/api/state')).agents.length, 35);
     const providers = (await request('/api/providers')).providers;
     const cloudProviders = providers.filter(provider => !provider.local);
     // Muse keys are forwarded for explicitly selected CLI sessions, never

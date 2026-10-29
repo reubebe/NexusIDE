@@ -1,3 +1,4 @@
+import { initializeWorkspace } from './workspace-init.js';
 import http from 'node:http';
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -99,6 +100,10 @@ export async function startServer({ root, port = 4317, accountHome }) {
       const expected = Buffer.from(token);
       if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return send(res, 401, { error: 'Open the dashboard using the URL printed by nexus serve.' });
       if (req.method === 'GET' && pathname === '/api/state') return send(res, 200, { root, version, agents: await listAgents(root), skills: await listSkills(root), runs: await summary('runs'), workflows: await summary('workflows'), teams: await listState(root, 'teams'), memories: await recall(root), jobs: [...jobs.values()].map(({ controller, ...j }) => j), approvals: [...approvals.values()].map(({ resolve, timer, ...a }) => a) });
+      if (req.method === 'POST' && pathname === '/api/agent-library') {
+        const result = await writeConfiguration(() => initializeWorkspace(root));
+        return send(res, 200, result);
+      }
       if (req.method === 'GET' && pathname === '/api/config') return send(res, 200, await loadConfig(root));
       if (req.method === 'GET' && pathname === '/api/artifacts') return send(res, 200, { artifacts: await listArtifacts(root) });
       if (req.method === 'GET' && pathname === '/api/visual-providers') return send(res, 200, { profiles: await visualReviewProfiles(root) });

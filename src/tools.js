@@ -11,6 +11,7 @@ import { createVisualArtifact } from './artifacts.js';
 
 const schema = properties => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false });
 export const toolDefinitions = [
+  { name: 'preview_media_edit', description: 'Render a local video edit preview with ffmpeg after approval. Preserves originals and returns a receipt, timeline and cut-boundary frames. This does not inspect video or transcribe audio. plan: version 1, title, clips [{path,start,end}], optional width,height,fps. Local MP4/MOV/M4V/WebM/MKV only, at most 24 clips and 600 seconds. Requires write and command access.', parameters: schema({ plan: { type: 'object' } }) },
   { name: 'create_visualization', description: 'Save a validated visual in the Visualizations panel after approval. spec is version 1 JSON: kind bar/line/scatter/timeline/graph/spatial, title, sources [{label,path?}], axes xLabel/yLabel/xUnit/yUnit, data [{label,x,y,series?}] (null y means unavailable). Timeline uses xUnit s and data [{label,start,end}]. Graph uses nodes [{id,label}] and edges [{source,target,label,relation:extracted|inferred|ambiguous}]. Spatial uses zUnit and data [{label,x,y,z}], optional triangles [[vertex indices]]. No scripts or HTML.', parameters: schema({ spec: { type: 'object' } }) },
   { name: 'search_code', description: 'Bounded case-insensitive literal text search in project files, with file and line references. No regex execution.', parameters: schema({ query: { type: 'string' } }) },
   { name: 'git_status', description: 'Read Git status for this workspace.', parameters: schema({}) },
@@ -21,12 +22,17 @@ export const toolDefinitions = [
   { name: 'write_file', description: 'Create or replace a UTF-8 file in an existing directory after user approval.', parameters: schema({ path: { type: 'string' }, content: { type: 'string' } }) },
 ];
 export function availableTools(agent) {
-  return toolDefinitions.filter(t => t.name === 'run_command' ? agent.permissions.execute === true : ['write_file', 'create_visualization'].includes(t.name) ? agent.permissions.write : agent.permissions.read);
+  return toolDefinitions.filter(t => t.name === 'preview_media_edit' ? agent.permissions.execute === true && agent.permissions.write === true : t.name === 'run_command' ? agent.permissions.execute === true : ['write_file', 'create_visualization'].includes(t.name) ? agent.permissions.write : agent.permissions.read);
 }
 export async function executeTool(root, agent, name, args, approve, { signal, commandMode = 'host', sandboxImage } = {}) {
   signal?.throwIfAborted();
   if (!availableTools(agent).some(t => t.name === name)) throw new Error(`Permission denied: ${name}`);
   if (!args || typeof args !== 'object') throw new Error('Invalid tool arguments.');
+  if (name === 'preview_media_edit') {
+    if (commandMode !== 'host') throw new Error('Media previews currently require host command mode; container isolation is not implemented for this tool.');
+    const { previewMediaEdit } = await import('./media-workflow.js');
+    return JSON.stringify(await previewMediaEdit(root, args.plan, { approve, signal, timeoutMs: 60000 }));
+  }
   if (name === 'create_visualization') {
     const { validateVisualSpec } = await import('./visual-spec.js');
     const spec = validateVisualSpec(args.spec);

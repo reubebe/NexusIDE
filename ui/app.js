@@ -553,3 +553,9 @@ $('save-config').onclick = action(async () => {
   $('notice').textContent = providerPicker.dirty ? 'Connections saved. Newer edits are still unsaved.' : 'Connections saved.';
 });
 (async () => { try { await refresh(); await providerPicker.loadConfig(); await providerPicker.refreshProviders(); } catch (e) { $('notice').textContent = e.message; } setInterval(() => refresh().catch(e => { $('notice').textContent = e.message; }), 2000); })();
+
+$('install-agent-library').onclick = action(async () => {
+  const result = await api('agent-library', 'POST', {});
+  $('agent-library-status').textContent = `Added ${result.created.length} agents and ${result.teams.created.length + Number(result.teamCreated)} teams. Existing definitions were kept.`;
+  await refresh();
+});

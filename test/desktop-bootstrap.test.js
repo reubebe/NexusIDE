@@ -24,7 +24,7 @@ async function fixture(t) {
 test('shared first-run setup creates missing defaults without replacing project state', async t => {
   const { root } = await fixture(t);
   const first = await initializeWorkspace(root);
-  assert.equal(first.created.length, 28);
+  assert.equal(first.created.length, 35);
   assert.equal(first.teamCreated, true);
   const architect = await loadAgent(root, 'architect');
   architect.instructions = 'Keep my customized agent.';
@@ -34,7 +34,7 @@ test('shared first-run setup creates missing defaults without replacing project 
   await writeState(root, 'config', 'project.json', { private: 'Keep configuration untouched.' });
   const again = await initializeWorkspace(root);
   assert.deepEqual(again.created, []);
-  assert.equal(again.kept.length, 28);
+  assert.equal(again.kept.length, 35);
   assert.equal(again.teamCreated, false);
   assert.equal((await loadAgent(root, 'architect')).instructions, architect.instructions);
   assert.deepEqual(await readState(root, 'teams', 'development.json'), team);
@@ -44,7 +44,7 @@ test('shared first-run setup creates missing defaults without replacing project 
 test('desktop setup stores bounded app metadata separately from project state', async t => {
   const { root, dataRoot } = await fixture(t);
   const result = await prepareDesktopWorkspace(root, { dataRoot });
-  assert.equal((await listAgents(result.root)).length, 28);
+  assert.equal((await listAgents(result.root)).length, 35);
   const settings = await readState(result.dataRoot, 'desktop', 'settings.json');
   assert.equal(settings.lastWorkspace, result.root);
   assert.equal(settings.recentWorkspaces.length, 1);
@@ -94,7 +94,7 @@ test('desktop bootstrap starts authenticated local service with minimal PATH and
   assert.equal((await fetch(url.origin + '/api/state', { signal })).status, 401);
   const state = await fetch(url.origin + '/api/state', { headers: { authorization: `Bearer ${token}` }, signal });
   assert.equal(state.status, 200);
-  assert.equal((await state.json()).agents.length, 28);
+  assert.equal((await state.json()).agents.length, 35);
   assert.equal((await fetch(url.origin + '/app.js', { signal })).status, 200);
   child.stdin.end();
   const exit = await Promise.race([exited, new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('Bootstrap shutdown timed out.')), { once: true }))]);

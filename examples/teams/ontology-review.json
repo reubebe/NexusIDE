@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "name": "ontology-review",
+  "steps": [
+    {
+      "id": "ontology",
+      "agent": "ontology-designer",
+      "task": "Draft a source-traceable ontology and optional approved graph preview."
+    },
+    {
+      "id": "verify",
+      "agent": "evidence-notebook",
+      "task": "Check each proposed entity and relationship against source evidence; identify missing lineage and contradictions.",
+      "dependsOn": [
+        "ontology"
+      ]
+    }
+  ]
+}

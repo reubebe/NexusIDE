@@ -12,7 +12,7 @@ test('fresh workspaces receive the bundled agent library and remain idempotent',
   const events = [];
   const result = await initializeWorkspace(root, { onAgent: (name, created) => events.push({ name, created }) });
   const agents = await listAgents(root);
-  assert.equal(agents.length, 28);
+  assert.equal(agents.length, 35);
   assert.equal(events.length, agents.length);
   assert.equal(new Set(events.map(event => event.name)).size, events.length);
   assert.ok(events.every(event => event.created));
@@ -21,7 +21,7 @@ test('fresh workspaces receive the bundled agent library and remain idempotent',
   assert.ok(agents.some(agent => agent.name === 'harness-context-reader'));
   assert.ok(result.bundled.created.includes('agency-software-architect'));
   const second = await initializeWorkspace(root);
-  assert.equal((await listAgents(root)).length, 28);
+  assert.equal((await listAgents(root)).length, 35);
   assert.deepEqual(second.bundled.created, []);
   assert.equal(second.kept.length, agents.length);
   assert.ok(second.bundled.kept.includes('harness-context-reader'));

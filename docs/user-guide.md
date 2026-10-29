@@ -54,7 +54,7 @@ placeholders. Replace them with paths or IDs from your own installation.
 Commands that contact a model can incur charges for that selected account.
 
 Screenshots use synthetic projects and notes. A minimal screenshot fixture may
-show three agents; a fresh current initialization supplies **28 default agent
+show three agents; a fresh current initialization supplies **35 default agent
 definitions**. Optional definitions and existing customizations change that total.
 
 ## 1. Install and initialize a project
@@ -545,7 +545,9 @@ checks. For example:
 > Inspect `src/parser.js` and its tests. Identify one reproducible correctness bug.
 > Cite the relevant lines, propose the smallest fix, and wait for approval before editing.
 
-The default library contains 28 definitions. Names such as architect, coder,
+Use **Agents → Add bundled agents and teams** to add the seven advanced roles and three teams to an existing project. Existing custom definitions are preserved. See [Advanced agent workflows](advanced-agents.md) for source-based notebooks, tutoring, ontology design, change/security review, conversion and video evidence, with their exact dependencies and limits.
+
+The default library contains 35 definitions. Names such as architect, coder,
 reviewer, tester, ui-reviewer and security-reviewer serve different tasks. Read the
 actual definition: its name alone does not establish which tools it receives.
 
@@ -1734,3 +1736,5 @@ An image review requires a saved profile with `vision: true`, a question and exp
 ## Evaluate changes before adoption
 
 The [experiment guide](harness-experiments.md) describes the executed baseline/candidate runner inspired by Reef: fixed development and held-out cases, repeated fresh runs, recorded feedback, explicit human review, adopt and rollback. Try `examples/harness-experiment.json` with the offline demo first. Demo records are ineligible for adoption. Evaluations stop after two consecutive failed/cancelled trials. The guardrails measure the specified checks; they do not prove general improvement or automatically rewrite your instructions.
+
+For the source-level account comparison and direct-subscription limitations, see [Research Harness connection design](research-harness-connections.md).

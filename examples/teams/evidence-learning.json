@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "name": "evidence-learning",
+  "steps": [
+    {
+      "id": "evidence",
+      "agent": "evidence-notebook",
+      "task": "Build a source inventory and evidence ledger for the requested topic."
+    },
+    {
+      "id": "lesson",
+      "agent": "learning-tutor",
+      "task": "Create a checked lesson and practice set using the ledger; verify cited source passages yourself.",
+      "dependsOn": [
+        "evidence"
+      ]
+    },
+    {
+      "id": "verify",
+      "agent": "change-verifier",
+      "task": "Check cited source locations, coverage and unsupported claims in the lesson. This is a separate run, not guaranteed model independence.",
+      "dependsOn": [
+        "lesson"
+      ]
+    }
+  ]
+}

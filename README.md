@@ -32,7 +32,7 @@ the [Code map](docs/code-map.md), and [Anatomy technical illustrations](docs/ana
 Use `nexus extras install review` or `nexus extras install anatomy` in an initialized
 workspace. Cortex setup needs explicit engine and brain paths. The Code map uses
 the existing optional codebase-memory-mcp connection. These are opt-in additions
-to the 28 default agents; private knowledge and external engines are not bundled.
+to the 35 default agents; private knowledge and external engines are not bundled.
 
 New native adaptations include [safe workflow checkpoints](docs/workflow-checkpoints.md),
 [local-model memory guidance](docs/local-model-fit.md), and an
