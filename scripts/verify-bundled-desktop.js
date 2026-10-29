@@ -115,7 +115,9 @@ export async function verifyBundledDesktop(appPath = fileURLToPath(new URL('../d
     assert.equal((await request('/api/state')).agents.length, 28);
     const providers = (await request('/api/providers')).providers;
     const cloudProviders = providers.filter(provider => !provider.local);
-    assert.deepEqual([...new Set(cloudProviders.map(provider => provider.keyEnv))].sort(), Object.keys(providerEnvironment).sort());
+    // Muse keys are forwarded for explicitly selected CLI sessions, never
+    // advertised as direct Model API credentials in the model picker.
+    assert.deepEqual([...new Set(cloudProviders.map(provider => provider.keyEnv))].sort(), Object.keys(providerEnvironment).filter(key => !/^META_API_KEY(?:\d+)?$/.test(key)).sort());
     assert.ok(cloudProviders.every(provider => provider.credential === 'available'));
     assert.ok(providers.some(provider => provider.id === 'ollama' && provider.local && provider.credential === 'not-required' && !provider.keyEnv));
     for (const id of ['openai', 'anthropic', 'gemini', 'xai', 'deepseek', 'moonshot', 'moonshot-cn', 'zhipu', 'zai', 'qwen', 'qwen-cn']) {
