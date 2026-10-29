@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { listAgents, loadAgent } from './agents.js';
 import { loadConfig, routeProvider } from './config.js';
 import { runAgent } from './runtime.js';
+import { version } from './version.js';
 
 export async function startAcp({ demo = false, allowCommands = false, input = process.stdin, output = process.stdout } = {}) {
   const sessions = new Map();
@@ -13,7 +14,7 @@ export async function startAcp({ demo = false, allowCommands = false, input = pr
   const connection = new AgentSideConnection(conn => ({
     async initialize() {
       initialized = true;
-      return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: { loadSession: false, promptCapabilities: { image: false, audio: false, embeddedContext: false }, mcpCapabilities: { http: false, sse: false } }, agentInfo: { name: 'nexuside', title: 'NexusIDE', version: '0.2.0' }, authMethods: [] };
+      return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: { loadSession: false, promptCapabilities: { image: false, audio: false, embeddedContext: false }, mcpCapabilities: { http: false, sse: false } }, agentInfo: { name: 'nexuside', title: 'NexusIDE', version }, authMethods: [] };
     },
     async authenticate() { return {}; },
     async newSession(params) {

@@ -14,9 +14,9 @@ export function validateConfig(config) {
   if (config.limits && (!Number.isInteger(config.limits.maxSteps) || config.limits.maxSteps < 1 || config.limits.maxSteps > 100 || !Number.isInteger(config.limits.maxContextChars) || config.limits.maxContextChars < 1000 || config.limits.maxContextChars > 2000000)) throw new Error('Invalid run limits.');
   for (const [name, p] of Object.entries(config.providers)) {
     safeName(name);
-    if (!object(p) || !['anthropic', 'compatible', 'demo'].includes(p.kind) || typeof p.model !== 'string' || !p.model.trim()) throw new Error(`Invalid provider ${name}`);
-    if (Object.keys(p).some(k => !['kind', 'model', 'baseUrl', 'keyEnv', 'keySecret', 'inputCostPerMillion', 'outputCostPerMillion', 'timeoutMs', 'maxOutputTokens', 'tokenLimitField'].includes(k))) throw new Error('Provider configuration contains unsupported fields. Store keys in environment variables or the vault.');
-    validateProviderOptions(Object.fromEntries(['timeoutMs', 'maxOutputTokens', 'tokenLimitField'].filter(k => p[k] !== undefined).map(k => [k, p[k]])));
+    if (!object(p) || !['anthropic', 'compatible', 'responses', 'demo'].includes(p.kind) || typeof p.model !== 'string' || !p.model.trim()) throw new Error(`Invalid provider ${name}`);
+    if (Object.keys(p).some(k => !['kind', 'model', 'baseUrl', 'keyEnv', 'keySecret', 'inputCostPerMillion', 'outputCostPerMillion', 'timeoutMs', 'maxOutputTokens', 'tokenLimitField', 'vision'].includes(k))) throw new Error('Provider configuration contains unsupported fields. Store keys in environment variables or the vault.');
+    validateProviderOptions(Object.fromEntries(['timeoutMs', 'maxOutputTokens', 'tokenLimitField', 'vision'].filter(k => p[k] !== undefined).map(k => [k, p[k]])));
     if (p.baseUrl !== undefined) {
       if (typeof p.baseUrl !== 'string') throw new Error('Provider baseUrl must be a URL.');
       const url = new URL(p.baseUrl);
@@ -60,7 +60,7 @@ export async function routeProvider(root, agent, { demo = false, providerName, e
   const p = Object.hasOwn(config.providers, selected) ? config.providers[selected] : undefined;
   if (!p) throw new Error(`Unknown provider profile: ${selected}`);
   if (p.keyEnv && !env[p.keyEnv]) throw new Error(`Provider credential is unavailable: ${p.keyEnv}`);
-  const provider = createProvider({ NEXUS_PROVIDER: p.kind, NEXUS_MODEL: p.model, NEXUS_BASE_URL: p.baseUrl, NEXUS_API_KEY: p.keySecret ? await getSecret(root, p.keySecret, env.NEXUS_VAULT_PASSWORD) : p.keyEnv ? env[p.keyEnv] : undefined }, Object.fromEntries(['timeoutMs', 'maxOutputTokens', 'tokenLimitField'].filter(k => p[k] !== undefined).map(k => [k, p[k]])));
+  const provider = createProvider({ NEXUS_PROVIDER: p.kind, NEXUS_MODEL: p.model, NEXUS_BASE_URL: p.baseUrl, NEXUS_API_KEY: p.keySecret ? await getSecret(root, p.keySecret, env.NEXUS_VAULT_PASSWORD) : p.keyEnv ? env[p.keyEnv] : undefined }, Object.fromEntries(['timeoutMs', 'maxOutputTokens', 'tokenLimitField', 'vision'].filter(k => p[k] !== undefined).map(k => [k, p[k]])));
   provider.profile = selected;
   provider.rates = { input: p.inputCostPerMillion, output: p.outputCostPerMillion };
   return provider;

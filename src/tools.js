@@ -7,9 +7,11 @@ import { protectedName, resolveProjectPath } from './file-policy.js';
 export { resolveProjectPath } from './file-policy.js';
 import { boundedRead, utf8Text } from './bounded-read.js';
 import { runGit } from './git.js';
+import { createVisualArtifact } from './artifacts.js';
 
 const schema = properties => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false });
 export const toolDefinitions = [
+  { name: 'create_visualization', description: 'Save a validated visual in the Visualizations panel after approval. spec is version 1 JSON: kind bar/line/scatter/timeline/graph/spatial, title, sources [{label,path?}], axes xLabel/yLabel/xUnit/yUnit, data [{label,x,y,series?}] (null y means unavailable). Timeline uses xUnit s and data [{label,start,end}]. Graph uses nodes [{id,label}] and edges [{source,target,label,relation:extracted|inferred|ambiguous}]. Spatial uses zUnit and data [{label,x,y,z}], optional triangles [[vertex indices]]. No scripts or HTML.', parameters: schema({ spec: { type: 'object' } }) },
   { name: 'search_code', description: 'Bounded case-insensitive literal text search in project files, with file and line references. No regex execution.', parameters: schema({ query: { type: 'string' } }) },
   { name: 'git_status', description: 'Read Git status for this workspace.', parameters: schema({}) },
   { name: 'git_diff', description: 'Read tracked changes against HEAD, without external diff programs or text converters.', parameters: schema({}) },
@@ -19,12 +21,19 @@ export const toolDefinitions = [
   { name: 'write_file', description: 'Create or replace a UTF-8 file in an existing directory after user approval.', parameters: schema({ path: { type: 'string' }, content: { type: 'string' } }) },
 ];
 export function availableTools(agent) {
-  return toolDefinitions.filter(t => t.name === 'run_command' ? agent.permissions.execute === true : t.name === 'write_file' ? agent.permissions.write : agent.permissions.read);
+  return toolDefinitions.filter(t => t.name === 'run_command' ? agent.permissions.execute === true : ['write_file', 'create_visualization'].includes(t.name) ? agent.permissions.write : agent.permissions.read);
 }
 export async function executeTool(root, agent, name, args, approve, { signal, commandMode = 'host', sandboxImage } = {}) {
   signal?.throwIfAborted();
   if (!availableTools(agent).some(t => t.name === name)) throw new Error(`Permission denied: ${name}`);
   if (!args || typeof args !== 'object') throw new Error('Invalid tool arguments.');
+  if (name === 'create_visualization') {
+    const { validateVisualSpec } = await import('./visual-spec.js');
+    const spec = validateVisualSpec(args.spec);
+    if (!await approve({ type: 'visualization', title: spec.title, spec })) return 'Visualization declined.';
+    signal?.throwIfAborted();
+    return JSON.stringify(await createVisualArtifact(root, spec, { source: `Agent ${agent.name || 'tool'}` }));
+  }
   if (name === 'search_code') return JSON.stringify(await searchProject(root, args.query));
   if (name === 'git_status' || name === 'git_diff') {
     let paths = [];

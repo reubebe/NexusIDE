@@ -202,7 +202,8 @@ if the default port is occupied.
 | Run library | Saved agent records, transcripts and memory extraction. |
 | Memory | Save notes, preview recall, edit/archive notes and review proposals. |
 | Connections | Provider/account selection, model routes and advanced MCP settings. |
-| Terminal | An explicitly started local shell. |
+| Terminal | An interactive shell or a selected official provider CLI session. |
+| Visualizations | Saved charts, graphs, images and optional 3D views with source records and exports. |
 | Project files | Browse and edit accessible project text files. |
 | Code map | Query a separately configured local code index. |
 | About | System diagram and bundled visual guide. |
@@ -261,6 +262,8 @@ export ANTHROPIC_API_KEY='your-anthropic-key'
 export GEMINI_API_KEY='your-gemini-key'
 export XAI_API_KEY='your-xai-key'
 export DEEPSEEK_API_KEY='your-deepseek-key'
+export MODEL_API_KEY='your-meta-model-api-key'
+export META_API_KEY='your-meta-muse-key'
 export MOONSHOT_API_KEY='your-kimi-key'
 export ZHIPUAI_API_KEY='your-glm-key'
 export DASHSCOPE_API_KEY='your-qwen-key'
@@ -497,7 +500,19 @@ Generic compatible endpoints use `NEXUS_PROVIDER=compatible`, `NEXUS_MODEL`,
 unless explicitly overridden. Environment API-key presence alone does not choose
 a cloud route for you.
 
-### 3.8 Verify a chosen connection
+### 3.8 Subscription sign-in and account switching
+
+Use **Connections → Official CLI accounts → Add a CLI account**. Choose Claude Code, Codex, Gemini CLI or Meta Muse Code; give the account a recognizable label and supply the absolute path reported by `command -v claude`, `codex`, `gemini` or `muse`. The CLI must already be installed. Save the profile, select **Launch selected account**, and complete authentication in the official CLI inside Terminal. Use its account/status command to verify identity, model access and billing before starting work.
+
+Claude, Codex and Gemini profiles use separate CLI state directories. Add another profile for another account, stop the current terminal session, then launch the desired profile. Nexus never copies login tokens from your normal CLI setup. Profiles live under `~/.nexus/connections`; CLI-managed state lives under `~/.nexus/cli-accounts`. Removing a profile retains that state: sign out through the official CLI first to revoke access.
+
+Meta's subscription is specific to Muse Code. Nexus exposes one shared Muse subscription profile because an isolated multi-account storage contract was not verified. Switch its account through Muse `/login` and check whether a saved API key is overriding browser sign-in. Muse API mode forwards the explicitly selected `META_API_KEY` or numbered variable. Direct Meta API tasks use `MODEL_API_KEY` or its numbered variant instead. The two are never substituted for one another. Nexus launches Muse with Contributor mode off.
+
+These official CLI sessions use their own permission prompts and can modify this project. They are separate from Nexus **Tasks** and its approval history. Tasks and teams continue to use the API/local model route selected above. No automatic switch to another account or paid API occurs when a CLI reaches its limit.
+
+DeepSeek, GLM and Qwen API accounts remain available in the API selector. Qwen's former OAuth route ended on April 15, 2026. GLM Coding Plan requires a supported provider-approved tool; its entitlement is not assumed for direct Nexus tasks. See the [provider matrix and setup details](subscription-accounts.md).
+
+### 3.9 Verify a chosen connection
 
 ```sh
 nexus doctor
@@ -877,12 +892,9 @@ approval or a substitute for reading the report.
 
 #### Is this NVIDIA SkillSpector?
 
-NVIDIA's [SkillSpector](https://github.com/NVIDIA/skillspector) is listed as an
-optional reference in Nexus's integration catalog. **SkillSpector is not installed,
-bundled, or called by these commands or the Audit skill button.** Nexus's native
-scanner is a narrower static pattern checker, not an equivalent implementation
-of SkillSpector's broader analysis pipeline. For the integration status and scope,
-see [the integration notes](integrations.md).
+Nexus's default scanner remains a narrower static checker, not an equivalent implementation of NVIDIA's [SkillSpector](https://github.com/NVIDIA/skillspector). The separate **Deep review** action can now invoke a reviewed, separately installed SkillSpector executable. Under **Memory → Installed skills**, expand deeper review settings, enter that executable's absolute path, and review the selected network/model permissions before confirming each scan. Offline review denies network on macOS. A model-assisted review needs explicit network permission plus a provider, model and endpoint; it can send skill contents to that provider.
+
+The shared six-probe synthetic comparison found four malicious probes with the actual SkillSpector static scan and two with the native scan; native also flagged one benign probe. This is a tiny regression corpus, not an accuracy benchmark or a guarantee of safety. Reports preserve coverage gaps. See [deep review setup, receipts and limitations](deep-skill-review.md).
 
 Personal imports stored in `.nexus` are not automatically included in a fresh
 installation or public source download. An optional role present in the developer's
@@ -1708,3 +1720,17 @@ See [the latest audit](audit-2026-10-24.md) and [release phases](release-phases.
 *The About page carries the shared system map. In the macOS window, use
 **View → Back** (Command-[) after opening a full-size illustration or the Markdown
 reference. Keep this guide and its local assets together when sharing it.*
+
+## Visual artifacts and optional media tools
+
+Open **Visualizations** to create a typed JSON chart, timeline or graph, import a project image/specification, or inspect an image returned by an approved MCP tool. Start from the labeled synthetic template, replace it with your data and record its source. Bar, line and scatter charts require explicit units; unavailable values use `null`. Line gaps stay visible. Graph edges label extracted, inferred or ambiguous relationships. Spatial data uses Three.js loaded locally only when needed; its view is normalized while the exact values and units remain in the table.
+
+Filter a chart or graph by its labels, inspect the data table and source list, and export JSON/CSV or a rendered SVG/PNG. Zoom and Fit view apply to 2D output; Expand view keeps the same artifact in a larger, keyboard-accessible dialog. Close or Escape returns to the normal view. Spatial views keep their own camera controls. Native macOS exports open a Save dialog. CSV export neutralizes spreadsheet formulas in text cells.
+
+An image review requires a saved profile with `vision: true`, a question and explicit consent to send the image to that provider. The answer is recorded with the image digest. Model interpretation does not establish that controls work or that scientific/clinical measurements are valid. Merely capturing an image never sends it for model review.
+
+**Optional tool connections** previews the exact configuration before granting Iris capture, Earshot measurements or restricted nnInteractive segmentation. Install those tools separately. No audio models, segmentation weights or remote services are bundled. Medical model licensing and permitted data sharing require separate review. The [integration guide](visual-integrations.md) describes scopes, prerequisites and safe local video previews. `nexus media preview` creates a new reviewed EDL preview and boundary images without modifying the originals; `nexus media review` appends your accept/reject record.
+
+## Evaluate changes before adoption
+
+The [experiment guide](harness-experiments.md) describes the executed baseline/candidate runner inspired by Reef: fixed development and held-out cases, repeated fresh runs, recorded feedback, explicit human review, adopt and rollback. Try `examples/harness-experiment.json` with the offline demo first. Demo records are ineligible for adoption. Evaluations stop after two consecutive failed/cancelled trials. The guardrails measure the specified checks; they do not prove general improvement or automatically rewrite your instructions.

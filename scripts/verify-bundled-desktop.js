@@ -9,7 +9,7 @@ import { once } from 'node:events';
 import { runProcess } from '../src/process.js';
 import { writeState } from '../src/state.js';
 
-const providerCredentialNames = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'XAI_API_KEY', 'DEEPSEEK_API_KEY', 'MOONSHOT_API_KEY', 'ZHIPUAI_API_KEY', 'DASHSCOPE_API_KEY'];
+const providerCredentialNames = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'XAI_API_KEY', 'DEEPSEEK_API_KEY', 'MOONSHOT_API_KEY', 'ZHIPUAI_API_KEY', 'DASHSCOPE_API_KEY', 'MODEL_API_KEY', 'META_API_KEY'];
 const numberedCredentialNames = [...providerCredentialNames.map(key => `${key}2`), 'OPENAI_API_KEY10', 'ANTHROPIC_API_KEY3', 'GEMINI_API_KEY99'];
 const fixtureProviderEnvironment = () => Object.fromEntries([...providerCredentialNames, ...numberedCredentialNames].map((key, index) => [key, `nexus-synthetic-credential-${index}`]));
 const fixtureExcludedEnvironment = () => Object.fromEntries([

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { listAgents, loadAgent, validateAgent } from './agents.js';
 import { listState, readState, writeState, safeName, recentState } from './state.js';
 import { loadConfig, saveConfig, routeProvider } from './config.js';
-import { listSkills, auditSkill } from './skills.js';
+import { listSkills, auditSkill, loadSkill } from './skills.js';
 import { recall, remember, listMemories, updateMemory, memoryHistory } from './memory.js';
 import { searchMemory } from './memory-search.js';
 import { draftMemory, listMemoryDrafts, reviewMemoryDraft } from './memory-distillation.js';
@@ -20,6 +20,12 @@ import { rebuildMemoryIndex } from './semantic-memory.js';
 import { commandEnvironment } from './process.js';
 import { discoverProviders, discoverModels, applyProviderSelection } from './provider-catalog.js';
 import { codeMapStatus, queryCodeMap } from './code-map.js';
+import { createVisualArtifact, importArtifact, listArtifacts, readArtifact, removeArtifact } from './artifacts.js';
+import { projectFiles, projectPins } from './project-files.js';
+import { visualReviewProfiles, reviewVisualArtifact } from './visual-review.js';
+import { deepScanSkillFiles } from './deep-skill-scan.js';
+import { visualToolStatus, previewVisualToolConfig, configureVisualTool } from './visual-integrations.js';
+import { listCliAccounts, saveCliAccount, removeCliAccount, cliAccountLaunch } from './cli-accounts.js';
 
 // Public help contains bundled, non-project assets only. Never resolve a request
 // path against the workspace or use a directory-wide static file fallback.
@@ -27,7 +33,12 @@ const publicAssets = new Map([
   ['/', ['ui/index.html', 'text/html']],
   ['/guide', ['ui/guide.html', 'text/html']],
   ['/user-guide.md', ['docs/user-guide.md', 'text/plain']],
-  ...['app.js', 'file-editor.js', 'agent-editor.js', 'render-cache.js', 'provider-picker.js', 'code-map.js'].map(name => ['/' + name, ['ui/' + name, 'text/javascript']]),
+  ...['app.js', 'file-editor.js', 'agent-editor.js', 'render-cache.js', 'provider-picker.js', 'code-map.js', 'visualizations.js', 'spatial-view.js', 'terminal-view.js', 'cli-accounts.js'].map(name => ['/' + name, ['ui/' + name, 'text/javascript']]),
+  ['/vendor/xterm.mjs', ['node_modules/@xterm/xterm/lib/xterm.mjs', 'text/javascript']],
+  ['/vendor/addon-fit.mjs', ['node_modules/@xterm/addon-fit/lib/addon-fit.mjs', 'text/javascript']],
+  ['/vendor/xterm.css', ['node_modules/@xterm/xterm/css/xterm.css', 'text/css']],
+  ['/visual-spec.js', ['src/visual-spec.js', 'text/javascript']],
+  ...['three.module.js', 'three.core.js'].map(name => ['/vendor/' + name, ['node_modules/three/build/' + name, 'text/javascript']]),
   ...['style.css', 'guide.css'].map(name => ['/' + name, ['ui/' + name, 'text/css']]),
   ...['brand/nexus-symbol.svg', 'illustrations/architecture.svg'].map(name => ['/' + name, ['ui/' + name, 'image/svg+xml']]),
   ...['task-flow.svg', 'research-flow.svg'].map(name => ['/guide-assets/' + name, ['docs/assets/guide/' + name, 'image/svg+xml']]),
@@ -46,7 +57,7 @@ export async function readJsonBody(req) {
   return JSON.parse(Buffer.concat(chunks, bytes).toString('utf8') || '{}');
 }
 
-export async function startServer({ root, port = 4317 }) {
+export async function startServer({ root, port = 4317, accountHome }) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid port.');
   const { version } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   const token = randomBytes(32).toString('hex');
@@ -71,7 +82,7 @@ export async function startServer({ root, port = 4317 }) {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     try {
       if (closing) return send(res, 503, { error: 'Dashboard is shutting down.' });
       if (req.headers.host !== new URL(origin).host) return send(res, 403, { error: 'Invalid host.' });
@@ -89,6 +100,27 @@ export async function startServer({ root, port = 4317 }) {
       if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return send(res, 401, { error: 'Open the dashboard using the URL printed by nexus serve.' });
       if (req.method === 'GET' && pathname === '/api/state') return send(res, 200, { root, version, agents: await listAgents(root), skills: await listSkills(root), runs: await summary('runs'), workflows: await summary('workflows'), teams: await listState(root, 'teams'), memories: await recall(root), jobs: [...jobs.values()].map(({ controller, ...j }) => j), approvals: [...approvals.values()].map(({ resolve, timer, ...a }) => a) });
       if (req.method === 'GET' && pathname === '/api/config') return send(res, 200, await loadConfig(root));
+      if (req.method === 'GET' && pathname === '/api/artifacts') return send(res, 200, { artifacts: await listArtifacts(root) });
+      if (req.method === 'GET' && pathname === '/api/visual-providers') return send(res, 200, { profiles: await visualReviewProfiles(root) });
+      if (req.method === 'GET' && pathname === '/api/visual-tools') return send(res, 200, { tools: await visualToolStatus(root) });
+      if (req.method === 'POST' && pathname === '/api/visual-tools') {
+        const input = await body(req);
+        if (input.action === 'configure' && input.approved !== true) throw new Error('Review and approve the displayed configuration first.');
+        return send(res, 200, input.action === 'configure' ? await configureVisualTool(root, input.name, input.options) : await previewVisualToolConfig(root, input.name, input.options));
+      }
+      if (req.method === 'POST' && pathname === '/api/visual-review') {
+        const input = await body(req), controller = new AbortController();
+        const aborted = () => { if (!res.writableEnded) controller.abort(); }; res.once('close', aborted);
+        const pending = reviewVisualArtifact(root, input.id, input, { signal: controller.signal }); executions.add(pending);
+        try { return send(res, 200, await pending); } finally { executions.delete(pending); res.off('close', aborted); }
+      }
+      if (req.method === 'POST' && pathname === '/api/artifacts') {
+        const input = await body(req);
+        return send(res, 201, await writeConfiguration(() => input.path ? importArtifact(root, input.path) : createVisualArtifact(root, input.spec)));
+      }
+      const artifactRoute = pathname.match(/^\/api\/artifacts\/([a-zA-Z0-9-]+)$/);
+      if (req.method === 'GET' && artifactRoute) return send(res, 200, await readArtifact(root, artifactRoute[1]));
+      if (req.method === 'DELETE' && artifactRoute) { await writeConfiguration(() => removeArtifact(root, artifactRoute[1])); return send(res, 200, { deleted: true }); }
       if (req.method === 'GET' && pathname === '/api/code-map') return send(res, 200, await codeMapStatus(root));
       if (req.method === 'POST' && pathname === '/api/code-map') {
         const input = await body(req), controller = new AbortController();
@@ -114,8 +146,22 @@ export async function startServer({ root, port = 4317 }) {
         return send(res, 200, { saved: true });
       }
       if (req.method === 'GET' && pathname === '/api/skills/audit') return send(res, 200, await auditSkill(root, url.searchParams.get('name')));
+      if (req.method === 'POST' && pathname === '/api/skills/deep-audit') {
+        const input = await body(req);
+        if (input.approved !== true) throw new Error('Approve the selected scanner and its network/model settings.');
+        const skill = await loadSkill(root, input.name), controller = new AbortController();
+        const aborted = () => { if (!res.writableEnded) controller.abort(); }; res.once('close', aborted);
+        const pending = deepScanSkillFiles(skill.files, { ...input.options, signal: controller.signal }); executions.add(pending);
+        try {
+          const result = await pending;
+          await writeState(root, 'skill-reviews', `${Date.now()}-${result.digest.slice(0,16)}.json`, result, { exclusive: true });
+          return send(res, 200, result);
+        } finally { executions.delete(pending); res.off('close', aborted); }
+      }
       const reader = { permissions: { read: true, write: false } };
-      if (req.method === 'GET' && pathname === '/api/files') return send(res, 200, { path: url.searchParams.get('path') || '.', entries: (await executeTool(root, reader, 'list_files', { path: url.searchParams.get('path') || '.' }, async () => false)).split('\n').filter(Boolean) });
+      if (req.method === 'GET' && pathname === '/api/files') return send(res, 200, await projectFiles(root, url.searchParams.get('path') || '.'));
+      if (req.method === 'GET' && pathname === '/api/file-pins') return send(res, 200, { pins: await projectPins(root) });
+      if (req.method === 'PUT' && pathname === '/api/file-pins') { const input = await body(req); return send(res, 200, { pins: await writeConfiguration(() => projectPins(root, input.pins)) }); }
       if (req.method === 'GET' && pathname === '/api/file') {
         const content = await executeTool(root, reader, 'read_file', { path: url.searchParams.get('path') }, async () => false);
         return send(res, 200, { content, hash: createHash('sha256').update(content).digest('hex') });
@@ -159,33 +205,50 @@ export async function startServer({ root, port = 4317 }) {
         if (agent && !agent.memory) throw new Error('Memory is disabled for this agent.');
         return send(res, 200, await searchMemory(root, data.query, agent?.name, { mode: data.mode || 'hybrid', loadout: agent ? agent.memoryLoadout || {} : undefined }));
       }
+      if (req.method === 'GET' && pathname === '/api/cli-accounts') return send(res, 200, await listCliAccounts({ home: accountHome }));
+      if (req.method === 'POST' && pathname === '/api/cli-accounts') return send(res, 201, await saveCliAccount(await body(req), { home: accountHome }));
+      const cliAccountRoute = pathname.match(/^\/api\/cli-accounts\/([a-f0-9-]{36})$/);
+      if (req.method === 'DELETE' && cliAccountRoute) {
+        if (terminal?.exitCode === null && terminal.account?.id === cliAccountRoute[1]) throw new Error('Stop this CLI session before removing its profile.');
+        return send(res, 200, await removeCliAccount(cliAccountRoute[1], { home: accountHome }));
+      }
       if (req.method === 'POST' && pathname === '/api/terminal/start') {
         if (terminalStarting || terminal?.exitCode === null) return send(res, 409, { error: 'Terminal is already running.' });
         terminalStarting = true;
         let finishStart;
         terminalStart = new Promise(resolve => { finishStart = resolve; });
         try {
+        const data = await body(req);
+        if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).some(k => !['accountId', 'approved'].includes(k))) throw new Error('Unsupported terminal launch option.');
+        const launch = data.accountId ? await cliAccountLaunch(data.accountId, { approved: data.approved, home: accountHome }) : null;
         const pty = await import('node-pty');
         if (closing) throw new Error('Dashboard is shutting down.');
         const shell = process.platform === 'win32' ? 'powershell.exe' : process.env.SHELL || '/bin/bash';
-        const processPty = pty.spawn(shell, [], { name: 'xterm-256color', cwd: root, cols: 100, rows: 30, env: { ...commandEnvironment(), TERM: 'xterm-256color', NEXUS_WORKSPACE: root } });
-        const session = { process: processPty, output: '', cursor: 0, exitCode: null };
+        const processPty = pty.spawn(launch?.command || shell, launch?.args || [], { name: 'xterm-256color', cwd: root, cols: 100, rows: 30, env: { ...(launch?.env || commandEnvironment()), TERM: 'xterm-256color', NEXUS_WORKSPACE: root } });
+        const session = { process: processPty, output: '', cursor: 0, exitCode: null, account: launch?.account || null, id: randomUUID() };
         terminal = session;
         processPty.onData(data => { if (terminal !== session) return; session.output += data; if (session.output.length > 200000) { const cut = session.output.length - 150000; session.output = session.output.slice(cut); session.cursor += cut; } });
         processPty.onExit(({ exitCode }) => { session.exitCode = exitCode; });
-        return send(res, 201, { running: true });
+        return send(res, 201, { running: true, account: session.account });
         } finally { terminalStarting = false; finishStart(); }
       }
       if (req.method === 'POST' && pathname === '/api/terminal/input') {
         if (!terminal || terminal.exitCode !== null) return send(res, 409, { error: 'Terminal is not running.' });
         const data = await body(req);
+        if (data.sessionId !== undefined && data.sessionId !== terminal.id) return send(res, 409, { error: 'Terminal session changed. Input was not sent.' });
         if (typeof data.input !== 'string' || data.input.length > 10000) throw new Error('Terminal input must be under 10000 characters.');
         terminal.process.write(data.input); return send(res, 200, { accepted: data.input.length });
+      }
+      if (req.method === 'POST' && pathname === '/api/terminal/resize') {
+        const { cols, rows } = await body(req);
+        if (!Number.isInteger(cols) || cols < 20 || cols > 400 || !Number.isInteger(rows) || rows < 5 || rows > 150) throw new Error('Invalid terminal dimensions.');
+        if (terminal?.exitCode === null) terminal.process.resize(cols, rows);
+        return send(res, 200, { cols, rows });
       }
       if (req.method === 'GET' && pathname === '/api/terminal/output') {
         if (!terminal) return send(res, 200, { running: false, output: '', cursor: 0, exitCode: null });
         const requested = Number(url.searchParams.get('cursor') || 0), start = Math.max(terminal.cursor, Number.isSafeInteger(requested) ? requested : 0);
-        return send(res, 200, { running: terminal.exitCode === null, output: terminal.output.slice(start - terminal.cursor), cursor: terminal.cursor + terminal.output.length, exitCode: terminal.exitCode });
+        return send(res, 200, { id: terminal.id, account: terminal.account, running: terminal.exitCode === null, output: terminal.output.slice(start - terminal.cursor), cursor: terminal.cursor + terminal.output.length, exitCode: terminal.exitCode });
       }
       if (req.method === 'POST' && pathname === '/api/terminal/stop') {
         await terminalStart;

@@ -1,6 +1,6 @@
 {
   "name": "nexuside",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "One runtime. Any agent. Any model.",
   "type": "module",
@@ -41,7 +41,10 @@
     "scripts/release-preflight.js",
     "scripts/notarize-desktop.js",
     "scripts/verify-release.js",
-    "scripts/verify-pilot.js"
+    "scripts/verify-pilot.js",
+    "scripts/compare-skill-scanners.js",
+    "scripts/compare-graph-backends.js",
+    "scripts/verify-ui-quality.js"
   ],
   "scripts": {
     "start": "node src/cli.js",
@@ -66,7 +69,10 @@
   "dependencies": {
     "@agentclientprotocol/sdk": "1.7.0",
     "@modelcontextprotocol/sdk": "1.32.0",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0",
     "node-pty": "1.1.0",
+    "three": "0.185.0",
     "yaml": "2.9.1"
   }
 }

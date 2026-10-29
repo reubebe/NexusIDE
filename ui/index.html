@@ -7,6 +7,7 @@
   <title>NexusIDE · Agent workspace</title>
   <link rel="icon" href="/brand/nexus-symbol.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/vendor/xterm.css">
   <link rel="stylesheet" href="/guide.css">
   <script src="/app.js" type="module"></script>
 </head>
@@ -28,6 +29,7 @@
         <button data-tab="settings">Connections</button>
         <button data-tab="terminal">Terminal</button>
         <button data-tab="files">Project files</button>
+        <button data-tab="visualizations">Visualizations</button>
         <button data-tab="code-map">Code map</button>
         <button data-tab="about">About</button>
       </nav>
@@ -86,9 +88,20 @@
     <section id="files" class="tab" hidden>
       <header class="page-heading"><h1>Project files</h1><p>Open and edit files in this workspace.<br>Protected paths stay unavailable.</p></header>
       <div class="split-layout">
-        <aside class="file-browser"><div class="section-heading compact"><span>01</span><div><h2>Workspace files</h2><p id="folder-path">.</p></div></div><button id="parent-folder" class="text-button">← Parent folder</button><div id="file-list"></div></aside>
+        <aside class="file-browser"><div class="section-heading compact"><span>01</span><div><h2>Workspace files</h2><p id="folder-path">.</p></div></div><label>Filter filenames<input id="file-filter" type="search"></label><label>Sort files<select id="file-sort"><option value="name">Name</option><option value="type">Type</option><option value="size">Size (largest first)</option><option value="modified">Recently modified</option></select></label><div class="editor-actions"><button id="parent-folder" class="text-button">← Parent folder</button><button id="pin-folder" class="text-button">Pin folder</button></div><div id="file-pins" aria-label="Pinned folders"></div><p id="file-list-status" class="helper" role="status"></p><div id="file-list"></div></aside>
         <section class="file-editor"><div class="section-heading compact"><span>02</span><div><h2 id="file-title">Select a file</h2><p>Saves check for changes made elsewhere.</p></div></div><textarea id="file-content" rows="25" spellcheck="false" aria-label="File content"></textarea><div class="editor-actions"><button class="primary" id="save-file">Save file</button></div></section>
       </div>
+    </section>
+
+    <section id="visualizations" class="tab" hidden>
+      <header class="page-heading"><h1>Visualizations</h1><p>Explore charts, relationships, timelines and spatial data. Sources and exact values stay alongside each view.</p></header>
+      <div class="visual-layout"><aside><button id="visual-refresh" class="text-button">Refresh library</button><p id="visual-empty">No saved visualizations. Import a project image or a visualization specification below.</p><div id="visual-list"></div></aside>
+      <section id="visual-detail" hidden><h2 id="visual-title"></h2><p id="visual-description"></p><p id="visual-provenance" class="helper"></p><label>Filter labels or series<input id="visual-filter" type="search"></label><div id="visual-output"></div><ul id="visual-sources"></ul><div class="editor-actions"><button id="visual-png">Export image</button><button id="visual-svg">Export SVG</button><button id="visual-csv">Export CSV</button><button id="visual-json">Export JSON</button><button id="visual-delete" class="text-button">Delete</button></div><details><summary>Source data and relationships</summary><div id="visual-data" class="visual-table"></div></details></section></div>
+      <p id="visual-status" class="helper" role="status"></p>
+      <details class="workflow-section"><summary>Review an image with AI</summary><p>Only image-enabled profiles appear. The selected image and question are sent to that endpoint. Model interpretation cannot establish that controls work or measurements are correct.</p><form id="visual-review-form"><label>Vision provider<select id="visual-review-provider"></select></label><p id="visual-review-endpoint" class="helper"></p><label>Review question<textarea id="visual-review-question" required maxlength="6000" rows="3">Describe visible evidence and possible issues, and state what cannot be verified from this image.</textarea></label><label><input type="checkbox" id="visual-review-consent" required> Send this image and question to the displayed provider</label><button type="submit" class="secondary">Review selected image</button></form><pre id="visual-review-result"></pre></details>
+      <details class="workflow-section"><summary>Optional visual, audio and imaging tools</summary><p>Tools use separate installations and explicit scopes. Configuration does not download models or establish runtime readiness.</p><div id="visual-tools-status"></div><form id="visual-tools-form"><label>Tool<select id="visual-tool-name"><option value="iris">Iris screenshots</option><option value="earshot">Earshot audio analysis</option><option value="nninteractive">nnInteractive imaging</option></select></label><label>Tool options (JSON)<textarea id="visual-tool-options" rows="5" spellcheck="false">{"command":"/absolute/path/to/executable","scope":".","origins":["http://localhost:3000"]}</textarea></label><button type="submit" class="secondary">Preview configuration</button><button id="visual-tool-configure" type="button" disabled>Apply reviewed configuration</button></form><pre id="visual-tool-preview"></pre></details>
+      <form id="visual-import" class="workflow-section"><h2>Import from this project</h2><p>PNG, JPEG or WebP images up to 5 MB, or version 1 visualization JSON. Protected files remain unavailable.</p><label>Relative project path<input id="visual-path" required placeholder="reports/chart.json"></label><button class="secondary" type="submit">Import artifact</button></form>
+      <details class="workflow-section"><summary>Create a visualization</summary><p>Use structured data with sources and units. Missing measurements use null. Templates are explicitly synthetic.</p><button id="visual-example" class="text-button" type="button">Load synthetic template</button><form id="visual-create"><label>Visualization specification<textarea id="visual-spec" rows="16" maxlength="180000" required spellcheck="false"></textarea></label><button type="submit" class="secondary">Save visualization</button></form></details>
     </section>
 
     <section id="code-map" class="tab" hidden>
@@ -134,12 +147,12 @@
       </div>
       <section class="workflow-section"><div class="section-heading compact"><span>03</span><div><h2>Saved memories</h2><p>Review their source, edit context, or archive what no longer applies.</p></div><button id="memory-refresh" type="button" class="text-button">Refresh saved memories</button></div><div class="memory-fields memory-filters"><label>Project + agent memories<select id="memory-filter-agent"><option value="">Project only</option></select></label><label>Layer<select id="memory-filter-layer"><option value="">All layers</option><option value="L1">L1 · Facts & decisions</option><option value="L2">L2 · Summaries</option><option value="L3">L3 · Preferences</option></select></label><label>Status<select id="memory-filter-status"><option value="active">Active</option><option value="archived">Archived</option><option value="all">All statuses</option></select></label></div><p id="memory-list-status" class="helper" role="status"></p><div id="memories"></div><div class="memory-pagination"><button id="memory-previous" class="text-button" disabled>← Previous</button><span id="memory-page" class="helper"></span><button id="memory-next" class="text-button" disabled>Next →</button></div></section>
       <section class="workflow-section"><div class="section-heading compact"><span>04</span><div><h2>Proposed memories</h2><p>Extract context from a completed run in the Run library, then review it here. Drafts are not recalled until approved.</p></div><button id="memory-refresh-drafts" class="text-button">Refresh proposals</button></div><div id="memory-drafts"><p class="helper">No proposals loaded.</p></div><div class="memory-pagination"><button id="memory-draft-previous" type="button" class="text-button" disabled>← Previous batches</button><span id="memory-draft-page" class="helper" role="status"></span><button id="memory-draft-next" type="button" class="text-button" disabled>Next batches →</button></div></section>
-      <section class="workflow-section"><details><summary>Installed skills</summary><p class="helper">Review saved instructions and their integrity checks.</p><div id="skills"></div></details></section>
+      <section class="workflow-section"><details><summary>Installed skills</summary><p class="helper">Review saved instructions and their integrity checks.</p><details><summary>Optional deeper review settings</summary><p>Choose a separately installed SkillSpector executable. Offline mode denies network on macOS; enabling network permits dependency lookups. Model review additionally sends skill contents to the selected endpoint.</p><label>Scanner executable<input id="deep-scan-command" placeholder="/path/to/venv/bin/skillspector"></label><label><input type="checkbox" id="deep-scan-network"> Allow network for this review</label><label>Optional model settings (JSON, leave {} for no model)<textarea id="deep-scan-options" rows="3" spellcheck="false">{}</textarea></label><p class="helper">Model settings require llm: true, provider, model and endpoint; credentials use apiKeyEnv. Every review requires confirmation of the selected settings.</p></details><div id="skills"></div></details></section>
     </section>
 
     <section id="settings" class="tab" hidden>
       <header class="page-heading"><h1>Connections</h1><p>Connect model providers and approved tool services.</p></header>
-      <section class="workflow-section"><header class="section-heading"><span>01</span><div><h2>Choose your model</h2><p>Choose a local model or connect with a detected provider account.</p></div></header>
+      <section class="workflow-section"><header class="section-heading"><span>01</span><div><h2>API or local model</h2><p>Choose a local model or connect with a detected provider account.</p></div></header>
         <p id="provider-credential-summary" class="helper" role="status">Checking available credentials…</p>
         <form id="provider-form" class="form-grid">
           <label>Provider / account<select id="provider-picker" required><option value="">Choose a provider / account</option></select></label>
@@ -152,6 +165,21 @@
           <p id="provider-selection-status" class="helper" role="status"></p>
         </form>
         <p class="helper">A detected key makes an account available; choose a model and select Use this model to assign it. Detection and model listing do not verify generation access. Ollama needs a running local server and an installed model. Add a second cloud account with a numbered export such as OPENAI_API_KEY2; accounts 2–99 appear separately. Key values are never displayed or saved in connection settings. Start Nexus from the terminal where your keys are exported and relaunch after changing exports. Choose the region matching your API account.</p>
+      </section>
+      <section class="workflow-section"><header class="section-heading"><span>02</span><div><h2>Official CLI accounts</h2><p>Use a provider's sign-in or subscription in its installed CLI. These sessions run in Terminal; Tasks and workflows continue to use the API model above.</p></div></header>
+        <p class="helper">Saved profiles keep Claude, Codex and Gemini CLI state separate. The CLI verifies your identity, subscription and available models. Nexus does not import its tokens or bypass its limits. Stop the current terminal before switching accounts. These CLIs use their own permissions and can change project files.</p>
+        <label>Saved CLI account<select id="cli-profile"><option value="">Choose a saved CLI account</option></select></label>
+        <div class="editor-actions"><button id="cli-launch" class="primary" disabled>Launch selected account</button><button id="cli-refresh" class="secondary">Refresh CLI profiles</button><button id="cli-remove" class="text-button" disabled>Remove profile</button></div>
+        <details><summary>Add a CLI account</summary><form id="cli-account-form" class="form-grid">
+          <label>CLI provider<select id="cli-provider"></select></label>
+          <label>Connection mode<select id="cli-mode"></select></label>
+          <p id="cli-provider-note" class="helper"></p>
+          <label>Account label<input id="cli-label" maxlength="64" placeholder="Personal or Work" required></label>
+          <label>Installed CLI executable<input id="cli-command" placeholder="/absolute/path/to/claude" required><small>Use the path reported by command -v claude, codex, gemini or muse. Install the official CLI separately.</small></label>
+          <label id="cli-key-label" hidden>Key environment variable<input id="cli-key" value="META_API_KEY" maxlength="32"><small>Enter its name, never the key value.</small></label>
+          <button id="cli-save" class="primary">Save CLI account</button>
+        </form></details>
+        <p class="helper">Meta direct API uses MODEL_API_KEY; Muse API mode uses META_API_KEY. Muse subscription mode uses its one machine sign-in; switch that account through Muse /login. DeepSeek, GLM and Qwen API accounts use the selector above. Qwen's former OAuth flow is discontinued. GLM Coding Plan requires a supported tool and is not treated as a general Nexus API subscription.</p>
       </section>
       <section class="workflow-section"><details><summary>Advanced connections & MCP</summary><p class="helper">Edit custom endpoints, existing profiles, and tool services. Use environment variable names for secrets.</p><textarea id="config-editor" rows="24" spellcheck="false" aria-label="Connection configuration" aria-describedby="config-status"></textarea><div class="editor-actions"><button id="save-config" class="primary" disabled>Save connections</button></div><p id="config-status" class="helper" role="status">Loading connections…</p></details></section>
     </section>
@@ -178,7 +206,7 @@
 
     <section id="terminal" class="tab" hidden>
       <header class="page-heading"><h1>Workspace terminal</h1><p>A user-operated shell in this project.<br>Its output is not sent to agents or models.</p></header>
-      <section class="workflow-section"><header class="section-heading"><span>01</span><div><h2>Local shell</h2><p>Runs directly under your account. It is not an agent sandbox.</p></div><div class="terminal-actions"><button id="terminal-start" class="secondary">Start terminal</button><button id="terminal-stop" class="text-button">Stop</button></div></header><pre id="terminal-output" aria-live="polite">Terminal is stopped.</pre><form id="terminal-form"><label>Command input<input id="terminal-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type a command and press Enter"></label><button class="primary">Send</button></form></section>
+      <section class="workflow-section"><header class="section-heading"><span>01</span><div><h2>Local shell</h2><p>Runs directly under your account. It is not an agent sandbox.</p></div><div class="terminal-actions"><button id="terminal-start" class="secondary">Start terminal</button><button id="terminal-stop" class="text-button">Stop</button></div></header><p id="terminal-session" class="helper" role="status">Terminal is stopped.</p><div id="terminal-output" aria-label="Interactive terminal"></div><form id="terminal-form"><label>Command input<input id="terminal-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type a command and press Enter"></label><button class="primary">Send</button></form></section>
     </section>
   </main>
   <footer class="site-footer"><div class="wrap"><span><span id="app-version">NexusIDE</span> · A clearer way to work with agents.</span><span id="project-path"></span></div></footer>

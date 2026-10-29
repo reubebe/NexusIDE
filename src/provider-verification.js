@@ -107,7 +107,7 @@ export async function verifyProvider(root, name, { env = process.env, signal } =
 
 // Opt-in environment check for an exact model/endpoint without altering routes.
 export async function verifyEnvironmentProvider(root, { env = process.env, signal } = {}) {
-  if (!env.NEXUS_MODEL || !env.NEXUS_BASE_URL || !['compatible', 'anthropic'].includes(env.NEXUS_PROVIDER)) throw new Error('Set NEXUS_PROVIDER, NEXUS_MODEL and NEXUS_BASE_URL explicitly for an environment check.');
+  if (!env.NEXUS_MODEL || !env.NEXUS_BASE_URL || !['compatible', 'anthropic', 'responses'].includes(env.NEXUS_PROVIDER)) throw new Error('Set NEXUS_PROVIDER, NEXUS_MODEL and NEXUS_BASE_URL explicitly for an environment check.');
   const options = { maxOutputTokens: Number(env.NEXUS_CHECK_MAX_TOKENS || 4096), tokenLimitField: env.NEXUS_CHECK_TOKEN_FIELD || 'max_tokens' };
   const provider = createProvider(env, options);
   const result = await probeProvider(provider, { signal });

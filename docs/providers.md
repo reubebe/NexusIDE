@@ -42,11 +42,11 @@ were informed by Research Harness's connection design. Nexus retains its own
 account numbering, environment references and encrypted vault; it does not read
 the Harness vault or import credentials from it.
 
-Kimi, GLM, and Qwen have separate regional endpoints. Select the endpoint matching the account that issued your key. Nexus never tries different regions automatically. Unsupported endpoints and coding-plan accounts can still be configured under **Advanced connections & MCP**.
+Kimi, GLM, and Qwen have separate regional endpoints. Select the endpoint matching the account that issued your key. Nexus never tries different regions automatically. Custom endpoints can be configured under **Advanced connections & MCP**. A coding-plan key is usable only with a provider-authorized tool and endpoint; it is not interchangeable with a general API account.
 
 Qwen accounts may require a workspace-specific base URL, which must be configured under Advanced connections. Some Qwen thinking models require streaming; Nexus currently uses non-streaming requests, so those models are not supported. The picker filters known mismatches but cannot certify every returned model. See [Alibaba's API requirements](https://www.alibabacloud.com/help/en/model-studio/deep-thinking).
 
-Only the environment variable name is saved, never its value. Start `nexus serve` or `nexus desktop` from the shell where the variables are exported. For the installed macOS app, launch `/Applications/NexusIDE.app/Contents/MacOS/NexusIDE` from that terminal after fully quitting any running instance; the native host forwards the eight supported base keys and their numbered `2`–`99` variants. A macOS application opened from Finder does not automatically inherit terminal exports. After changing exports, relaunch the runtime from that terminal; the refresh button only checks its existing environment. Nexus does not read `.env` or import Keychain credentials automatically. See [desktop setup](desktop-distribution.md).
+Only the environment variable name is saved, never its value. Start `nexus serve` or `nexus desktop` from the shell where the variables are exported. For the installed macOS app, launch `/Applications/NexusIDE.app/Contents/MacOS/NexusIDE` from that terminal after fully quitting any running instance; the native host forwards the supported base keys and their numbered `2`–`99` variants. A macOS application opened from Finder does not automatically inherit terminal exports. After changing exports, relaunch the runtime from that terminal; the refresh button only checks its existing environment. Nexus does not read `.env` or import Keychain credentials automatically. See [desktop setup](desktop-distribution.md).
 
 ### Windows environment setup
 
@@ -152,3 +152,13 @@ Usage sums reported common input/output tokens. Missing/partial usage leaves `re
 Fixture coverage includes both adapters' serialization, multiple calls/results, structured requests, refusal/truncation, malformed responses, HTTP classification, cancellation/timeouts, response limits, credential isolation, persisted failed/cancelled runs and usage totals. Tests use loopback HTTP servers and synthetic secrets; normal CI does not contact model providers. Anthropic/Google live validation remains outstanding until exact models and credentials are available.
 
 Protocol references used for the adapters: [OpenAI Chat Completions](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create), [Anthropic parallel tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use), [Anthropic structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs), [Gemini OpenAI compatibility](https://ai.google.dev/gemini-api/docs/openai), [Ollama OpenAI compatibility](https://docs.ollama.com/api/openai-compatibility).
+
+## Subscription sessions and Codex / Meta API connections
+
+Connections now separates **API or local model** from **Official CLI accounts**. API accounts power Nexus Tasks and workflows. CLI profiles launch the installed provider CLI in Nexus Terminal with that CLI's own permissions and authentication; they do not become Nexus task providers. See [account setup and supported boundaries](subscription-accounts.md).
+
+The **OpenAI · Codex / Responses API** preset uses `OPENAI_API_KEY` (or a numbered account), `/v1/responses`, stateless continuation (`store: false`), validated function calls, and encrypted reasoning replay. It does not extract ChatGPT or Codex login tokens. The existing OpenAI preset retains Chat Completions for compatible models.
+
+**Meta · Model API** uses `MODEL_API_KEY` at `https://api.meta.ai/v1` through Chat Completions. `META_API_KEY` is reserved for a selected Muse Code API session. Neither variable is treated as proof of a subscription. Both keys and numbered accounts are forwarded by the native macOS launcher only to the local Nexus server; a CLI receives only its selected Muse key when in API mode.
+
+Protocol validation uses synthetic provider responses, including a complete tool cycle, malformed/incomplete output rejection and separate credentials. No paid live request or real subscription login was performed for these new connections.

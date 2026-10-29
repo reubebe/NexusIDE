@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "experiment": "synthetic-grounded-answer-v1",
+  "agent": "reviewer",
+  "hypothesis": "Explicit source grounding and concise output improve exact fixture answers.",
+  "candidateInstructions": "Read the requested fixture before answering. Return only the requested identifier, without an introduction or explanation. Do not infer missing information.",
+  "edits": [{ "component": "instructions", "description": "Require fixture grounding and an exact requested identifier." }],
+  "review": { "reviewer": "example-author", "leakageChecked": false, "notes": "Synthetic example only. Replace these tasks and perform an independent held-out leakage review before considering adoption." },
+  "trialsPerCase": 3,
+  "cases": [
+    { "id": "dev-red", "split": "development", "task": "Return the identifier recorded in entry.txt.", "files": { "entry.txt": "Identifier: RED-183" }, "checks": [{ "type": "equals", "value": "RED-183", "critical": false }, { "type": "tool", "value": "read_file", "critical": true }] },
+    { "id": "dev-blue", "split": "development", "task": "Return the identifier recorded in entry.txt.", "files": { "entry.txt": "Identifier: BLUE-724" }, "checks": [{ "type": "equals", "value": "BLUE-724", "critical": false }, { "type": "tool", "value": "read_file", "critical": true }] },
+    { "id": "dev-gold", "split": "development", "task": "Return the identifier recorded in entry.txt.", "files": { "entry.txt": "Identifier: GOLD-951" }, "checks": [{ "type": "equals", "value": "GOLD-951", "critical": false }, { "type": "tool", "value": "read_file", "critical": true }] },
+    { "id": "holdout-lime", "split": "heldout", "task": "Return the identifier recorded in entry.txt.", "files": { "entry.txt": "Identifier: LIME-402" }, "checks": [{ "type": "equals", "value": "LIME-402", "critical": false }, { "type": "tool", "value": "read_file", "critical": true }] },
+    { "id": "holdout-teal", "split": "heldout", "task": "Return the identifier recorded in entry.txt.", "files": { "entry.txt": "Identifier: TEAL-638" }, "checks": [{ "type": "equals", "value": "TEAL-638", "critical": false }, { "type": "tool", "value": "read_file", "critical": true }] },
+    { "id": "holdout-rose", "split": "heldout", "task": "Return the identifier recorded in entry.txt.", "files": { "entry.txt": "Identifier: ROSE-275" }, "checks": [{ "type": "equals", "value": "ROSE-275", "critical": false }, { "type": "tool", "value": "read_file", "critical": true }] }
+  ]
+}

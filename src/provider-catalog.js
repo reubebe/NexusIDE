@@ -6,17 +6,20 @@ import { localModelGuidance } from './local-model-fit.js';
 // to an arbitrary host. Regional accounts must be selected explicitly.
 const catalog = [
   ['openai', 'OpenAI', 'OPENAI_API_KEY', 'https://api.openai.com/v1'],
+  ['codex', 'OpenAI · Codex / Responses API', 'OPENAI_API_KEY', 'https://api.openai.com/v1'],
   ['anthropic', 'Anthropic · Claude', 'ANTHROPIC_API_KEY', 'https://api.anthropic.com/v1'],
   ['gemini', 'Google · Gemini', 'GEMINI_API_KEY', 'https://generativelanguage.googleapis.com/v1beta/openai'],
   ['xai', 'xAI · Grok', 'XAI_API_KEY', 'https://api.x.ai/v1'],
   ['deepseek', 'DeepSeek', 'DEEPSEEK_API_KEY', 'https://api.deepseek.com/v1'],
+  ['meta', 'Meta · Model API', 'MODEL_API_KEY', 'https://api.meta.ai/v1'],
   ['moonshot', 'Moonshot · Kimi (international)', 'MOONSHOT_API_KEY', 'https://api.moonshot.ai/v1'],
   ['moonshot-cn', 'Moonshot · Kimi (China)', 'MOONSHOT_API_KEY', 'https://api.moonshot.cn/v1'],
   ['zhipu', 'Zhipu · GLM (BigModel)', 'ZHIPUAI_API_KEY', 'https://open.bigmodel.cn/api/paas/v4'],
   ['zai', 'Z.ai · GLM (international)', 'ZHIPUAI_API_KEY', 'https://api.z.ai/api/paas/v4'],
   ['qwen', 'Alibaba · Qwen (Singapore)', 'DASHSCOPE_API_KEY', 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'],
   ['qwen-cn', 'Alibaba · Qwen (China)', 'DASHSCOPE_API_KEY', 'https://dashscope.aliyuncs.com/compatible-mode/v1'],
-].map(([id, label, keyEnv, baseUrl]) => ({ id, label, keyEnv, baseUrl, kind: id === 'anthropic' ? 'anthropic' : 'compatible',
+].map(([id, label, keyEnv, baseUrl]) => ({ id, label, keyEnv, baseUrl, mode: 'api', kind: id === 'anthropic' ? 'anthropic' : id === 'codex' ? 'responses' : 'compatible',
+  ...(id === 'meta' ? { note: 'Pay-as-you-go Model API. META_API_KEY belongs to Muse Code; a Muse subscription credential is not used by this connection.' } : {}),
   ...(id === 'qwen' ? { modelsUrl: 'https://dashscope-intl.aliyuncs.com/api/v1/models' } : {}),
   ...(id.startsWith('qwen') ? { note: 'For accounts requiring a workspace-specific endpoint, use Advanced connections. Streaming-only models are not supported by the current agent runtime.' } : {}) }));
 
@@ -55,8 +58,9 @@ export function isAgentModel(id, provider = '') {
   // This removes known mismatches, not a guarantee of tool-call compatibility.
   return !/(embedding|moderation|image|audio|tts|whisper|transcrib|realtime|live|video|sora|dall-e|deep-research|search|rerank)/i.test(id)
     && !/^(babbage|davinci)/i.test(id)
-    && !/^gpt-.*-(?:codex|instruct)(?:-|$)/i.test(id)
-    && !/^(gpt-5(?:\.\d+)?|o1|o3)-pro(?:-|$)/i.test(id)
+    && !/^gpt-.*-instruct(?:-|$)/i.test(id)
+    && (provider === 'codex' || !/^gpt-.*-codex(?:-|$)/i.test(id))
+    && (provider === 'codex' || !/^(gpt-5(?:\.\d+)?|o1|o3)-pro(?:-|$)/i.test(id))
     && !(provider.startsWith('qwen') && /^qwen3\.5-(?:122b-a10b|27b)(?:-|$)/i.test(id));
 }
 

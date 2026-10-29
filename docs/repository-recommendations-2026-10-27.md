@@ -1,6 +1,6 @@
 # Repository recommendations and visualization requirement
 
-**Reviewed:** 27 October 2026. **Status:** proposals, not installed integrations.
+**Reviewed:** 27 October 2026. **Historical status:** original proposals. Implementation status as of 28 October is recorded below; the original assessment is retained for provenance.
 
 The user explicitly requested visualization capability. The proposed initial scope is interactive 2D charts, workflow and knowledge graphs, timelines, and export; 3D is optional when the data is spatial. This is a recorded product requirement, not a claim that the capability has shipped.
 
@@ -38,3 +38,23 @@ Nexus's `nexus-static-v2` remains a lightweight local pattern check, not a Skill
 - nnInteractive Agent's default is `master` (`57b06cb4bac0aedaf4946b8f4a65247d998eff6e`). Its [README licensing section](https://github.com/MIC-DKFZ/nninteractive-agent/blob/57b06cb4bac0aedaf4946b8f4a65247d998eff6e/README.md#license-and-citation) distinguishes code and model weights.
 - Additional inspected interfaces: [Iris MCP](https://github.com/brijr/iris/blob/227d3109be29c87c2bed85d214c122795a640210/src/mcp.rs), [Hallmark skill](https://github.com/nutlope/hallmark/blob/7ec868225c6caa040558c321ee0fefa0e73f83a8/skills/hallmark/SKILL.md), [video-use skill](https://github.com/browser-use/video-use/blob/43cfc566833548093455c9d4a46bd69913b7e552/SKILL.md), [Graphify architecture](https://github.com/Graphify-Labs/graphify/blob/dac063456bc1f5d92354ec3936fd9dd1513a83f3/ARCHITECTURE.md).
 - No new connector, visualization runtime, model training, skill import, DMG, or release was produced by this assessment. Existing integration status remains in [the integration review](integrations.md).
+
+## Implementation follow-through, 28 October 2026
+
+| Recommendation | Delivered in 0.3.0 | Validation boundary |
+| --- | --- | --- |
+| Visualization | Typed charts, graph/timeline, source tables, filters, exports, images and optional local Three.js renderer | Synthetic rendering and GUI checks; not scientific validation |
+| SkillSpector | Optional explicit deep scanner and shared six-probe comparison | Real static upstream execution; optional LLM path not live-tested |
+| Iris | Scoped optional screenshot tool adapter and separate vision review | Synthetic MCP contract tests; Iris not installed |
+| Superfile | Metadata, filter/sort, pins, keyboard navigation and image previews | Filesystem and GUI checks; original files retained |
+| Hallmark | Curated responsive, accessible-name, contrast and focus checks | Forty tab/width states; no VoiceOver certification |
+| Graphify | Executed comparison against existing codegraph; fixed actual output-contract mismatches | Both pass the tiny rename/caller corpus; no second index justified |
+| Earshot | Optional scoped measurements and explicit cached-model tools | Adapter tests; audio models not installed |
+| video-use | Local EDL preview, cut-boundary images and append-only review | Actual synthetic ffmpeg execution; originals hash-checked |
+| Reef | Executed paired experiments, held-out cases, feedback, adoption and rollback | Synthetic regression coverage; no general learning claim |
+| Three.js | Lazy spatial point/triangle renderer, camera controls and PNG | GPU GUI inspection and exact-value table |
+| nnInteractive | Optional scoped segmentation adapter with unrestricted Python excluded | Boundary tests; no GPU inference or clinical validation |
+| ThinkRail, added later | Bounded zoom, fit and expanded artifact view with focus return | Direct GUI zoom/fit/Escape checks; no copied runtime |
+| Account references, added later | API account selection, Codex Responses, named official CLI profiles and distinct Meta keys | Synthetic provider/PTY tests; live subscription login not exercised |
+
+See [visual integrations](visual-integrations.md), [deep skill review](deep-skill-review.md), [Graphify comparison](graph-comparison.md), [experiments](harness-experiments.md), [ThinkRail evaluation](thinkrail-evaluation.md), and [account boundaries](subscription-accounts.md). Optional tools remain optional; implementing an adapter is not equivalent to installing and validating its complete upstream service.

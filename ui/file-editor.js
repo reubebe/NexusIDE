@@ -9,6 +9,7 @@ export function createFileBrowser(api) {
         const result = await api('files?path=' + encodeURIComponent(path));
         if (current !== request) return false;
         this.path = path; this.entries = result.entries;
+        this.metadata = result.metadata || []; this.truncated = result.truncated === true;
         return true;
       } catch (error) {
         if (current !== request) return false;

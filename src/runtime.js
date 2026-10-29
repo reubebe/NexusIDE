@@ -54,7 +54,7 @@ export async function runAgent({ root, stateRoot = root, agent, task, provider, 
       await save();
       return allowed;
     };
-    mcp = await connectMcp(stateRoot, agent, auditedApproval, signal, root);
+    mcp = await connectMcp(stateRoot, agent, auditedApproval, signal, root, id);
     const tools = [...availableTools(agent), ...mcp.tools];
     if (agent.permissions.execute && agent.applications?.length) tools.push({ name: 'run_application', description: `Run a configured external application after approval. Available: ${agent.applications.join(', ')}. Applications run with host privileges and configured environment grants.`, parameters: object({ name: { type: 'string' }, args: { type: 'array', items: { type: 'string' } } }) });
     if (agent.skills?.length) tools.push({ name: 'read_skill', description: 'Read an explicitly granted skill resource as text.', parameters: object({ name: { type: 'string' }, resource: { type: 'string' } }) });

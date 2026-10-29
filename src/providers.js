@@ -67,11 +67,15 @@ function compatibleMetadata(source) {
   return metadata;
 }
 
+function imageContent(message, kind) {
+  if (!message.images?.length) return message.content;
+  return [...message.images.map(image => kind === 'anthropic' ? { type: 'image', source: { type: 'base64', media_type: image.mimeType, data: image.data } } : { type: 'image_url', image_url: { url: `data:${image.mimeType};base64,${image.data}` } }), { type: 'text', text: message.content }];
+}
 function compatibleMessages(messages) {
   return messages.map(message => {
     if (message.role === 'tool') return { role: 'tool', tool_call_id: message.id, content: message.content };
     return {
-      role: message.role, content: message.content || null,
+      role: message.role, content: imageContent(message, 'compatible') || null,
       // Replay only documented continuation metadata. Never let raw response
       // fields replace normalized roles, content, or validated tool arguments.
       ...(message.role === 'assistant' ? compatibleMetadata(message.raw) : {}),
@@ -130,6 +134,51 @@ function anthropicResult(data) {
   return { ...usageResult(data.usage, 'input_tokens', 'output_tokens'), text, raw: data.content, calls, finishReason };
 }
 
+function responsesResult(data) {
+  if (!isObject(data) || data.error || !Array.isArray(data.output) || data.output.length > 256) invalid('expected a bounded Responses output array.');
+  if (data.status !== 'completed' || data.incomplete_details) incomplete();
+  const text = [], calls = [], replay = [];
+  for (const item of data.output) {
+    if (!isObject(item) || (item.status !== undefined && item.status !== 'completed')) incomplete();
+    if (item.type === 'function_call') {
+      let args;
+      try { args = JSON.parse(item.arguments); } catch { invalid('function arguments are not valid JSON.'); }
+      calls.push({ id: item.call_id, name: item.name, args });
+      replay.push({ type: 'function_call', call_id: item.call_id, name: item.name, arguments: item.arguments });
+    } else if (item.type === 'message') {
+      if (item.role !== 'assistant' || !Array.isArray(item.content)) invalid('expected an assistant output message.');
+      const content = item.content.map(block => {
+        if (block?.type === 'refusal') incomplete();
+        if (block?.type !== 'output_text' || typeof block.text !== 'string') invalid('unsupported Responses message content.');
+        text.push(block.text); return { type: 'output_text', text: block.text, annotations: [] };
+      });
+      replay.push({ type: 'message', role: 'assistant', content });
+    } else if (item.type === 'reasoning') {
+      if (!identifier(item.id) || !Array.isArray(item.summary) || item.summary.some(s => s?.type !== 'summary_text' || typeof s.text !== 'string') || (item.encrypted_content !== undefined && item.encrypted_content !== null && typeof item.encrypted_content !== 'string')) invalid('malformed reasoning continuation.');
+      // Stateless continuation requires the encrypted reasoning, never a
+      // reference to an output stored on the provider's servers.
+      if (item.encrypted_content) replay.push({ type: 'reasoning', id: item.id, summary: item.summary.map(s => ({ type: 'summary_text', text: s.text })), encrypted_content: item.encrypted_content });
+    } else invalid('unsupported Responses output item.');
+  }
+  validateCalls(calls);
+  const output = text.join('\n');
+  if (!calls.length && !output.trim()) invalid('empty final response.');
+  return { ...usageResult(data.usage, 'input_tokens', 'output_tokens'), text: output, calls, raw: { responses: replay }, finishReason: calls.length ? 'tool_calls' : 'stop' };
+}
+
+function responsesInput(messages) {
+  return messages.filter(m => m.role !== 'system').flatMap(message => {
+    if (message.role === 'tool') return [{ type: 'function_call_output', call_id: message.id, output: message.content }];
+    if (message.role === 'assistant') {
+      if (Array.isArray(message.raw?.responses)) return message.raw.responses;
+      return [...(message.content ? [{ role: 'assistant', content: message.content }] : []), ...(message.calls || []).map(c => ({ type: 'function_call', call_id: c.id, name: c.name, arguments: JSON.stringify(c.args) }))];
+    }
+    return [{ role: message.role, content: message.images?.length
+      ? [{ type: 'input_text', text: message.content }, ...message.images.map(i => ({ type: 'input_image', image_url: `data:${i.mimeType};base64,${i.data}` }))]
+      : message.content }];
+  });
+}
+
 function anthropicMessages(messages) {
   const converted = [];
   let previousWasTool = false;
@@ -144,7 +193,7 @@ function anthropicMessages(messages) {
     }
     previousWasTool = false;
     if (message.role === 'assistant') converted.push({ role: 'assistant', content: message.raw || [...(message.content ? [{ type: 'text', text: message.content }] : []), ...(message.calls || []).map(call => ({ type: 'tool_use', id: call.id, name: call.name, input: call.args }))] });
-    else converted.push({ role: message.role, content: message.content });
+    else converted.push({ role: message.role, content: imageContent(message, 'anthropic') });
   }
   return converted;
 }
@@ -169,18 +218,19 @@ async function httpError(response) {
 
 export function validateProviderOptions(options = {}) {
   if (!isObject(options)) throw new Error('Provider options must be an object.');
-  const { timeoutMs = 120000, maxOutputTokens = 4096, tokenLimitField = 'max_tokens' } = options;
+  const { timeoutMs = 120000, maxOutputTokens = 4096, tokenLimitField = 'max_tokens', vision = false } = options;
+  if (typeof vision !== 'boolean') throw new Error('Provider vision must be boolean. Enable it only for a model that accepts images.');
   if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 120000) throw new Error('Provider timeoutMs must be an integer from 100 to 120000.');
   if (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 1 || maxOutputTokens > 32768) throw new Error('Provider maxOutputTokens must be an integer from 1 to 32768.');
   if (!['max_tokens', 'max_completion_tokens'].includes(tokenLimitField)) throw new Error('Provider tokenLimitField must be max_tokens or max_completion_tokens.');
-  return { timeoutMs, maxOutputTokens, tokenLimitField };
+  return { timeoutMs, maxOutputTokens, tokenLimitField, ...(vision ? { vision } : {}) };
 }
 
 export function createProvider(env = process.env, options = {}) {
   const validatedOptions = validateProviderOptions(options);
   const { timeoutMs, maxOutputTokens, tokenLimitField } = validatedOptions;
   const kind = env.NEXUS_PROVIDER || 'compatible';
-  if (!['compatible', 'anthropic', 'demo'].includes(kind)) throw new Error('NEXUS_PROVIDER must be compatible, anthropic, or demo.');
+  if (!['compatible', 'anthropic', 'responses', 'demo'].includes(kind)) throw new Error('NEXUS_PROVIDER must be compatible, anthropic, responses, or demo.');
   if (kind === 'demo') return {
     name: 'demo', model: 'offline-script', options: validatedOptions,
     async complete(messages) {
@@ -200,12 +250,30 @@ export function createProvider(env = process.env, options = {}) {
   return {
     name: kind, model, endpoint: url.href.replace(/\/$/, ''), options: validatedOptions, sensitiveValues: key ? [key] : [],
     async complete(messages, tools = [], { signal, responseSchema } = {}) {
+      const withImages = messages.filter(m => m.images !== undefined);
+      if (withImages.length) {
+        if (validatedOptions.vision !== true) throw new Error('This provider profile has not enabled vision.');
+        const { validateImage } = await import('./artifacts.js');
+        let imageBytes = 0;
+        for (const message of withImages) {
+          if (message.role !== 'user' || typeof message.content !== 'string' || !Array.isArray(message.images) || message.images.length > 4) throw new Error('Images require a user message with at most four images.');
+          for (const image of message.images) imageBytes += validateImage(image.mimeType, image.data).bytes.length;
+        }
+        if (imageBytes > 5_000_000) throw new Error('Image request exceeds 5 MB.');
+      }
       if (responseSchema !== undefined && (!isObject(responseSchema) || !identifier(responseSchema.name) || responseSchema.name.length > 64 || !isObject(responseSchema.schema))) throw new Error('responseSchema requires a name (maximum 64 characters) and a JSON schema object.');
       let body, headers = { 'content-type': 'application/json' };
       if (kind === 'anthropic') {
         headers = { ...headers, ...(key ? { 'x-api-key': key } : {}), 'anthropic-version': '2023-06-01' };
         const system = messages.filter(message => message.role === 'system').map(message => message.content).join('\n\n');
         body = { model, max_tokens: maxOutputTokens, ...(system ? { system } : {}), messages: anthropicMessages(messages), ...(tools.length ? { tools: tools.map(t => ({ name: t.name, description: t.description, input_schema: t.parameters })) } : {}), ...(responseSchema ? { output_config: { format: { type: 'json_schema', schema: responseSchema.schema } } } : {}) };
+      } else if (kind === 'responses') {
+        if (key) headers.authorization = `Bearer ${key}`;
+        body = { model, store: false, max_output_tokens: maxOutputTokens,
+          instructions: messages.filter(m => m.role === 'system').map(m => m.content).join('\n\n'),
+          input: responsesInput(messages), include: ['reasoning.encrypted_content'],
+          ...(tools.length ? { tools: tools.map(t => ({ type: 'function', name: t.name, description: t.description, parameters: t.parameters, strict: false })) } : {}),
+          ...(responseSchema ? { text: { format: { type: 'json_schema', name: responseSchema.name, schema: responseSchema.schema, strict: true } } } : {}) };
       } else {
         if (key) headers.authorization = `Bearer ${key}`;
         body = { model, [tokenLimitField]: maxOutputTokens, messages: compatibleMessages(messages), ...(tools.length ? { tools: tools.map(t => ({ type: 'function', function: t })) } : {}), ...(responseSchema ? { response_format: { type: 'json_schema', json_schema: { name: responseSchema.name, strict: true, schema: responseSchema.schema } } } : {}) };
@@ -214,12 +282,12 @@ export function createProvider(env = process.env, options = {}) {
       const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
       try {
         requestSignal.throwIfAborted();
-        const response = await fetch(`${base.replace(/\/$/, '')}/${kind === 'anthropic' ? 'messages' : 'chat/completions'}`, { method: 'POST', headers, body: JSON.stringify(body), signal: requestSignal, redirect: 'error' });
+        const response = await fetch(`${base.replace(/\/$/, '')}/${kind === 'anthropic' ? 'messages' : kind === 'responses' ? 'responses' : 'chat/completions'}`, { method: 'POST', headers, body: JSON.stringify(body), signal: requestSignal, redirect: 'error' });
         if (!response.ok) throw await httpError(response);
         let data;
         try { data = await readProviderJson(response); } catch { throw providerError('invalid_response', 'Invalid provider response: expected bounded JSON.'); }
         requestSignal.throwIfAborted();
-        return kind === 'anthropic' ? anthropicResult(data) : compatibleResult(data);
+        return kind === 'anthropic' ? anthropicResult(data) : kind === 'responses' ? responsesResult(data) : compatibleResult(data);
       } catch (error) {
         if (signal?.aborted) throw providerError('cancelled', 'Provider request cancelled.');
         if (timeout.aborted) throw providerError('timeout', 'Provider request timed out.');

@@ -3,12 +3,15 @@ import { createAgentEditor } from './agent-editor.js';
 import { renderWhenChanged } from './render-cache.js';
 import { createProviderPicker } from './provider-picker.js';
 import { createCodeMap } from './code-map.js';
+import { createVisualizations } from './visualizations.js';
+import { createTerminalView } from './terminal-view.js';
+import { createCliAccounts } from './cli-accounts.js';
 const $ = id => document.getElementById(id);
 const initialToken = location.hash.slice(1);
 if (/^[a-f0-9]{64}$/.test(initialToken)) { sessionStorage.setItem('nexus-token', initialToken); history.replaceState(null, '', '/'); }
 const token = sessionStorage.getItem('nexus-token') || '';
 let state, activeJob;
-const skillAudits = new Map();
+const skillAudits = new Map(), deepSkillAudits = new Map(), deepSkillBusy = new Set();
 let selectedRun, memoryOffset = 0, memoryRequest = 0, editingMemory, projectMemories = [];
 let memoryLoaded = false, lastMemoryJobKey = '';
 let memoryEditDirty = false, memoryBusy = false, memoryTotal = 0, memoryPageCount = 0;
@@ -63,34 +66,27 @@ const codeMap = createCodeMap({ api, openSource: async (file, lines) => {
     if (line > 0) { const editor = $('file-content'), start = editor.value.split('\n').slice(0, line - 1).join('\n').length + (line > 1 ? 1 : 0); editor.focus(); editor.setSelectionRange(start, start); editor.scrollTop = Math.max(0, (line - 4) * 20); }
   } finally { renderFileEditor(); }
 } });
-const titles = { workspace: 'Tasks', files: 'Project files', agents: 'Agents', history: 'Run library', memory: 'Memory', settings: 'Connections', terminal: 'Terminal', about: 'About Nexus', 'code-map': 'Code map' };
+const visualizations = createVisualizations({ api });
+const titles = { workspace: 'Tasks', files: 'Project files', visualizations: 'Visualizations', agents: 'Agents', history: 'Run library', memory: 'Memory', settings: 'Connections', terminal: 'Terminal', about: 'About Nexus', 'code-map': 'Code map' };
 function showTab(tab) {
   if (!Object.hasOwn(titles, tab)) return;
+  if (tab !== 'visualizations') visualizations.suspend();
   for (const section of document.querySelectorAll('.tab')) section.hidden = section.id !== tab;
   for (const b of document.querySelectorAll('[data-tab]')) {
     b.classList.toggle('active', b.dataset.tab === tab);
     if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   }
   $('page-title').textContent = titles[tab];
+  if (tab === 'terminal') requestAnimationFrame(() => terminalView.resize());
   if (tab === 'files') action(() => loadFiles())();
   if (tab === 'memory') action(() => refreshMemories())();
   if (tab === 'code-map') codeMap.load();
+  if (tab === 'visualizations') { visualizations.load(); visualizations.resume(); }
 }
 for (const button of document.querySelectorAll('[data-tab]')) button.onclick = () => showTab(button.dataset.tab);
 if (initialToken === 'about') showTab('about');
-let terminalCursor = 0, terminalTimer;
-const cleanTerminalOutput = value => value.replace(/[\u001b\u009b][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d\/#&.:=?%@~_]+)*)?\u0007)|(?:(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))/g, '');
-async function pollTerminal() {
-  const result = await api(`terminal/output?cursor=${terminalCursor}`);
-  if (result.output) { const output = $('terminal-output'), clean = cleanTerminalOutput(result.output); output.textContent = (output.textContent === 'Terminal is stopped.' ? clean : output.textContent + clean).slice(-200000); output.scrollTop = output.scrollHeight; }
-  terminalCursor = result.cursor;
-  $('terminal-start').disabled = result.running; $('terminal-stop').disabled = !result.running; $('terminal-input').disabled = !result.running;
-  if (result.running) terminalTimer = setTimeout(() => action(pollTerminal)(), 300);
-}
-$('terminal-start').onclick = action(async () => { await api('terminal/start', 'POST', {}); terminalCursor = 0; $('terminal-output').textContent = ''; clearTimeout(terminalTimer); await pollTerminal(); });
-$('terminal-stop').onclick = action(async () => { await api('terminal/stop', 'POST', {}); clearTimeout(terminalTimer); $('terminal-output').textContent += '\n[terminal stopped]'; await pollTerminal(); });
-$('terminal-form').onsubmit = action(async () => { const input = $('terminal-input'); await api('terminal/input', 'POST', { input: input.value + '\n' }); input.value = ''; });
-pollTerminal().catch(() => {});
+const terminalView = createTerminalView({ api, notice: message => { $('notice').textContent = message; } });
+createCliAccounts({ api, terminal: terminalView, showTerminal: () => showTab('terminal'), notice: message => { $('notice').textContent = message; } });
 function render() {
   $('project-path').textContent = state.root;
   $('app-version').textContent = `NexusIDE v${state.version}`;
@@ -107,7 +103,7 @@ function render() {
   renderWhenChanged($('agent-cards'), JSON.stringify(state.agents), () => $('agent-cards').replaceChildren(...state.agents.map(a => { const card = node('button', undefined, 'agent-card'); card.append(node('h3', a.name), node('p', a.instructions.slice(0, 125)), node('small', Object.entries(a.permissions).filter(([,v]) => v).map(([k]) => k).join(' · '))); card.onclick = action(async () => { agentEditor.select(a); renderAgentEditor(); renderLoadout(a); await loadProjectMemories(true); }); return card; })));
   renderWhenChanged($('history-list'), JSON.stringify(state.runs), () => $('history-list').replaceChildren(...state.runs.map(r => { const row = node('div', undefined, 'row'), b = node('button', r.agent + ' · ' + r.status); b.onclick = action(async () => { const request = ++runRequest; selectedRun = undefined; renderDistillButton(); const run = await api('runs/' + r.id); if (request !== runRequest) return; selectedRun = run; $('transcript').textContent = JSON.stringify(run, null, 2); renderDistillButton(); }); row.append(b, node('small', new Date(r.started).toLocaleString())); return row; })));
   renderDistillButton();
-  $('skills').replaceChildren(...state.skills.map(s => {
+  renderWhenChanged($('skills'), JSON.stringify([state.skills, [...skillAudits], [...deepSkillAudits], [...deepSkillBusy]]), () => $('skills').replaceChildren(...state.skills.map(s => {
     const n = node('div', undefined, 'row'), audit = node('button', 'Audit skill');
     audit.type = 'button';
     audit.setAttribute('aria-label', `Audit ${s.name}`);
@@ -116,6 +112,21 @@ function render() {
       render();
     });
     n.append(node('strong', s.name), node('p', s.description), audit);
+    const deep = node('button', 'Deeper review', 'text-button');
+    deep.onclick = action(async () => {
+      const options = { ...JSON.parse($('deep-scan-options').value), command: $('deep-scan-command').value, network: $('deep-scan-network').checked };
+      if (!window.confirm('Run this scanner on a saved copy of ' + s.name + '?\n' + JSON.stringify(options, null, 2))) return;
+      deepSkillBusy.add(s.name); render();
+      try {
+        const report = await api('skills/deep-audit', 'POST', { name: s.name, options, approved: true });
+        deepSkillAudits.set(s.name, report);
+        $('notice').textContent = `Deeper review: ${report.deeper.status} · ${report.deeper.verdict}. Review coverage and findings; this is not safety certification.`;
+      } finally { deepSkillBusy.delete(s.name); render(); }
+    });
+    deep.disabled = deepSkillBusy.has(s.name); if (deep.disabled) deep.textContent = 'Reviewing…';
+    n.append(deep);
+    if (deepSkillAudits.has(s.name)) { const details = node('details'); details.append(node('summary', 'Deeper review report'), node('pre', JSON.stringify(deepSkillAudits.get(s.name), null, 2))); n.append(details); }
+
     if (skillAudits.has(s.name)) {
       const report = skillAudits.get(s.name);
       if (!report.scan) n.append(node('p', 'Could not verify stored skill: ' + report.error));
@@ -135,7 +146,7 @@ function render() {
       }
     }
     return n;
-  }));
+  })));
   const job = state.jobs.find(j => j.id === activeJob) || state.jobs.at(-1);
   if (job) { activeJob = job.id; $('activity').textContent = `Task status: ${job.status}\n\n` + job.events.map(e => e.type === 'text' ? e.text : e.type === 'tool-result' ? `${e.name}: ${e.content}` : `[${e.step || ''} ${e.type}] ${e.name || e.status || ''}`).join('\n\n') + (job.error ? '\nError: ' + job.error : '') + (job.plan ? '\nPlan saved. Select its team name to run it after review.\n' + JSON.stringify(job.plan, null, 2) : ''); }
   $('cancel').disabled = !job || job.status !== 'running';
@@ -406,22 +417,49 @@ $('memory-index').onclick = action(async () => {
   try { const result = await api('memory/index', 'POST', {}); $('memory-search-status').textContent = `Indexed ${result.indexed} memories: ${result.embedded} updated, ${result.reused} reused.`; }
   finally { $('memory-index').disabled = false; }
 });
-async function loadFiles(path = fileBrowser.path) {
-  if (!await fileBrowser.open(path)) return;
+let filePins = [];
+function renderFiles() {
+  const path = fileBrowser.path, query = $('file-filter').value.toLowerCase(), mode = $('file-sort').value;
   $('folder-path').textContent = path;
-  $('file-list').replaceChildren(...fileBrowser.entries.map(entry => {
-    const b = node('button', entry, 'file-entry');
+  $('pin-folder').textContent = filePins.includes(path) ? 'Unpin folder' : 'Pin folder';
+  const files = fileBrowser.entries.map(entry => ({ entry, ...(fileBrowser.metadata || []).find(m => m.name === entry.replace(/\/$/, '')) }));
+  files.sort((a, b) => Number(b.entry.endsWith('/')) - Number(a.entry.endsWith('/')) || (mode === 'size' ? (b.size || 0) - (a.size || 0) : mode === 'modified' ? (b.modified || '').localeCompare(a.modified || '') : mode === 'type' ? a.entry.split('.').at(-1).localeCompare(b.entry.split('.').at(-1)) : 0) || a.entry.localeCompare(b.entry));
+  const filtered = files.filter(f => f.entry.toLowerCase().includes(query));
+  $('file-list-status').textContent = `${filtered.length} of ${files.length} entries${fileBrowser.truncated ? ' · Limited to the first 500 entries; open a narrower folder.' : ''}`;
+  $('file-list').replaceChildren(...filtered.map(file => {
+    const entry = file.entry, b = node('button', entry, 'file-entry');
+    if (file.modified) b.append(node('small', `${entry.endsWith('/') ? 'Folder' : file.size.toLocaleString() + ' bytes'} · ${new Date(file.modified).toLocaleDateString()}`));
     b.onclick = action(async () => {
       const relative = (path === '.' ? '' : path + '/') + entry.replace(/\/$/, '');
       if (entry.endsWith('/')) await loadFiles(relative);
       else {
         if (fileEditor.dirty) throw new Error('Save your changes, or use Reload file to discard them, before opening another file.');
+        if (/\.(png|jpe?g|webp)$/i.test(entry)) {
+          const saved = await api('artifacts', 'POST', { path: relative });
+          showTab('visualizations'); await visualizations.open(saved.id); return;
+        }
         const opening = fileEditor.open(relative); renderFileEditor();
         try { await opening; } finally { renderFileEditor(); }
       }
     }); return b;
   }));
+  $('file-pins').replaceChildren(...filePins.map(pin => { const b = node('button', pin, 'text-button'); b.onclick = action(() => loadFiles(pin)); return b; }));
 }
+async function loadFiles(path = fileBrowser.path) {
+  $('file-list-status').textContent = 'Loading folder…';
+  if (!await fileBrowser.open(path)) return;
+  filePins = (await api('file-pins')).pins;
+  renderFiles();
+}
+$('file-filter').oninput = renderFiles;
+$('file-sort').onchange = renderFiles;
+$('pin-folder').onclick = action(async () => { const path = fileBrowser.path; filePins = (await api('file-pins', 'PUT', { pins: filePins.includes(path) ? filePins.filter(p => p !== path) : [...filePins, path] })).pins; renderFiles(); });
+$('file-list').addEventListener('keydown', event => {
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+  const buttons = [...$('file-list').querySelectorAll('button')], current = buttons.indexOf(document.activeElement);
+  if (!buttons.length) return;
+  event.preventDefault(); const index = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : Math.max(0, Math.min(buttons.length - 1, current + (event.key === 'ArrowDown' ? 1 : -1))); buttons[index].focus();
+});
 $('parent-folder').onclick = action(async () => { const path = fileBrowser.path; await loadFiles(path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '.'); });
 $('save-file').onclick = action(async () => {
   const saving = fileEditor.save(); renderFileEditor();

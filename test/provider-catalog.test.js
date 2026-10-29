@@ -12,7 +12,7 @@ test('catalog detects only named keys and distinguishes example credentials with
   assert.equal(result.find(p => p.id === 'openai').credential, 'available');
   assert.equal(result.find(p => p.id === 'anthropic').credential, 'placeholder');
   assert.equal(result.find(p => p.id === 'gemini').credential, 'missing');
-  assert.equal(new Set(result.filter(p => !p.local).map(p => p.keyEnv)).size, 8);
+  assert.equal(new Set(result.filter(p => !p.local).map(p => p.keyEnv)).size, 9);
   assert.ok(!JSON.stringify(result).includes('private-test-value'));
   assert.ok(!JSON.stringify(result).includes('other-secret'));
 });

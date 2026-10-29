@@ -68,7 +68,8 @@ final class BootstrapHost {
         // (including Node startup hooks) outside the child environment.
         let inherited = ProcessInfo.processInfo.environment
         for name in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "XAI_API_KEY",
-                     "DEEPSEEK_API_KEY", "MOONSHOT_API_KEY", "ZHIPUAI_API_KEY", "DASHSCOPE_API_KEY"] {
+                     "DEEPSEEK_API_KEY", "MOONSHOT_API_KEY", "ZHIPUAI_API_KEY", "DASHSCOPE_API_KEY",
+                     "MODEL_API_KEY", "META_API_KEY"] {
             if let value = inherited[name] { environment[name] = value }
             // Additional accounts use canonical suffixes 2...99. Construct the
             // exact names so unrelated variables and malformed suffixes stay out.
@@ -189,7 +190,7 @@ if checkBootstrap {
     print(json); exit(0)
 }
 
-final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate {
+final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate {
     var url: URL?
     let selectedPath: String?
     var bootstrap: BootstrapHost?
@@ -199,6 +200,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
     var checkingClose = false
     var checkingNavigation = false
     var sessionNavigationPending = false
+    var downloads: [ObjectIdentifier: WKDownload] = [:]
     init(url: URL?, selectedPath: String?) { self.url = url; self.selectedPath = selectedPath }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -380,12 +382,25 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
         let alert = NSAlert()
         alert.messageText = message
         alert.addButton(withTitle: "Cancel")
-        alert.addButton(withTitle: "Discard changes")
+        alert.addButton(withTitle: "Continue")
         alert.beginSheetModal(for: window) { completionHandler($0 == .alertSecondButtonReturn) }
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        // Export links contain app-generated blobs. Only the trusted main frame
+        // may download its own origin's blobs; other navigation stays restricted.
+        if navigationAction.shouldPerformDownload, let origin = url,
+           let target = navigationAction.request.url, target.scheme == "blob",
+           let embedded = URL(string: String(target.absoluteString.dropFirst(5))),
+           navigationAction.sourceFrame.isMainFrame,
+           navigationAction.sourceFrame.securityOrigin.protocol == origin.scheme,
+           navigationAction.sourceFrame.securityOrigin.host == origin.host,
+           navigationAction.sourceFrame.securityOrigin.port == origin.port,
+           embedded.scheme == origin.scheme, embedded.host == origin.host,
+           embedded.port == origin.port, embedded.user == nil, embedded.password == nil {
+            decisionHandler(.download); return
+        }
         guard let url = url, let target = navigationAction.request.url, navigationAction.targetFrame?.isMainFrame == true,
               target.scheme == url.scheme, target.host == url.host, target.port == url.port,
               target.user == nil, target.password == nil else { decisionHandler(.cancel); return }
@@ -423,6 +438,44 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNaviga
 
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                  for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? { nil }
+
+    func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
+        downloads[ObjectIdentifier(download)] = download
+        download.delegate = self
+    }
+
+    func download(_ download: WKDownload, decideDestinationUsing response: URLResponse,
+                  suggestedFilename: String, completionHandler: @escaping (URL?) -> Void) {
+        let filename = (suggestedFilename as NSString).lastPathComponent
+        let allowed = ["json", "csv", "svg", "png", "jpg", "jpeg", "webp"]
+        guard allowed.contains((filename as NSString).pathExtension.lowercased()) else {
+            downloads.removeValue(forKey: ObjectIdentifier(download)); completionHandler(nil); return
+        }
+        let panel = NSSavePanel()
+        panel.title = "Export visualization"
+        panel.nameFieldStringValue = filename
+        panel.canCreateDirectories = true
+        panel.beginSheetModal(for: window) { result in
+            completionHandler(result == .OK ? panel.url : nil)
+            if result != .OK { self.downloads.removeValue(forKey: ObjectIdentifier(download)) }
+        }
+    }
+
+    func download(_ download: WKDownload, willPerformHTTPRedirection response: HTTPURLResponse,
+                  newRequest request: URLRequest, decisionHandler: @escaping (WKDownload.RedirectPolicy) -> Void) {
+        decisionHandler(.cancel)
+    }
+
+    func downloadDidFinish(_ download: WKDownload) { downloads.removeValue(forKey: ObjectIdentifier(download)) }
+
+    func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
+        downloads.removeValue(forKey: ObjectIdentifier(download))
+        if (error as NSError).code == NSURLErrorCancelled { return }
+        let alert = NSAlert()
+        alert.messageText = "Export could not be saved"
+        alert.informativeText = "Try exporting again to a writable folder with a new filename."
+        alert.beginSheetModal(for: window)
+    }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         window.title = "NexusIDE — connection failed; reopen your session"

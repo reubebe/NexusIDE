@@ -62,6 +62,15 @@ const help = `NexusIDE · One runtime. Any agent. Any model.
   nexus providers local                   Inspect installed Ollama models and RAM guidance
   nexus providers check <profile>         Run bounded synthetic model checks
   nexus providers check-env               Check an explicit environment model
+  nexus skills deep-scan <directory> --command <executable>  Optional deeper scan (offline by default)
+  nexus skills deep-audit <name> --command <executable>      Review an installed skill
+  nexus artifacts list|import|inspect      View or import bounded visual artifacts
+  nexus visual-tools status               Inspect optional screenshot/audio/imaging tools
+  nexus visual-tools preview|configure <name> <options.json>  Review or configure scoped tools
+  nexus media preview <edl.json>           Render an approved edit plan without replacing originals
+  nexus media review <directory> <review.json>  Record accepted/rejected preview review
+  nexus harness run <plan.json> --provider <name>  Execute paired baseline/candidate trials
+  nexus harness list|inspect|feedback|adopt|reject|rollback   Review experiment evidence
   nexus harness evaluate <evidence.json>   Assess measured harness changes offline
   nexus worktree create|diff <name>        Create or inspect worktree
   nexus worktree list                      List worktrees
@@ -103,8 +112,8 @@ Provider env: NEXUS_PROVIDER, NEXUS_MODEL, NEXUS_API_KEY, NEXUS_BASE_URL.`;
 
 export function parseOptions(args) {
   const options = {}, positional = [];
-  const values = new Set(['provider', 'worktree', 'resume', 'sandbox-image', 'concurrency', 'agent', 'port', 'mode', 'layer', 'category', 'status', 'offset', 'limit', 'revision', 'engine', 'brain', 'python']);
-  const flags = new Set(['demo', 'allow-commands', 'isolated', 'force', 'all-scopes', 'checkpoint']);
+  const values = new Set(['provider', 'worktree', 'resume', 'sandbox-image', 'concurrency', 'agent', 'port', 'mode', 'layer', 'category', 'status', 'offset', 'limit', 'revision', 'engine', 'brain', 'python', 'command', 'model', 'endpoint', 'api-key-env', 'timeout-ms']);
+  const flags = new Set(['demo', 'allow-commands', 'isolated', 'force', 'all-scopes', 'checkpoint', 'network', 'llm']);
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--') { positional.push(...args.slice(i + 1)); break; }
     if (!args[i].startsWith('--')) { positional.push(args[i]); continue; }
@@ -154,11 +163,67 @@ async function main() {
   }
   if (command === 'doctor') { const { doctor } = await import('./doctor.js'); return print(JSON.stringify(await doctor(root), null, 2)); }
   if (command === 'harness') {
-    if (args[0] !== 'evaluate' || args.length !== 2 || Object.keys(options).length) throw new Error('Use nexus harness evaluate <evidence.json>.');
     const { evaluateHarnessCandidate, readHarnessEvaluationInput } = await import('./harness-evaluation.js');
-    const result = await evaluateHarnessCandidate(root, await readHarnessEvaluationInput(args[1]));
-    if (result.status === 'rejected' || result.repeated) process.exitCode = 1;
-    return print(JSON.stringify(result, null, 2));
+    if (args[0] === 'evaluate' && args.length === 2 && !Object.keys(options).length) {
+      const result = await evaluateHarnessCandidate(root, await readHarnessEvaluationInput(args[1]));
+      if (result.status === 'rejected' || result.repeated) process.exitCode = 1;
+      return print(JSON.stringify(result, null, 2));
+    }
+    const experiment = await import('./harness-experiment.js');
+    if (['list', 'experiments'].includes(args[0])) return print(JSON.stringify(await experiment.listHarnessExperiments(root), null, 2));
+    if (args[0] === 'feedback-list' && args.length === 2) return print(JSON.stringify(await experiment.listHarnessFeedback(root, args[1]), null, 2));
+    if (args[0] === 'inspect' && args.length === 2) return print(JSON.stringify(await experiment.getHarnessExperiment(root, args[1]), null, 2));
+    if (args[0] === 'feedback' && args.length === 3) return print(JSON.stringify(await experiment.recordHarnessFeedback(root, args[1], await readHarnessEvaluationInput(args[2])), null, 2));
+    const controller = new AbortController(), cancel = () => controller.abort();
+    process.on('SIGINT', cancel); process.on('SIGTERM', cancel);
+    try {
+      if (args[0] === 'run' && args.length === 2) {
+        if (Boolean(options.demo) === Boolean(options.provider)) throw new Error('Select exactly one of --demo or --provider NAME.');
+        const provider = await routeProvider(root, {}, { demo: options.demo, providerName: options.provider });
+        const result = await experiment.executeHarnessExperiment(root, await experiment.readHarnessExperimentPlan(args[1]), { provider, approve: terminalApproval(controller.signal), signal: controller.signal });
+        if (!result.eligible) process.exitCode = 1;
+        return print(JSON.stringify(result, null, 2));
+      }
+      if (args[0] === 'review' && args.length === 3) return print(JSON.stringify(await experiment.reviewHarnessExperiment(root, args[1], await readHarnessEvaluationInput(args[2]), { approve: terminalApproval(controller.signal) }), null, 2));
+      if (['adopt', 'reject', 'rollback'].includes(args[0]) && args.length === 3) return print(JSON.stringify(await experiment.reviewHarnessExperiment(root, args[1], { ...await readHarnessEvaluationInput(args[2]), action: args[0] }, { approve: terminalApproval(controller.signal) }), null, 2));
+    } finally { process.off('SIGINT', cancel); process.off('SIGTERM', cancel); }
+    throw new Error('Use harness evaluate|run <plan.json>, list, inspect <id>, feedback <id> <feedback.json>, or adopt|reject|rollback <id> <review.json>.');
+  }
+  if (command === 'visual-tools') {
+    const visual = await import('./visual-integrations.js');
+    if (args[0] === 'status') return print(JSON.stringify(await visual.visualToolStatus(root), null, 2));
+    if (['preview', 'configure'].includes(args[0]) && args.length === 3) {
+      const { readHarnessEvaluationInput } = await import('./harness-evaluation.js');
+      const settings = await readHarnessEvaluationInput(args[2]);
+      const preview = await visual.previewVisualToolConfig(root, args[1], settings);
+      if (args[0] === 'preview') return print(JSON.stringify(preview, null, 2));
+      if (!await terminalApproval()({ type: 'visual-tool-configure', ...preview })) return print('Setup declined.');
+      return print(JSON.stringify(await visual.configureVisualTool(root, args[1], settings), null, 2));
+    }
+    throw new Error('Use visual-tools status, or preview|configure iris|earshot|nninteractive <options.json>.');
+  }
+  if (command === 'artifacts') {
+    const artifacts = await import('./artifacts.js');
+    if (args[0] === 'list') return print(JSON.stringify(await artifacts.listArtifacts(root), null, 2));
+    if (args[0] === 'import' && args.length === 2) return print(JSON.stringify(await artifacts.importArtifact(root, args[1]), null, 2));
+    if (args[0] === 'inspect' && args.length === 2) return print(JSON.stringify(await artifacts.readArtifact(root, args[1]), null, 2));
+    throw new Error('Use artifacts list, import <project-relative-path>, or inspect <id>.');
+  }
+  if (command === 'media') {
+    const media = await import('./media-workflow.js');
+    const { readHarnessEvaluationInput } = await import('./harness-evaluation.js');
+    if (args[0] === 'review' && args.length === 3) return print(JSON.stringify(await media.recordMediaReview(root, args[1], await readHarnessEvaluationInput(args[2])), null, 2));
+    if (args[0] === 'preview' && args.length === 2) {
+      const controller = new AbortController(), cancel = () => controller.abort(); process.on('SIGINT', cancel); process.on('SIGTERM', cancel);
+      try {
+        const result = await media.previewMediaEdit(root, await readHarnessEvaluationInput(args[1]), { signal: controller.signal, approve: terminalApproval(controller.signal) });
+        const { createVisualArtifact, importArtifact } = await import('./artifacts.js');
+        const timeline = await createVisualArtifact(root, result.timeline, { source: result.directory });
+        for (const frame of result.reviewFrames) await importArtifact(root, frame.path);
+        return print(JSON.stringify({ ...result, artifact: timeline }, null, 2));
+      } finally { process.off('SIGINT', cancel); process.off('SIGTERM', cancel); }
+    }
+    throw new Error('Use media preview <edl.json> or review <output-directory> <review.json>.');
   }
   if (command === 'providers') {
     if (args[0] === 'local' && args.length === 1) {
@@ -218,6 +283,19 @@ async function main() {
     if (args[0] === 'import') { await saveConfig(root, await json(args[1])); return print('Configuration saved.'); }
   }
   if (command === 'skills') {
+    if (['deep-scan', 'deep-audit'].includes(args[0])) {
+      if (args.length !== 2) throw new Error('Use skills deep-scan <directory> or deep-audit <installed-name> --command /path/to/skillspector.');
+      const { deepScanSkill, deepScanSkillFiles } = await import('./deep-skill-scan.js');
+      const controller = new AbortController(), cancel = () => controller.abort(); process.on('SIGINT', cancel); process.on('SIGTERM', cancel);
+      try {
+        const settings = { command: options.command, network: options.network === true, llm: options.llm === true, ...(options.llm ? { provider: options.provider, model: options.model, endpoint: options.endpoint, apiKeyEnv: options['api-key-env'] } : {}), ...(options['timeout-ms'] ? { timeoutMs: Number(options['timeout-ms']) } : {}), signal: controller.signal };
+        const result = args[0] === 'deep-scan' ? await deepScanSkill(args[1], settings) : await deepScanSkillFiles((await loadSkill(root, args[1])).files, settings);
+        if (result.deeper.status !== 'completed') process.exitCode = 1;
+        await writeState(root, 'skill-reviews', `${Date.now()}-${result.digest.slice(0,16)}.json`, result, { exclusive: true });
+        return print(JSON.stringify(result, null, 2));
+      } finally { process.off('SIGINT', cancel); process.off('SIGTERM', cancel); }
+    }
+
     if (args[0] === 'audit') {
       if (args.length > 2) throw new Error('Use nexus skills audit [name].');
       const names = args[1] ? [args[1]] : (await listState(root, 'skills')).map(f => f.slice(0, -5));

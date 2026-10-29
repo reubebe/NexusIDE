@@ -1,0 +1,92 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, rm, readFile, writeFile, stat, symlink, mkdir } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { listCliAccounts, saveCliAccount, removeCliAccount, cliAccountLaunch } from '../src/cli-accounts.js';
+import { startServer } from '../src/server.js';
+import { discoverProviders, applyProviderSelection } from '../src/provider-catalog.js';
+import { defaultConfig } from '../src/config.js';
+
+async function fixture(t) {
+  const home = await mkdtemp(path.join(os.tmpdir(), 'nexus-cli-accounts-'));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  const command = path.join(home, 'fixture-cli');
+  await writeFile(command, '#!/bin/sh\nprintf "fixture CLI ready\\n"\nwhile IFS= read -r line; do printf "received:%s\\n" "$line"; done\n', { mode: 0o700 });
+  return { home, command };
+}
+test('CLI profiles isolate official CLI state and never forward inherited API credentials', async t => {
+  const { home, command } = await fixture(t);
+  const old = process.env.ANTHROPIC_API_KEY;
+  process.env.ANTHROPIC_API_KEY = 'private-parent-test-value';
+  t.after(() => { if (old === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = old; });
+  const first = await saveCliAccount({ provider: 'claude', mode: 'subscription', label: 'Work', command }, { home });
+  const second = await saveCliAccount({ provider: 'claude', mode: 'subscription', label: 'Personal', command }, { home });
+  await assert.rejects(cliAccountLaunch(first.id, { home }), /Confirm/);
+  const a = await cliAccountLaunch(first.id, { home, approved: true }), b = await cliAccountLaunch(second.id, { home, approved: true });
+  assert.notEqual(a.env.CLAUDE_CONFIG_DIR, b.env.CLAUDE_CONFIG_DIR);
+  assert.equal(a.env.ANTHROPIC_API_KEY, undefined);
+  assert.equal(a.env.CLAUDE_CODE_OAUTH_TOKEN, undefined);
+  assert.deepEqual(a.args, []);
+  assert.equal((await stat(a.env.CLAUDE_CONFIG_DIR)).mode & 0o777, 0o700);
+  assert.equal(a.account.label, 'Work');
+  const codex = await saveCliAccount({ provider: 'codex', mode: 'subscription', label: 'Codex work', command }, { home });
+  assert.deepEqual((await cliAccountLaunch(codex.id, { home, approved: true })).args, ['-c', 'cli_auth_credentials_store="file"', '-c', 'forced_login_method="chatgpt"']);
+  const gemini = await saveCliAccount({ provider: 'gemini', mode: 'subscription', label: 'Google work', command }, { home });
+  assert.ok((await cliAccountLaunch(gemini.id, { home, approved: true })).env.GEMINI_CLI_HOME.endsWith(gemini.id));
+  await removeCliAccount(first.id, { home });
+  assert.ok((await stat(a.env.CLAUDE_CONFIG_DIR)).isDirectory(), 'removal retains CLI-owned state');
+  await assert.rejects(cliAccountLaunch(first.id, { home, approved: true }), /no longer exists/);
+});
+test('Meta separates Muse keys, subscription sign-in and Model API keys without fallback', async t => {
+  const { home, command } = await fixture(t);
+  const api = await saveCliAccount({ provider: 'meta', mode: 'api', label: 'Meta work', keyEnv: 'META_API_KEY2', command }, { home });
+  await assert.rejects(cliAccountLaunch(api.id, { home, approved: true, env: { META_API_KEY: 'first', MODEL_API_KEY: 'model-key' } }), /META_API_KEY2/);
+  const launch = await cliAccountLaunch(api.id, { home, approved: true, env: { META_API_KEY2: 'second', MODEL_API_KEY: 'model-key' } });
+  assert.equal(launch.env.META_API_KEY, 'second'); assert.equal(launch.env.MODEL_API_KEY, undefined);
+  assert.deepEqual(launch.args, ['--contributor-mode', 'off']);
+  const sub = await saveCliAccount({ provider: 'meta', mode: 'subscription', label: 'Meta subscription', command }, { home });
+  assert.equal((await cliAccountLaunch(sub.id, { home, approved: true, env: { META_API_KEY: 'first' } })).env.META_API_KEY, undefined);
+  await assert.rejects(saveCliAccount({ provider: 'meta', mode: 'subscription', label: 'duplicate', command }, { home }), /one shared machine/);
+  const discovery = discoverProviders({ MODEL_API_KEY: 'model-key', MODEL_API_KEY2: 'second-model', META_API_KEY: 'muse-key' });
+  assert.deepEqual(discovery.filter(p => p.providerId === 'meta').map(p => p.keyEnv), ['MODEL_API_KEY', 'MODEL_API_KEY2']);
+  const config = applyProviderSelection(defaultConfig, { provider: 'meta:2', model: 'muse-spark-1.3' }, { MODEL_API_KEY2: 'second-model' });
+  assert.equal(config.providers[config.routes.default].baseUrl, 'https://api.meta.ai/v1');
+  assert.equal(config.providers[config.routes.default].keyEnv, 'MODEL_API_KEY2');
+  assert.doesNotMatch(JSON.stringify(await listCliAccounts({ home, env: { META_API_KEY2: 'second' } })), /"second"|model-key|muse-key/);
+  assert.doesNotMatch(await readFile(path.join(home, '.nexus/connections/cli-accounts.json'), 'utf8'), /"second"|model-key/);
+});
+test('CLI profiles reject arbitrary fields, invalid modes, key values and state symlinks', async t => {
+  const { home, command } = await fixture(t);
+  const base = { provider: 'claude', mode: 'subscription', label: 'Work', command };
+  for (const input of [{ ...base, args: ['--dangerously-skip-permissions'] }, { ...base, keyEnv: 'ANTHROPIC_API_KEY' }, { ...base, mode: 'api' }, { ...base, command: 'claude' }, { ...base, label: '\nBad' }]) await assert.rejects(saveCliAccount(input, { home }));
+  await assert.rejects(saveCliAccount({ provider: 'meta', mode: 'api', label: 'Bad', command, keyEnv: 'actual-secret-value' }, { home }), /META_API_KEY/);
+  const p = await saveCliAccount(base, { home });
+  const dir = path.join(home, '.nexus/cli-accounts'); await mkdir(dir);
+  await symlink(home, path.join(dir, p.id));
+  await assert.rejects(cliAccountLaunch(p.id, { home, approved: true }), /symbolic links/);
+  await assert.rejects(saveCliAccount({ ...p, provider: 'codex' }, { home }), /new profile/);
+});
+test('dashboard CLI launch requires authentication and approval; terminal rejects stale input and concurrent switches', async t => {
+  const { home, command } = await fixture(t);
+  const app = await startServer({ root: home, accountHome: home, port: 0 }); t.after(() => app.close());
+  const origin = new URL(app.url).origin;
+  const api = async (endpoint, method = 'GET', data) => fetch(origin + '/api/' + endpoint, { method, headers: { authorization: `Bearer ${app.token}`, 'content-type': 'application/json' }, ...(data === undefined ? {} : { body: JSON.stringify(data) }) });
+  assert.equal((await fetch(origin + '/api/cli-accounts')).status, 401);
+  const profile = await (await api('cli-accounts', 'POST', { provider: 'claude', mode: 'subscription', label: 'Synthetic', command })).json();
+  assert.equal((await api('terminal/start', 'POST', { accountId: profile.id })).status, 400);
+  assert.equal((await api('terminal/start', 'POST', { accountId: profile.id, approved: true })).status, 201);
+  assert.equal((await api('terminal/start', 'POST', { accountId: profile.id, approved: true })).status, 409);
+  const output = await (await api('terminal/output')).json();
+  assert.equal(output.account.label, 'Synthetic');
+  assert.equal((await api('terminal/input', 'POST', { input: 'bad\n', sessionId: 'stale' })).status, 409);
+  assert.equal((await api('terminal/input', 'POST', { input: 'ok\n', sessionId: output.id })).status, 200);
+  assert.equal((await api('terminal/resize', 'POST', { cols: 80, rows: 24 })).status, 200);
+  assert.equal((await api('terminal/resize', 'POST', { cols: -1, rows: 24 })).status, 400);
+  assert.equal((await api('cli-accounts/' + profile.id, 'DELETE')).status, 400);
+  let receipt;
+  for (let i = 0; i < 20; i++) { receipt = await (await api('terminal/output')).json(); if (receipt.output.includes('received:ok')) break; await new Promise(r => setTimeout(r, 10)); }
+  assert.match(receipt.output, /received:ok/); assert.doesNotMatch(receipt.output, /received:bad/);
+  assert.equal((await api('terminal/stop', 'POST', {})).status, 200);
+  assert.equal((await api('cli-accounts/' + profile.id, 'DELETE')).status, 200);
+});

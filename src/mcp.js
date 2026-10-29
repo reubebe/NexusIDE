@@ -3,8 +3,10 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { commandEnvironment } from './process.js';
 import { loadConfig } from './config.js';
+import { extractMcpArtifacts } from './artifacts.js';
+import { version } from './version.js';
 
-export async function connectMcp(root, agent, approve, signal, workspaceRoot = root) {
+export async function connectMcp(root, agent, approve, signal, workspaceRoot = root, runId) {
   const config = await loadConfig(root);
   const clients = [], tools = [], routes = new Map();
   const close = async () => { await Promise.allSettled(clients.map(c => c.close())); };
@@ -21,7 +23,7 @@ export async function connectMcp(root, agent, approve, signal, workspaceRoot = r
         ? new StreamableHTTPClientTransport(new URL(server.url), { requestInit: { headers: server.keyEnv && process.env[server.keyEnv] ? { Authorization: `Bearer ${process.env[server.keyEnv]}` } : {}, redirect: 'error' }, fetch: (url, init) => fetch(url, { ...init, redirect: 'error' }) })
         : new StdioClientTransport({ command: server.command, args: server.args, cwd: workspaceRoot, env, stderr: 'pipe', maxBufferSize: 10_000_000 });
       transport.stderr?.on('data', () => {});
-      const client = new Client({ name: 'nexuside', version: '0.2.0' });
+      const client = new Client({ name: 'nexuside', version });
       clients.push(client);
       await client.connect(transport, { timeout: 15000, signal });
       let cursor;
@@ -43,7 +45,8 @@ export async function connectMcp(root, agent, approve, signal, workspaceRoot = r
       if (!route) throw new Error('MCP tool not granted.');
       if (!await approve({ type: 'mcp-call', server: route.server, tool: route.name, args })) return 'MCP call declined.';
       signal?.throwIfAborted();
-      const result = await route.client.callTool({ name: route.name, arguments: args }, undefined, { timeout: 60000, signal });
+      const raw = await route.client.callTool({ name: route.name, arguments: args }, undefined, { timeout: 60000, signal });
+      const result = await extractMcpArtifacts(root, raw, { source: `${route.server}/${route.name}`, runId });
       const serialized = JSON.stringify(result);
       if (serialized.length <= 100000) return serialized;
       // Keep the failure flag outside the preview so truncation cannot hide an
