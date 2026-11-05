@@ -1,3 +1,5 @@
+import { renderAnimation, exportComparison, readMotionMedia } from './motion.js';
+import { inspectSubscriptionAccount, applySubscriptionSelection } from './subscription-provider.js';
 import { initializeWorkspace } from './workspace-init.js';
 import http from 'node:http';
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
@@ -34,7 +36,7 @@ const publicAssets = new Map([
   ['/', ['ui/index.html', 'text/html']],
   ['/guide', ['ui/guide.html', 'text/html']],
   ['/user-guide.md', ['docs/user-guide.md', 'text/plain']],
-  ...['app.js', 'file-editor.js', 'agent-editor.js', 'render-cache.js', 'provider-picker.js', 'code-map.js', 'visualizations.js', 'spatial-view.js', 'terminal-view.js', 'cli-accounts.js'].map(name => ['/' + name, ['ui/' + name, 'text/javascript']]),
+  ...['app.js', 'file-editor.js', 'agent-editor.js', 'render-cache.js', 'provider-picker.js', 'code-map.js', 'visualizations.js', 'spatial-view.js', 'terminal-view.js', 'cli-accounts.js', 'motion.js'].map(name => ['/' + name, ['ui/' + name, 'text/javascript']]),
   ['/vendor/xterm.mjs', ['node_modules/@xterm/xterm/lib/xterm.mjs', 'text/javascript']],
   ['/vendor/addon-fit.mjs', ['node_modules/@xterm/addon-fit/lib/addon-fit.mjs', 'text/javascript']],
   ['/vendor/xterm.css', ['node_modules/@xterm/xterm/css/xterm.css', 'text/css']],
@@ -83,7 +85,7 @@ export async function startServer({ root, port = 4317, accountHome }) {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     try {
       if (closing) return send(res, 503, { error: 'Dashboard is shutting down.' });
       if (req.headers.host !== new URL(origin).host) return send(res, 403, { error: 'Invalid host.' });
@@ -103,6 +105,22 @@ export async function startServer({ root, port = 4317, accountHome }) {
       if (req.method === 'POST' && pathname === '/api/agent-library') {
         const result = await writeConfiguration(() => initializeWorkspace(root));
         return send(res, 200, result);
+      }
+      if (req.method === 'GET' && pathname === '/api/motion-media') {
+        const media = await readMotionMedia(root, url.searchParams.get('path'));
+        res.writeHead(200, {'content-type':media.type, 'content-length':media.bytes.length}); return res.end(media.bytes);
+      }
+      if (req.method === 'POST' && pathname === '/api/motion') {
+        const data = await body(req);
+        if (data.approved !== true || !['animation','comparison'].includes(data.kind)) throw new Error('Approve a supported motion operation.');
+        if ([...jobs.values()].some(j=>j.status==='running')) throw new Error('Wait for the active task or render to finish.');
+        const id=randomUUID(), controller=new AbortController(), job={id,status:'running',events:[],controller};
+        const release=await acquireWorkspace(root,root,id);jobs.set(id,job);
+        const execution=(data.kind==='animation'?renderAnimation:exportComparison)(root,data.input,{signal:controller.signal,approve:async()=>true})
+          .then(result=>{job.status='completed';job.output=result.output;})
+          .catch(error=>{job.status=controller.signal.aborted?'cancelled':'failed';job.error=error.message;})
+          .finally(async()=>{await release();executions.delete(execution);});
+        executions.add(execution);return send(res,202,{id});
       }
       if (req.method === 'GET' && pathname === '/api/config') return send(res, 200, await loadConfig(root));
       if (req.method === 'GET' && pathname === '/api/artifacts') return send(res, 200, { artifacts: await listArtifacts(root) });
@@ -210,6 +228,17 @@ export async function startServer({ root, port = 4317, accountHome }) {
         if (agent && !agent.memory) throw new Error('Memory is disabled for this agent.');
         return send(res, 200, await searchMemory(root, data.query, agent?.name, { mode: data.mode || 'hybrid', loadout: agent ? agent.memoryLoadout || {} : undefined }));
       }
+      if (req.method === 'POST' && pathname === '/api/subscription-route') {
+        const input = await body(req);
+        if (input.approved !== true || typeof input.model !== 'string' || !/^[a-zA-Z0-9._:-]{1,120}$/.test(input.model)) throw new Error('Select a model and approve using this subscription for Tasks.');
+        const route = safeName(input.route || 'default');
+        const { accountBinding } = await inspectSubscriptionAccount(input.accountId, { home: accountHome });
+        await writeConfiguration(async () => {
+          const agent = route === 'default' ? undefined : await loadAgent(root, route);
+          await saveConfig(root, applySubscriptionSelection(await loadConfig(root), { ...input, route, accountBinding }, agent));
+        });
+        return send(res, 200, { connected: true, route, billingMode: 'subscription' });
+      }
       if (req.method === 'GET' && pathname === '/api/cli-accounts') return send(res, 200, await listCliAccounts({ home: accountHome }));
       if (req.method === 'POST' && pathname === '/api/cli-accounts') return send(res, 201, await saveCliAccount(await body(req), { home: accountHome }));
       const cliAccountRoute = pathname.match(/^\/api\/cli-accounts\/([a-f0-9-]{36})$/);
@@ -277,21 +306,22 @@ export async function startServer({ root, port = 4317, accountHome }) {
         if (jobs.size > 100) jobs.delete(jobs.keys().next().value);
         const id = randomUUID(), controller = new AbortController();
         const job = { id, status: 'running', events: [], controller };
-        const approve = request => new Promise(resolve => {
+        const approve = (request, { signal = controller.signal } = {}) => new Promise(resolve => {
+          signal = AbortSignal.any([controller.signal, signal]);
           const approvalId = randomUUID();
-          const finish = allow => { const a = approvals.get(approvalId); if (!a) return; clearTimeout(a.timer); approvals.delete(approvalId); controller.signal.removeEventListener('abort', abort); resolve(allow); };
+          const finish = allow => { const a = approvals.get(approvalId); if (!a) return; clearTimeout(a.timer); approvals.delete(approvalId); signal.removeEventListener('abort', abort); resolve(allow); };
           const abort = () => finish(false);
           approvals.set(approvalId, { id: approvalId, job: id, request, resolve: finish, timer: setTimeout(() => finish(false), 300000) });
-          controller.signal.addEventListener('abort', abort, { once: true });
-          if (controller.signal.aborted) abort();
+          signal.addEventListener('abort', abort, { once: true });
+          if (signal.aborted) abort();
         });
-        const options = { root, task: data.task, signal: controller.signal, approve, commandMode: data.sandboxImage ? 'docker' : 'host', sandboxImage: data.sandboxImage, onEvent: event => { job.events.push(event); if (job.events.length > 300) job.events.shift(); } };
+        const options = { root, accountHome, task: data.task, signal: controller.signal, approve, commandMode: data.sandboxImage ? 'docker' : 'host', sandboxImage: data.sandboxImage, onEvent: event => { job.events.push(event); if (job.events.length > 300) job.events.shift(); } };
         let execute;
         if (distill) {
           const run = await readState(root, 'runs', `${safeName(data.runId)}.json`);
           if (run.status !== 'completed') throw new Error('Memory distillation requires a completed run.');
           const agent = await loadAgent(root, run.agent);
-          const provider = data.demo === true ? undefined : await routeProvider(root, agent, { providerName: data.provider });
+          const provider = data.demo === true ? undefined : await routeProvider(root, agent, { providerName: data.provider, accountHome });
           execute = async () => {
             const draft = await draftMemory({ root, runId: data.runId, provider, demo: data.demo === true, approve, signal: controller.signal });
             job.events.push({ type: 'text', text: `Created ${draft.candidates.length} memory candidates. Review them in Memory.`, at: new Date().toISOString() });
@@ -305,7 +335,7 @@ export async function startServer({ root, port = 4317, accountHome }) {
         } else {
           const agent = await loadAgent(root, data.agent);
           agent.permissions.execute = agent.permissions.execute === true && data.allowCommands === true;
-          const provider = await routeProvider(root, agent, { demo: data.demo === true });
+          const provider = await routeProvider(root, agent, { demo: data.demo === true, accountHome });
           const config = await loadConfig(root);
           const workspace = data.worktree ? await resolveWorktree(root, data.worktree) : root;
           execute = () => runAgent({ ...options, root: workspace, stateRoot: root, agent, provider, resume: data.resume, maxSteps: config.limits?.maxSteps || 20, maxContextChars: config.limits?.maxContextChars || 160000 });

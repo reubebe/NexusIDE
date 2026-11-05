@@ -508,7 +508,7 @@ Claude, Codex and Gemini profiles use separate CLI state directories. Add anothe
 
 Meta's subscription is specific to Muse Code. Nexus exposes one shared Muse subscription profile because an isolated multi-account storage contract was not verified. Switch its account through Muse `/login` and check whether a saved API key is overriding browser sign-in. Muse API mode forwards the explicitly selected `META_API_KEY` or numbered variable. Direct Meta API tasks use `MODEL_API_KEY` or its numbered variant instead. The two are never substituted for one another. Nexus launches Muse with Contributor mode off.
 
-These official CLI sessions use their own permission prompts and can modify this project. They are separate from Nexus **Tasks** and its approval history. Tasks and teams continue to use the API/local model route selected above. No automatic switch to another account or paid API occurs when a CLI reaches its limit.
+These official CLI sessions use their own permission prompts and can modify this project. They are separate from Nexus **Tasks** and its approval history. In v0.3.1 a Claude Code subscription profile can also be explicitly selected for Tasks and teams, as described below. Other subscription CLIs remain Terminal-only. No automatic switch to another account or paid API occurs when a CLI reaches its limit.
 
 DeepSeek, GLM and Qwen API accounts remain available in the API selector. Qwen's former OAuth route ended on April 15, 2026. GLM Coding Plan requires a supported provider-approved tool; its entitlement is not assumed for direct Nexus tasks. See the [provider matrix and setup details](subscription-accounts.md).
 
@@ -1738,3 +1738,20 @@ An image review requires a saved profile with `vision: true`, a question and exp
 The [experiment guide](harness-experiments.md) describes the executed baseline/candidate runner inspired by Reef: fixed development and held-out cases, repeated fresh runs, recorded feedback, explicit human review, adopt and rollback. Try `examples/harness-experiment.json` with the offline demo first. Demo records are ineligible for adoption. Evaluations stop after two consecutive failed/cancelled trials. The guardrails measure the specified checks; they do not prove general improvement or automatically rewrite your instructions.
 
 For the source-level account comparison and direct-subscription limitations, see [Research Harness connection design](research-harness-connections.md).
+
+
+### Claude subscription Tasks and shared budgets (v0.3.1)
+
+In **Connections → Official CLI accounts**, add a Claude subscription profile, launch it, sign in through Claude Code, and stop that Terminal session. Select the workspace or agent model route above, enter an entitled Claude model (for example `sonnet`), then choose **Use subscription for selected model route**. The installed CLI must support the required safe-mode and structured-output options. Connecting checks identity and CLI capabilities; it does not prove a model completion or remaining quota. This adapter is experimental: fixture-tested, with no live subscription completion validated for this release.
+
+Tasks use Claude Code only for inference. Its native tools, MCP servers, slash commands and session persistence are disabled; proposed actions return to Nexus's existing grants and approvals. Nexus passes context through stdin, does not extract login tokens, checks account identity before every request, and stops on identity changes or service errors. There is no automatic paid API fallback or account rotation. Different routes keep their own account/model selection. An agent with a pinned provider must have that pin removed deliberately before using the route picker. Team stages sharing one Claude profile serialize; separate profiles remain distinct. Stop user-operated CLI sessions before running subscription Tasks.
+
+Under **Connections → Task and team budgets**, save request, reported-token and time limits for new runs. A team shares its counters and deadline across stages. Deadline expiry cancels pending approval and child execution. Token usage arrives after a response, so concurrent in-flight requests can exceed a token ceiling before stopping. Missing usage stops token-budgeted work; unknown cost is not zero. These are Nexus run controls, not vendor subscription quotas or invoice limits. Advanced configuration can remove these optional limits.
+
+### Motion comparison and optional animation (v0.3.1)
+
+Open **Visualizations → Motion studio**. Enter project-relative paths for the source and draft videos and load them. Source playback controls synchronize both previews from zero; source audio is used. This is a review aid, not frame-accurate editing. Export writes a new 1280×360 side-by-side MP4, limited to 120 seconds, using locally installed FFmpeg and ffprobe. Original files are retained. Each output directory contains a receipt with source hashes, commands, output hash and inspected dimensions/duration. A failed render is recorded as failed.
+
+The optional ManimGL control accepts a reviewed project Python scene, class name and absolute installed `manimgl` executable. Approval allows Python and its imports to run with your host privileges. ManimGL is not bundled, and actual ManimGL rendering was not tested on this machine. Agents with both write and command grants can propose `render_animation` and `export_video_comparison`; each operation still requires approval and host mode. See [motion setup and limitations](motion-workflows.md).
+
+The larger Studio, account-control and repository proposals are assessed in [Studio decisions](studio-decisions.md). They are a staged roadmap, not a claim that all referenced applications are integrated.

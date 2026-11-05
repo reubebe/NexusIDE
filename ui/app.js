@@ -1,3 +1,4 @@
+import { createMotionStudio } from './motion.js';
 import { createFileEditor, createFileBrowser } from './file-editor.js';
 import { createAgentEditor } from './agent-editor.js';
 import { renderWhenChanged } from './render-cache.js';
@@ -86,7 +87,8 @@ function showTab(tab) {
 for (const button of document.querySelectorAll('[data-tab]')) button.onclick = () => showTab(button.dataset.tab);
 if (initialToken === 'about') showTab('about');
 const terminalView = createTerminalView({ api, notice: message => { $('notice').textContent = message; } });
-createCliAccounts({ api, terminal: terminalView, showTerminal: () => showTab('terminal'), notice: message => { $('notice').textContent = message; } });
+const motionStudio = createMotionStudio({api,token,notice:message=>{$('notice').textContent=message;}});
+createCliAccounts({ api, onConnected: () => providerPicker.loadConfig(), terminal: terminalView, showTerminal: () => showTab('terminal'), notice: message => { $('notice').textContent = message; } });
 function render() {
   $('project-path').textContent = state.root;
   $('app-version').textContent = `NexusIDE v${state.version}`;
@@ -165,7 +167,7 @@ function render() {
   if (memoryLoaded && lastMemoryJobKey && memoryJobKey !== lastMemoryJobKey && !$('memory').hidden) action(() => refreshDrafts())();
   lastMemoryJobKey = memoryJobKey;
 }
-async function refresh() { state = await api('state'); render(); }
+async function refresh() { state = await api('state'); render(); motionStudio.update(state.jobs); }
 const layerLabels = { L1: 'Facts & decisions', L2: 'Summary', L3: 'Preference' };
 function memoryOption(value, text) { const option = node('option', text); option.value = value; return option; }
 function memoryLabel(text, input) { const label = node('label', text); label.append(input); return label; }
@@ -559,3 +561,11 @@ $('install-agent-library').onclick = action(async () => {
   $('agent-library-status').textContent = `Added ${result.created.length} agents and ${result.teams.created.length + Number(result.teamCreated)} teams. Existing definitions were kept.`;
   await refresh();
 });
+
+$('budget-form').onsubmit = action(async () => {
+  if (providerPicker.dirty || providerPicker.busy) throw new Error('Save advanced connection edits and wait for the current save before changing budgets.');
+  const config=await api('config');
+  config.limits={...config.limits,maxRequests:Number($('budget-requests').value),maxTokens:Number($('budget-tokens').value),maxDurationMs:Number($('budget-minutes').value)*60000};
+  await api('config','PUT',config);await providerPicker.loadConfig();$('budget-status').textContent='Budgets saved for new tasks and teams.';
+});
+api('config').then(config=>{const l=config.limits||{};$('budget-requests').value=l.maxRequests||40;$('budget-tokens').value=l.maxTokens||200000;$('budget-minutes').value=(l.maxDurationMs||900000)/60000;$('budget-status').textContent=l.maxRequests?'Saved budgets loaded.':'These defaults take effect when saved.';}).catch(()=>{});

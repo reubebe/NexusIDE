@@ -40,13 +40,14 @@ export async function startAcp({ demo = false, allowCommands = false, input = pr
       const controller = new AbortController(); session.controller = controller;
       let updates = Promise.resolve(), updateError;
       const update = content => { updates = updates.then(() => conn.sessionUpdate({ sessionId, update: content })).catch(e => { updateError = e; controller.abort(e); }); };
-      const approve = async request => {
-        controller.signal.throwIfAborted();
+      const approve = async (request, { signal = controller.signal } = {}) => {
+        signal = AbortSignal.any([controller.signal, signal]);
+        signal.throwIfAborted();
         const permission = conn.requestPermission({ sessionId, toolCall: { toolCallId: randomUUID(), title: request.type || 'Write project file', kind: request.type === 'command' || request.type === 'application' ? 'execute' : 'other', status: 'pending', rawInput: request, content: [{ type: 'content', content: { type: 'text', text: JSON.stringify(request, null, 2) } }] }, options: [{ optionId: 'allow', name: 'Allow once', kind: 'allow_once' }, { optionId: 'reject', name: 'Decline', kind: 'reject_once' }] });
         let timer, abort;
-        const cancelled = new Promise(resolve => { abort = () => resolve({ outcome: { outcome: 'cancelled' } }); controller.signal.addEventListener('abort', abort, { once: true }); timer = setTimeout(abort, 300000); if (controller.signal.aborted) abort(); });
+        const cancelled = new Promise(resolve => { abort = () => resolve({ outcome: { outcome: 'cancelled' } }); signal.addEventListener('abort', abort, { once: true }); timer = setTimeout(abort, 300000); if (signal.aborted) abort(); });
         try { const response = await Promise.race([permission, cancelled]); return response.outcome.outcome === 'selected' && response.outcome.optionId === 'allow'; }
-        finally { clearTimeout(timer); controller.signal.removeEventListener('abort', abort); }
+        finally { clearTimeout(timer); signal.removeEventListener('abort', abort); }
       };
       try {
         const agent = await loadAgent(session.root, session.mode);

@@ -5,7 +5,7 @@ import { runAgent } from './runtime.js';
 import { validateWorkflow } from './workflows.js';
 import { writeState } from './state.js';
 
-export async function planTask({ root, task, demo = false, provider, approve, onEvent, signal }) {
+export async function planTask({ root, task, demo = false, provider, approve, onEvent, signal, accountHome }) {
   if (typeof task !== 'string' || !task.trim()) throw new Error('Provide a planning task.');
   const agents = await listAgents(root);
   const id = randomUUID(), name = `plan-${id.slice(0, 8)}`;
@@ -17,7 +17,7 @@ export async function planTask({ root, task, demo = false, provider, approve, on
   } else {
     const base = await loadAgent(root, 'architect');
     const planner = { ...base, permissions: { read: true, write: false, execute: false }, mcp: [], applications: [], skills: [], memory: false, instructions: `You are a workflow planner. Inspect the project if useful. Return ONLY a JSON object with version:1, name:"${name}", and steps. Each step has id, agent, task, dependsOn (array of earlier step ids), and optional approval boolean. Use 1–12 steps and only these available agents: ${JSON.stringify(agents.map(a => ({ name: a.name, instructions: a.instructions.slice(0, 180), permissions: a.permissions })))}. Give each step a concrete task. Do not claim that execution has occurred. Require approval before implementation or external actions. Do not include shell commands as workflow metadata.` };
-    run = await runAgent({ root, agent: planner, task, provider: provider || await routeProvider(root, base), approve, onEvent, signal, maxSteps: 10 });
+    run = await runAgent({ root, agent: planner, task, provider: provider || await routeProvider(root, base, { accountHome }), approve, onEvent, signal, maxSteps: 10 });
     const response = run.messages.filter(m => m.role === 'assistant' && m.content).at(-1)?.content || '';
     const json = response.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
     workflow = JSON.parse(json); workflow.name = name;

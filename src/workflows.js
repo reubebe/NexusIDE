@@ -1,3 +1,4 @@
+import { createRunBudget, withAbort } from './run-budget.js';
 import { randomUUID } from 'node:crypto';
 import { loadAgent } from './agents.js';
 import { runAgent } from './runtime.js';
@@ -29,7 +30,7 @@ export function validateWorkflow(workflow) {
   if (workflow.reviewPolicy !== undefined) validateReviewPolicy(workflow);
   return workflow;
 }
-async function executeWorkflow({ root, workflow, task, checkpoint = false, continuation, approve = async () => false, onEvent = () => {}, demo = false, allowCommands = false, signal, concurrency = 2, isolated = false, ...options }) {
+async function executeWorkflow({ root, workflow, task, checkpoint = false, continuation, approve = async () => false, onEvent = () => {}, demo = false, allowCommands = false, signal, concurrency = 2, isolated = false, accountHome, ...options }) {
   validateWorkflow(workflow);
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4) throw new Error('Concurrency must be 1–4.');
   const id = randomUUID();
@@ -37,11 +38,18 @@ async function executeWorkflow({ root, workflow, task, checkpoint = false, conti
   let redact = redactor(), saving = Promise.resolve();
   const save = () => { saving = saving.then(() => writeState(root, 'workflows', `${id}.json`, redact(record))); return saving; };
   const config = await loadConfig(root);
+  options.requestBudget = createRunBudget(config.limits);
+  if (options.requestBudget.signal) signal = signal ? AbortSignal.any([signal, options.requestBudget.signal]) : options.requestBudget.signal;
+  const requestApproval = approve;
+  approve = (request, context = {}) => {
+    const approvalSignal = context.signal || signal;
+    return withAbort(() => requestApproval(request, { signal: approvalSignal }), approvalSignal);
+  };
   const prepared = new Map();
   for (const s of workflow.steps) {
     const agent = await loadAgent(root, s.agent);
     agent.permissions.execute = agent.permissions.execute === true && allowCommands === true;
-    const provider = await routeProvider(root, agent, { demo });
+    const provider = await routeProvider(root, agent, { demo, accountHome });
     prepared.set(s.id, { agent, provider });
   }
   redact = redactor([...prepared.values()].flatMap(p => p.provider.sensitiveValues || []));
@@ -70,6 +78,9 @@ async function executeWorkflow({ root, workflow, task, checkpoint = false, conti
       if (!ready.length) throw new Error('No runnable workflow steps.');
       // Shared-workspace writes and commands serialize. Read-only stages can overlap.
       if (!isolated && ready.some(s => { const a = prepared.get(s.id).agent; return a.permissions.write || a.permissions.execute || a.mcp?.length || a.applications?.length; })) ready = ready.slice(0, 1);
+      // Official CLI identities cannot accept overlapping inference sessions.
+      const subscriptionAccounts = new Set();
+      ready = ready.filter(s => { const p = prepared.get(s.id).provider; if (p.billingMode !== 'subscription') return true; if (subscriptionAccounts.has(p.accountId)) return false; subscriptionAccounts.add(p.accountId); return true; });
       const results = await Promise.allSettled(ready.map(async step => {
         record.steps[step.id] = { status: 'pending', startedExecution: false }; await save();
         signal?.throwIfAborted();

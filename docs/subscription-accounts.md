@@ -1,6 +1,6 @@
 # API accounts and subscription sessions
 
-Nexus 0.3.0 has two explicit connection paths. **API or local model** routes Nexus Tasks and teams through the selected model adapter. **Official CLI accounts** launches an installed provider CLI in the interactive Terminal. The CLI handles sign-in, model selection, permissions and billing. A CLI subscription session is not silently substituted for a Nexus task provider.
+Nexus 0.3.1 keeps API and official CLI authentication separate. **API or local model** routes Nexus Tasks and teams through the selected model adapter. **Official CLI accounts** launches an installed provider CLI in the interactive Terminal. The CLI handles sign-in, model selection, permissions and billing. Claude Code subscription profiles can additionally be selected explicitly for Tasks and teams through the experimental inference adapter below. Other official CLIs remain Terminal sessions.
 
 ## Provider support
 
@@ -42,3 +42,11 @@ Provider behavior was checked against current primary documentation on 28 Octobe
 OpenAI also documents a direct [Sign in with ChatGPT flow for open-source apps](https://developers.openai.com/siwc/token-sharing-open-source/sign-in) with [separate account registrations](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions). That distinct OAuth and streaming inference implementation is not part of this release; Nexus currently uses the official Codex CLI for subscription sessions. API Responses support does not imply that subscription tokens can be pasted into the API-key picker.
 
 The requested [Magpie](https://github.com/yetone/magpie), [Claude Capsule Kit](https://github.com/arpitnath/claude-capsule-kit), [Claudex Loop](https://github.com/chaseai-yt/claudex-loop) and [Filee](https://github.com/KnifeLemon/Filee) were considered as integration references, not as evidence that every vendor allows interchangeable subscription credentials. Nexus uses its own profile store and existing PTY; it does not import their credential stores or disable CLI permission prompts.
+
+## Experimental Claude subscription route (0.3.1)
+
+After signing into a saved Claude CLI profile, stop its terminal session. In Connections choose the destination model route, select that CLI profile, enter an entitled model and select **Use subscription for selected model route**. Nexus checks the installed CLI controls and reported identity, then saves an identity-bound route. Rebinding one route cannot silently alter another route or a pinned agent provider.
+
+The adapter calls the official CLI with native tools, MCP, slash commands and session persistence disabled, from a temporary working directory. Nexus still owns tool permissions and approvals. Account identity is checked on each request. Same-profile team stages serialize; no fallback, quota-driven rotation or automatic request retry occurs. The CLI and provider retain authority over subscription availability. No quota balance is exposed by this adapter.
+
+Validation uses synthetic CLI responses, malformed/tool-denial fixtures, API-key isolation checks and authenticated routing tests. Installed Claude help was inspected for required flags; no live signed-in completion or actual billing was tested. See the [user guide](user-guide.md) for shared run limits and [Claude CLI reference](https://code.claude.com/docs/en/cli-reference) for the vendor interface. This does not extend Claude support to Codex, Gemini, Muse or other CLI providers in Tasks.

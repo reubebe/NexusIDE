@@ -1,3 +1,4 @@
+import { createRunBudget, withAbort } from './run-budget.js';
 import { randomUUID } from 'node:crypto';
 import { availableTools, executeTool } from './tools.js';
 import { writeState, readState } from './state.js';
@@ -14,8 +15,11 @@ import { loadConfig } from './config.js';
 import { createToolFailureGuard, toolFailed } from './tool-failure-guard.js';
 
 const object = properties => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false });
-export async function runAgent({ root, stateRoot = root, agent, task, provider, approve = async () => false, onEvent = () => {}, maxSteps = 20, maxContextChars = 160000, signal, resume, commandMode = 'host', sandboxImage }) {
+export async function runAgent({ root, stateRoot = root, agent, task, provider, approve = async () => false, onEvent = () => {}, maxSteps = 20, maxContextChars = 160000, signal, resume, commandMode = 'host', sandboxImage, requestBudget }) {
   signal?.throwIfAborted();
+  const budgetLimits = (await loadConfig(stateRoot)).limits || {};
+  const budget = requestBudget || createRunBudget(budgetLimits);
+  if (budget.signal) signal = signal ? AbortSignal.any([signal, budget.signal]) : budget.signal;
   const id = randomUUID();
   const redact = redactor(provider.sensitiveValues);
   const failureGuard = createToolFailureGuard();
@@ -36,7 +40,7 @@ export async function runAgent({ root, stateRoot = root, agent, task, provider, 
     const history = previous.messages.filter(m => ['user', 'assistant'].includes(m.role) && m.content).map(m => `${m.role}: ${m.content}`).join('\n').slice(-40000);
     messages.push({ role: 'user', content: `Prior conversation, for context only:\n${history}\n\nContinuation task:\n${task}` });
   } else messages.push({ role: 'user', content: task });
-  const record = { id, owner: currentOwner(), parent: resume, workspace: root, agent: agent.name, provider: provider.name, model: provider.model, started: new Date().toISOString(), status: 'running', usage: { input: 0, output: 0, reported: true, estimatedCost: null }, events: [], messages };
+  const record = { id, owner: currentOwner(), parent: resume, workspace: root, agent: agent.name, provider: provider.name, model: provider.model, ...(provider.billingMode ? {billingMode: provider.billingMode, accountId: provider.accountId} : {}), started: new Date().toISOString(), status: 'running', usage: { input: 0, output: 0, reported: true, estimatedCost: null }, events: [], messages };
   record.memoryContext = { mode: context.mode, characters: context.characters, truncated: context.truncated, records: context.matches.map(({ id, revision, layer }) => ({ id, revision, layer })) };
   const emit = event => { const entry = redact({ ...event, at: new Date().toISOString() }); record.events.push(entry); onEvent(entry); };
   const save = () => writeState(stateRoot, 'runs', `${id}.json`, redact(record));
@@ -48,7 +52,7 @@ export async function runAgent({ root, stateRoot = root, agent, task, provider, 
     emit({ type: 'start', id, agent: agent.name });
     const auditedApproval = async request => {
       signal?.throwIfAborted();
-      const allowed = await approve(request);
+      const allowed = await withAbort(() => approve(request, { signal }), signal);
       signal?.throwIfAborted();
       emit({ type: 'approval', action: request.type || 'write', allowed, target: request.path || request.tool || request.command });
       await save();
@@ -64,6 +68,8 @@ export async function runAgent({ root, stateRoot = root, agent, task, provider, 
     for (let step = 0; step < maxSteps; step++) {
       signal?.throwIfAborted();
       if (JSON.stringify(messages).length > maxContextChars) throw new Error('Context limit reached. Start a continuation run or narrow the task.');
+      budget.reserve();
+      record.budget = budget.snapshot();
       emit({ type: 'model-request', step: step + 1, provider: provider.name, model: provider.model });
       await save();
       let reply;
@@ -72,19 +78,23 @@ export async function runAgent({ root, stateRoot = root, agent, task, provider, 
         // A rejected or interrupted request may still have incurred usage.
         record.usage.reported = false;
         record.usage.estimatedCost = null;
+        budget.record(null, false); record.budget = budget.snapshot();
         throw error;
       }
       record.usage.input += reply.usage?.input || 0;
       record.usage.output += reply.usage?.output || 0;
       if (reply.usageReported === false || !reply.usage) record.usage.reported = false;
       record.usage.estimatedCost = record.usage.reported && Number.isFinite(provider.rates?.input) && Number.isFinite(provider.rates?.output) ? (record.usage.input * provider.rates.input + record.usage.output * provider.rates.output) / 1000000 : null;
+      budget.record(reply.usage, reply.usageReported); record.budget = budget.snapshot();
       signal?.throwIfAborted();
       emit({ type: 'model-response', step: step + 1 });
       messages.push({ role: 'assistant', content: reply.text, calls: reply.calls, ...(reply.raw ? { raw: reply.raw } : {}) });
       if (reply.text) emit({ type: 'text', text: reply.text });
+      budget.check();
       if (!reply.calls.length) { record.status = 'completed'; return record; }
       if (reply.calls.length > 32) throw new Error('Provider requested too many tools in one step.');
       for (const call of reply.calls) {
+        budget.check();
         signal?.throwIfAborted();
         emit({ type: 'tool', name: call.name });
         let content, threw = false;

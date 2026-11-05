@@ -1,4 +1,4 @@
-export function createCliAccounts({ api, terminal, showTerminal, notice }) {
+export function createCliAccounts({ api, terminal, showTerminal, notice, onConnected = async () => {} }) {
   const $ = id => document.getElementById(id);
   let catalog = [], profiles = [], busy = false;
   function providerChanged() {
@@ -20,6 +20,7 @@ export function createCliAccounts({ api, terminal, showTerminal, notice }) {
     const p = profiles.find(p => p.id === $('cli-profile').value);
     $('cli-launch').disabled = busy || !p || !p.executableAvailable || p.credential === 'missing' || p.credential === 'placeholder';
     $('cli-remove').disabled = busy || !p;
+    $('subscription-route').disabled = busy || !p || p.provider !== 'claude' || p.mode !== 'subscription' || !p.executableAvailable;
   }
   async function action(fn) {
     if (busy) return; busy = true; $('cli-save').disabled = true; selectionChanged();
@@ -39,6 +40,12 @@ export function createCliAccounts({ api, terminal, showTerminal, notice }) {
   $('cli-remove').onclick = () => action(async () => {
     if (!confirm('Remove this profile? Sign out in the official CLI first if you want to revoke access. Its saved CLI state is retained.')) return;
     await api('cli-accounts/' + $('cli-profile').value, 'DELETE'); await refresh();
+  });
+  $('subscription-route').onclick = () => action(async () => {
+    const p = profiles.find(p => p.id === $('cli-profile').value), route = $('provider-route').value || 'default';
+    if (!confirm(`Use ${p.label}'s Claude subscription for ${route}? Tasks send their context to this account. CLI tools stay disabled; Nexus approves actions.`)) return;
+    await api('subscription-route', 'POST', {accountId:p.id, model:$('subscription-model').value.trim(), route, approved:true});
+    await onConnected(); notice('Subscription connected for ' + route + '. Turn off Offline demo to use it.');
   });
   $('cli-refresh').onclick = () => action(refresh);
   refresh().catch(error => notice(error.message));

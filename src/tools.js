@@ -11,6 +11,8 @@ import { createVisualArtifact } from './artifacts.js';
 
 const schema = properties => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false });
 export const toolDefinitions = [
+  { name: 'render_animation', description: 'Render a reviewed ManimGL Python scene to a new MP4 and receipt. Requires write and host command access plus explicit approval. Python and its imports run with host privileges. ManimGL and FFmpeg/ffprobe must already be installed.', parameters: schema({ script: { type: 'string' }, scene: { type: 'string' }, executable: { type: 'string' } }) },
+  { name: 'export_video_comparison', description: 'Export two project videos side by side as a new MP4 after approval. Starts both at zero, source audio only, at most 120 seconds. Preserves originals and writes an inspection receipt. Requires write and host command access and installed FFmpeg/ffprobe.', parameters: schema({ source: { type: 'string' }, draft: { type: 'string' }, seconds: { type: 'number', exclusiveMinimum: 0, maximum: 120 } }) },
   { name: 'preview_media_edit', description: 'Render a local video edit preview with ffmpeg after approval. Preserves originals and returns a receipt, timeline and cut-boundary frames. This does not inspect video or transcribe audio. plan: version 1, title, clips [{path,start,end}], optional width,height,fps. Local MP4/MOV/M4V/WebM/MKV only, at most 24 clips and 600 seconds. Requires write and command access.', parameters: schema({ plan: { type: 'object' } }) },
   { name: 'create_visualization', description: 'Save a validated visual in the Visualizations panel after approval. spec is version 1 JSON: kind bar/line/scatter/timeline/graph/spatial, title, sources [{label,path?}], axes xLabel/yLabel/xUnit/yUnit, data [{label,x,y,series?}] (null y means unavailable). Timeline uses xUnit s and data [{label,start,end}]. Graph uses nodes [{id,label}] and edges [{source,target,label,relation:extracted|inferred|ambiguous}]. Spatial uses zUnit and data [{label,x,y,z}], optional triangles [[vertex indices]]. No scripts or HTML.', parameters: schema({ spec: { type: 'object' } }) },
   { name: 'search_code', description: 'Bounded case-insensitive literal text search in project files, with file and line references. No regex execution.', parameters: schema({ query: { type: 'string' } }) },
@@ -22,12 +24,17 @@ export const toolDefinitions = [
   { name: 'write_file', description: 'Create or replace a UTF-8 file in an existing directory after user approval.', parameters: schema({ path: { type: 'string' }, content: { type: 'string' } }) },
 ];
 export function availableTools(agent) {
-  return toolDefinitions.filter(t => t.name === 'preview_media_edit' ? agent.permissions.execute === true && agent.permissions.write === true : t.name === 'run_command' ? agent.permissions.execute === true : ['write_file', 'create_visualization'].includes(t.name) ? agent.permissions.write : agent.permissions.read);
+  return toolDefinitions.filter(t => ['preview_media_edit', 'render_animation', 'export_video_comparison'].includes(t.name) ? agent.permissions.execute === true && agent.permissions.write === true : t.name === 'run_command' ? agent.permissions.execute === true : ['write_file', 'create_visualization'].includes(t.name) ? agent.permissions.write : agent.permissions.read);
 }
 export async function executeTool(root, agent, name, args, approve, { signal, commandMode = 'host', sandboxImage } = {}) {
   signal?.throwIfAborted();
   if (!availableTools(agent).some(t => t.name === name)) throw new Error(`Permission denied: ${name}`);
   if (!args || typeof args !== 'object') throw new Error('Invalid tool arguments.');
+  if (['render_animation', 'export_video_comparison'].includes(name)) {
+    if (commandMode !== 'host') throw new Error('Motion tools require host command mode; container isolation is not implemented.');
+    const { renderAnimation, exportComparison } = await import('./motion.js');
+    return JSON.stringify(await (name === 'render_animation' ? renderAnimation : exportComparison)(root, args, { approve, signal }));
+  }
   if (name === 'preview_media_edit') {
     if (commandMode !== 'host') throw new Error('Media previews currently require host command mode; container isolation is not implemented for this tool.');
     const { previewMediaEdit } = await import('./media-workflow.js');

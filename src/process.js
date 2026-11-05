@@ -6,11 +6,11 @@ export function commandEnvironment() {
   return Object.fromEntries(['PATH', 'HOME', 'USER', 'TMPDIR', 'LANG', 'LC_ALL', 'SYSTEMROOT'].filter(k => process.env[k]).map(k => [k, process.env[k]]));
 }
 
-export function runProcess(command, args, { cwd, signal, timeoutMs = 60_000, maxBytes = 100_000, env = commandEnvironment(), onSpawn } = {}) {
+export function runProcess(command, args, { cwd, signal, timeoutMs = 60_000, maxBytes = 100_000, env = commandEnvironment(), input, onSpawn } = {}) {
   signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, env, shell: false, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
-    let output = '', bytes = 0, stopped = null, registration = Promise.resolve(), registrationError;
+    const child = spawn(command, args, { cwd, env, shell: false, detached: process.platform !== 'win32', stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'] });
+    let output = '', stdout = '', stderr = '', bytes = 0, stopped = null, registration = Promise.resolve(), registrationError;
     const stop = reason => {
       if (stopped) return;
       stopped = reason;
@@ -29,21 +29,23 @@ export function runProcess(command, args, { cwd, signal, timeoutMs = 60_000, max
       const decoder = new StringDecoder('utf8');
       stream.on('data', chunk => {
         const remaining = Math.max(0, maxBytes - bytes);
-        output += decoder.write(chunk.subarray(0, remaining));
+        const decoded = decoder.write(chunk.subarray(0, remaining));
+        output += decoded; if (stream === child.stdout) stdout += decoded; else stderr += decoded;
         bytes += chunk.length;
         if (bytes > maxBytes) stop('output-limit');
       });
       stream.on('end', () => {
         // A byte limit may split the final character; omit that incomplete
         // suffix instead of manufacturing a replacement beyond the byte cap.
-        if (stopped !== 'output-limit') output += decoder.end();
+        if (stopped !== 'output-limit') { const rest = decoder.end(); output += rest; if (stream === child.stdout) stdout += rest; else stderr += rest; }
       });
     }
     child.once('spawn', () => {
       registration = Promise.resolve().then(() => onSpawn?.(child.pid)).catch(error => { registrationError = error; stop('registration-failed'); });
     });
+    if (input !== undefined) { child.stdin.on('error', () => {}); child.stdin.end(input); }
     const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort', abort); };
     child.on('error', e => { cleanup(); reject(e); });
-    child.on('close', async (code, exitSignal) => { cleanup(); await registration; if (registrationError) reject(registrationError); else resolve({ code, signal: exitSignal, stopped, output }); });
+    child.on('close', async (code, exitSignal) => { cleanup(); await registration; if (registrationError) reject(registrationError); else resolve({ code, signal: exitSignal, stopped, output, stdout, stderr }); });
   });
 }

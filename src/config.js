@@ -1,3 +1,5 @@
+import { validateBudget } from './run-budget.js';
+import { subscriptionProvider } from './subscription-provider.js';
 import { readState, writeState, safeName } from './state.js';
 import { createProvider, validateProviderOptions } from './providers.js';
 import { getSecret } from './vault.js';
@@ -12,10 +14,14 @@ export function validateConfig(config) {
   if (config.embeddings !== undefined) validateEmbedding(config.embeddings);
   for (const name of Object.keys(config.routes)) { safeName(name); if (typeof config.routes[name] !== 'string' || !Object.hasOwn(config.providers, config.routes[name])) throw new Error('Route must name a configured provider.'); }
   if (config.limits && (!Number.isInteger(config.limits.maxSteps) || config.limits.maxSteps < 1 || config.limits.maxSteps > 100 || !Number.isInteger(config.limits.maxContextChars) || config.limits.maxContextChars < 1000 || config.limits.maxContextChars > 2000000)) throw new Error('Invalid run limits.');
+  validateBudget(config.limits);
   for (const [name, p] of Object.entries(config.providers)) {
     safeName(name);
-    if (!object(p) || !['anthropic', 'compatible', 'responses', 'demo'].includes(p.kind) || typeof p.model !== 'string' || !p.model.trim()) throw new Error(`Invalid provider ${name}`);
-    if (Object.keys(p).some(k => !['kind', 'model', 'baseUrl', 'keyEnv', 'keySecret', 'inputCostPerMillion', 'outputCostPerMillion', 'timeoutMs', 'maxOutputTokens', 'tokenLimitField', 'vision'].includes(k))) throw new Error('Provider configuration contains unsupported fields. Store keys in environment variables or the vault.');
+    if (!object(p) || !['anthropic', 'compatible', 'responses', 'demo', 'claude-subscription'].includes(p.kind) || typeof p.model !== 'string' || !p.model.trim()) throw new Error(`Invalid provider ${name}`);
+    if (Object.keys(p).some(k => !['kind', 'model', 'baseUrl', 'keyEnv', 'keySecret', 'inputCostPerMillion', 'outputCostPerMillion', 'timeoutMs', 'maxOutputTokens', 'tokenLimitField', 'vision', 'accountId', 'accountBinding'].includes(k))) throw new Error('Provider configuration contains unsupported fields. Store keys in environment variables or the vault.');
+    if (p.kind === 'claude-subscription') {
+      if (!/^[a-f0-9-]{36}$/.test(p.accountId || '') || !/^[a-f0-9]{64}$/.test(p.accountBinding || '') || Object.keys(p).some(k => !['kind', 'model', 'accountId', 'accountBinding', 'timeoutMs'].includes(k))) throw new Error('Invalid subscription profile. Reconnect the official CLI account.');
+    } else if (p.accountId !== undefined || p.accountBinding !== undefined) throw new Error('Only subscription profiles can bind CLI accounts.');
     validateProviderOptions(Object.fromEntries(['timeoutMs', 'maxOutputTokens', 'tokenLimitField', 'vision'].filter(k => p[k] !== undefined).map(k => [k, p[k]])));
     if (p.baseUrl !== undefined) {
       if (typeof p.baseUrl !== 'string') throw new Error('Provider baseUrl must be a URL.');
@@ -52,13 +58,14 @@ export function validateConfig(config) {
   return config;
 }
 export async function saveConfig(root, config) { await writeState(root, 'config', 'project.json', validateConfig(config)); }
-export async function routeProvider(root, agent, { demo = false, providerName, env = process.env } = {}) {
+export async function routeProvider(root, agent, { demo = false, providerName, env = process.env, accountHome } = {}) {
   if (demo) return createProvider({ NEXUS_PROVIDER: 'demo' });
   const config = await loadConfig(root);
   const selected = providerName || agent.provider || (Object.hasOwn(config.routes, agent.name) ? config.routes[agent.name] : undefined) || config.routes.default;
   if (!selected) return createProvider(env);
   const p = Object.hasOwn(config.providers, selected) ? config.providers[selected] : undefined;
   if (!p) throw new Error(`Unknown provider profile: ${selected}`);
+  if (p.kind === 'claude-subscription') { const provider = subscriptionProvider(p, { home: accountHome }); provider.profile = selected; return provider; }
   if (p.keyEnv && !env[p.keyEnv]) throw new Error(`Provider credential is unavailable: ${p.keyEnv}`);
   const provider = createProvider({ NEXUS_PROVIDER: p.kind, NEXUS_MODEL: p.model, NEXUS_BASE_URL: p.baseUrl, NEXUS_API_KEY: p.keySecret ? await getSecret(root, p.keySecret, env.NEXUS_VAULT_PASSWORD) : p.keyEnv ? env[p.keyEnv] : undefined }, Object.fromEntries(['timeoutMs', 'maxOutputTokens', 'tokenLimitField', 'vision'].filter(k => p[k] !== undefined).map(k => [k, p[k]])));
   provider.profile = selected;
