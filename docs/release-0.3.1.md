@@ -4,7 +4,7 @@ Date: 2026-11-05. Limited development preview. Runtime source revision is record
 
 ## Changes and coverage
 
-- Experimental Claude Code subscription inference selected explicitly in Connections for Tasks/teams. Identity-bound immutable route profiles preserve unrelated models and reject agents with pinned providers. No credentials copied, built-in CLI tools enabled, account rotation or API fallback.
+- Experimental Claude Code subscription inference selected explicitly in Connections for Tasks/teams. Identity-bound immutable route profiles preserve unrelated models and reject agents with pinned providers. CLI credentials remain under CLI control; native CLI tools stay disabled. No account rotation or API fallback.
 - Shared request/token/deadline limits, including approval cancellation in dashboard, CLI and ACP. Failed requests mark shared usage unknown. Same-account subscription stages serialize.
 - Motion comparison UI and real FFmpeg export; optional ManimGL scene adapter; matching permission-gated agent tools. Protected paths, source-change checks, cancellation, source/output hashes and ffprobe output inspection. Missing render engines do not prevent Nexus startup.
 - App version 0.3.1 displayed. User guide and subscription instructions expanded. Studio/repository decisions distinguish implementation from proposed work and avoid redundant runtimes, proxies and stores.
@@ -28,4 +28,13 @@ Date: 2026-11-05. Limited development preview. Runtime source revision is record
 - No full image/RAW/PDF/design editor, external transcript importer, generic crawler, task board, policy certification or upstream feature parity. See [Studio decisions](studio-decisions.md).
 - Clean-Mac/VM, Intel, minimum-OS, download-quarantine Gatekeeper and live-provider acceptance remain unperformed. Existing ad-hoc distribution does not establish Developer ID signing/notarization.
 
-Distribution verification and final artifact digest are appended after packaging. Binaries remain local under `dist/`, following the repository's established convention.
+## Distribution
+
+- Runtime source: `776f9a52ebe310269a29cf32e51e686614f3e33f`; clean detached build. Subsequent documentation-only commit records these results.
+- Bundled app verifier: **17/17 passed**, including relocated app signature, Node/PTY, native credential forwarding, authenticated dashboard/state and shutdown.
+- Release rehearsal: **14/14 passed**, including DMG integrity/read-only mount, synthetic install/bootstrap, relaunch, replacement of 0.3.0, data preservation, backup/restore and detach. This is development-machine validation, not a clean-machine or quarantine test.
+- Artifact: `dist/NexusIDE-0.3.1-arm64.dmg`; `.app` and JSON build manifest in `dist/`.
+- SHA-256: `8b42125a81fed0e318f180326fdb767ed1e07e30be5719329bfcf897d1286b0b`.
+- Apple Silicon, macOS 13 minimum metadata, bundled Node v22.18.0. Ad-hoc signature verified; **not Developer ID signed or notarized**.
+- Prior app retained at `dist/.previous-release-cSWKF7/NexusIDE.app`; prior DMG retained. Detailed receipts remain in ignored `.nexus/verification/bundle-0.3.1.json` and `release-0.3.1.json`.
+- Binaries remain local, following the repository's established artifact convention. No GitHub release upload or production deployment was performed.
