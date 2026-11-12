@@ -1,0 +1,86 @@
+[
+  {
+    "repository": "farion1231/cc-switch",
+    "revision": "4e13413ff236860b445e6c7f3f7590e999de0eea",
+    "inspected": [
+      "src-tauri/src/services/provider/mod.rs"
+    ],
+    "sourceAvailable": true,
+    "runtimeTested": false
+  },
+  {
+    "repository": "D4Vinci/Scrapling",
+    "revision": "bc602488b44e978da3266841e913af17577ec0fd",
+    "inspected": [
+      "scrapling/spiders/spider.py"
+    ],
+    "sourceAvailable": true,
+    "runtimeTested": false
+  },
+  {
+    "repository": "microsoft/RESOURCE2SKILL",
+    "revision": "856e15b74f32f3238866a0bb526eb00cfd2e585e",
+    "inspected": [
+      "core/wiki_collector.py"
+    ],
+    "sourceAvailable": true,
+    "runtimeTested": false
+  },
+  {
+    "repository": "l0ng-ai/openidea",
+    "revision": "ba8d224a46d5b23775f98bb271b773d050a2af87",
+    "inspected": [
+      "crates/ide-agent/src/lib.rs"
+    ],
+    "sourceAvailable": true,
+    "runtimeTested": false
+  },
+  {
+    "repository": "ifixai-ai/iFixAi",
+    "revision": "260550f0177c1841496e5e15b1c41e72bbd068ff",
+    "inspected": [
+      "ifixai/trajectory/__init__.py"
+    ],
+    "sourceAvailable": true,
+    "runtimeTested": false
+  },
+  {
+    "repository": "emanuele-em/kanzo",
+    "revision": "d3402c21528a2c895886595b7f0a4aed9709f05e",
+    "inspected": [
+      "src/mcp.rs"
+    ],
+    "sourceAvailable": true,
+    "runtimeTested": false
+  },
+  {
+    "repository": "spacering-net/codeg",
+    "revision": "e3171d69d208bdf37697b15e8b14f8c9b70825bf",
+    "inspected": [
+      "src-tauri/src/acp/host_tools_policy.rs"
+    ],
+    "sourceAvailable": true,
+    "runtimeTested": false
+  },
+  {
+    "repository": "dosmoon/VideoCraft",
+    "revision": "d93c639400befddfe4e573571e585dec4ad715f0",
+    "inspected": [],
+    "attempted": "README.md",
+    "sourceAvailable": false,
+    "runtimeTested": false
+  },
+  {
+    "repository": "meta/astryx",
+    "revision": "558725695bb264985dd23e496eef3b3b6f1ee125",
+    "inspected": [
+      "README.md",
+      "LICENSE",
+      "package.json",
+      "packages/core/package.json",
+      "packages/core/README.md"
+    ],
+    "license": "MIT text inspected",
+    "runtimeTested": false
+  }
+]

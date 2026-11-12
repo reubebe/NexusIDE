@@ -6,7 +6,7 @@ import { boundedRead } from './bounded-read.js';
 import { openDatabase } from './sqlite.js';
 
 export const MAX_STATE_BYTES = 20_000_000;
-const databaseFolders = new Set(['runs', 'workflows', 'memory', 'memory-drafts']);
+const databaseFolders = new Set(['runs', 'workflows', 'memory', 'memory-drafts', 'board-tasks']);
 const absent = (folder, name) => Object.assign(new Error(`State record does not exist: ${folder}/${name}`), { code: 'ENOENT' });
 const collision = (folder, name) => Object.assign(new Error(`State record already exists: ${folder}/${name}`), { code: 'EEXIST' });
 
@@ -160,6 +160,18 @@ export async function deleteState(root, folder, name) {
     } catch (error) { db.exec('ROLLBACK'); throw error; }
   }
   finally { db.close(); }
+}
+
+// Compare-and-swap for coordination cards. SQLite owns crash recovery, so a
+// terminated editor cannot strand a manual lock or overwrite a newer revision.
+export async function updateBoardRecord(root, name, expectedRevision, data) {
+  safeName(name);
+  if (!Number.isSafeInteger(expectedRevision) || data.revision !== expectedRevision + 1) throw new Error('Invalid board revision.');
+  const serialized = serialize(data), db = await stateDatabase(root, 'board-tasks');
+  try {
+    const result = db.prepare("UPDATE state_records SET data=? WHERE folder='board-tasks' AND name=? AND json_extract(data,'$.revision')=?").run(serialized, name, expectedRevision);
+    if (result.changes !== 1) throw new Error('Task changed. Refresh before editing.');
+  } finally { db.close(); }
 }
 
 export async function recentState(root, folder, limit = 30, { summary = false } = {}) {

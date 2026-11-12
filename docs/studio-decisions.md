@@ -1,5 +1,7 @@
 # Studio and shared account decisions
 
+**Historical 0.3.1 decision, superseded for current implementation by [guide completion](guide-completion.md).** The partial release decision below is preserved for provenance; it is not the current scope or completion claim.
+
 Decision date: 2026-11-05. Input: the user-supplied `NexusIDE_Codex_Guide.md`, updated 2026-11-03. This is a critical assessment and staged plan, not an assertion that the guide's proposed workspaces exist. The guide's upstream version, license and benchmark claims are not automatically accepted as current evidence.
 
 ## Decision for this release

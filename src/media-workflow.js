@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { lstat, mkdir, mkdtemp, open, writeFile, readFile, realpath } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, open, writeFile, readFile, realpath, rm } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolveProjectPath } from './file-policy.js';
@@ -90,7 +90,7 @@ export async function previewMediaEdit(root, input, { ffmpeg = 'ffmpeg', ffprobe
     validateVisualSpec(timeline);
     await writeFile(path.join(directory, 'timeline.json'), JSON.stringify(timeline, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
     return { directory: path.relative(root, directory), preview: path.relative(root, path.join(directory, 'preview.mp4')), reviewFrames, timeline, receipt };
-  } catch (error) { receipt.status = 'failed'; receipt.error = error.message; throw Object.assign(error, { outputDirectory: path.relative(root, directory) }); }
+  } catch (error) { receipt.status = signal?.aborted ? 'cancelled' : 'failed'; receipt.error = error.message; await rm(path.join(directory, 'preview.mp4'), {force:true}); throw Object.assign(error, { outputDirectory: path.relative(root, directory) }); }
   finally { await writeFile(path.join(directory, 'receipt.json'), JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx', mode: 0o600 }); }
 }
 

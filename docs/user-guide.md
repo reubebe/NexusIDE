@@ -1,6 +1,8 @@
 # NexusIDE — Illustrated User Guide
 
-**Version:** 0.2.0 development preview · **Checked against source:** 24 October 2026
+**Version:** development preview, including the current Studio and coordination changes · **Core guide checked:** 24 October 2026 · **New-workspace sections checked against source:** 11 November 2026
+
+The new-workspace instructions below describe this source checkout. They do not imply that an older downloaded app contains these changes; release and packaging evidence is tracked separately in [guide implementation status](guide-completion.md).
 
 NexusIDE is a project workspace for customized AI agents. You choose the agents,
 models and tools; Nexus coordinates their work and records what happened. Use the
@@ -206,7 +208,15 @@ if the default port is occupied.
 | Visualizations | Saved charts, graphs, images and optional 3D views with source records and exports. |
 | Project files | Browse and edit accessible project text files. |
 | Code map | Query a separately configured local code index. |
+| Studio | Register local assets, review typed edits, export derivatives and inspect jobs. |
+| Skill Foundry | Author or generate a source-grounded draft, inspect it and approve publication. |
+| Task board | Human and agent coordination cards alongside recent run evidence. |
+| Sessions | Import selected transcript text and prepare a new task from reviewed messages. |
 | About | System diagram and bundled visual guide. |
+
+Use **Go to…**, **⌘K** on macOS or **Ctrl+K** elsewhere to search workspace names. Type to filter, use the arrow keys to move between results, press Enter to open one, and Escape to close the palette. This searches navigation commands; use project search for file contents.
+
+In **Project files**, the **File list width** slider adjusts the list/editor split from 25% to 65%. The browser remembers the value for the dashboard port. Narrow windows use the stacked layout.
 
 ### 2.2 Use a smaller window
 
@@ -1674,6 +1684,9 @@ commands. Avoid putting real keys or private session URLs in a command transcrip
 | Retrieval | SQLite keywords and optional local semantic indexes. | Bounded scans; no background file watcher or unlimited project coverage. |
 | Optional integrations | Scoped readers, graph queries and managed application profiles. | Separate installations/grants; source checks do not certify external dependencies. |
 | Harness gate | Offline policy over supplied measurements. | No self-editing, benchmark execution or independently attested scores. |
+| Studio | Raster adjustment, ordered video clips, linear image motion, SVG layout and macOS PDF organization. | Host media processing; bounded formats and operations, no RAW/layers or professional color/layout fidelity claim. |
+| Skill Foundry | Manual drafts and consented model generation with source-line checks, static scan, publication and revocation. | No executable QA or measured effectiveness claim; model-generated instructions still need human review. |
+| Coordination | Project task cards, text-only session import and recorded-action audit. | Cards do not authorize tools, imports do not resume foreign sessions, and audit coverage is limited. |
 
 Selected local/cloud models, editor-host demos, connectors and install/recovery
 paths have historical verification evidence. Gemini generation and a successful
@@ -1754,4 +1767,78 @@ Open **Visualizations → Motion studio**. Enter project-relative paths for the 
 
 The optional ManimGL control accepts a reviewed project Python scene, class name and absolute installed `manimgl` executable. Approval allows Python and its imports to run with your host privileges. ManimGL is not bundled, and actual ManimGL rendering was not tested on this machine. Agents with both write and command grants can propose `render_animation` and `export_video_comparison`; each operation still requires approval and host mode. See [motion setup and limitations](motion-workflows.md).
 
-The larger Studio, account-control and repository proposals are assessed in [Studio decisions](studio-decisions.md). They are a staged roadmap, not a claim that all referenced applications are integrated.
+The original rationale is recorded in [Studio decisions](studio-decisions.md). For current implementation and validation, use [guide implementation status](guide-completion.md). The referenced external editors are not bundled or established as compatible merely because native operations now exist.
+
+
+## 21. Edit local assets in Studio
+
+Open **Studio** and use **Check installed engines** to probe FFmpeg and ffprobe. A successful probe means that the executable launches; it does not validate every format or operation. These tools are separately installed. PDF organization additionally requires macOS, Apple PDFKit and the Swift tools. Layout export uses Nexus's own SVG writer.
+
+Under **Import a source asset**, enter a project-relative file path, title and source/rights note, then choose **Register source**. Supported imports are PNG, JPEG, WebP, MP4, MOV, WebM and PDF, limited to 50 MB per file. External SVG import is disabled. The asset record stores the original path, byte count, MIME type and SHA-256 hash, with raster dimensions where available. Registration retains the source in place; it does not create a backup. A moved or changed source must be registered again.
+
+Select an asset from **Asset / revision**. Images and videos have real previews; PDFs have a download link; organized PDF derivatives also display a verified first-page PNG preview. Choose an operation, review its exact parameters and source hashes, then select **Approve and export**. Media parsers and renderers run with your host account's permissions. This workflow does not isolate hostile input in a sandbox. **Cancel export** requests cancellation, and **Export history** reports completed, failed or cancelled work. Refresh to inspect persisted assets and jobs after reopening the dashboard. Interrupted work is not automatically resumed.
+
+| Operation | How to use it | Current boundary |
+| --- | --- | --- |
+| Image and raster photography | Set brightness, contrast, saturation, quarter-turn rotation and an optional crop rectangle. Crop coordinates refer to the source image before rotation. | Exports an 8-bit PNG through FFmpeg. No RAW development, layers, masks, PSD round-trip, or color-profile fidelity guarantee. |
+| Video timeline | Edit the supplied JSON list of source paths and in/out seconds; clips play in list order. Set output dimensions and frame rate, then review and export. | At most 24 clips and 10 minutes. This is an edit-decision-list interface, without a graphical timeline or transcript editor. |
+| Motion keyframes | Select a raster asset, set start/end positions, duration and background. | One image moves linearly on a 1280×720 canvas at 24 fps, for 0.1–30 seconds. The image is fitted within 240×240 pixels. No layered composition or curve editor. |
+| Design a page | Edit the supplied JSON page size, background, rectangles and text. | SVG export uses the viewer's sans-serif font. No embedded fonts, rich text, PDF publication export or print-fidelity guarantee. |
+| PDF pages and comments | Select a PDF, enter comma-separated 1-based page numbers in the desired order, choose a quarter-turn rotation and optional comment. | macOS only; up to 300 selected pages. No OCR, redaction or signature verification. A derivative may invalidate existing signatures. |
+
+Every successful export creates a derivative with a recipe and source/output hashes. Most exports and their receipts live in a fresh `nexus-studio-output/edit-*` directory; video edits use the existing media workflow's output directory. Keep the source files, derivative files and project state together when backing up. The **Return to source revision** button selects the recorded parent of a derivative; it retains the derivative. Reapply an edit by selecting the desired source and reviewing a new recipe. There is no automatic multi-step undo stack.
+
+Agents with write and host-command grants can request `studio_edit`, which uses the same recipe validation and export engine. Each edit still requires approval. The tool does not grant itself access to an external editor or model service. Model-generated media and the optional comparison/ManimGL workflows remain available through their existing documented interfaces.
+
+## 22. Draft and publish a source-grounded skill
+
+Open **Skill Foundry**. Both paths start with an authorized project source (`.md`, `.txt`, `.js`, `.py` or `.json`, up to 100 KB) and a source-rights note.
+
+For a local manual draft, enter the skill name and description, then write the **Grounded steps** JSON. Each step contains `text`, `startLine` and `endLine`, using 1-based source lines. Choose **Create draft and inspect**. The source references are supplied by the author; the application does not establish that the procedure is correct.
+
+For an AI draft, expand **Generate a candidate with a model**, choose a configured provider profile and describe the task. **Review and generate** asks you to approve sending the entire selected source and goal to that profile. Provider charges may apply. The generation run uses the existing model router and run history with no tools, memory, application access or publication authority. **Cancel generation** cancels the request where supported; a request already sent may still incur usage.
+
+The model must return structured steps with quotations that exactly match the cited source lines. Mismatched quotations, malformed output or a changed source prevent the draft from being accepted. Matching a quotation establishes its location, not the validity of the proposed procedure. Inspect the generated text, source mapping, rights note, model/run provenance and static scan before publication. Live provider success and generated-skill effectiveness are not established by fixture tests.
+
+Choose **Approve source rights and publish** only after review. Publication uses the existing skill importer, rejects stale sources and high-risk static findings, and does not assign the skill to an agent or add tool permissions. Select the published skill explicitly in **Agents**. **Revoke this published revision** removes the unchanged published skill; existing assignments then fail until you remove or replace them. If a published skill has changed, inspect it before removal. There is no executable QA sandbox or automatic promotion pipeline.
+
+### Acquire a governed web source
+
+In **Skill Foundry → Governed web source**, enter one exact public HTTPS URL and its usage-rights status. Review the request before acquisition. The operation fetches that page and its `robots.txt`, strips scripts and markup, and stores a text receipt with URL, retrieval time, content hash, rights note and extraction limits. The result is untrusted reference data. Acquisition does not generate or publish a skill, and does not establish reuse rights.
+
+The current adapter refuses credentials or query strings in URLs, private/reserved network destinations, all redirects, blocked robots rules, crawl-delay or Request-rate directives, non-text/compressed responses and oversized content. It is a bounded one-page fetch with cancellation, not a crawler or full browser. It has no login cookies, stealth mode, proxy rotation or access-control bypass. The robots parser conservatively honors denials across all agent groups and does not use Allow exceptions. Deterministic transport fixtures cover DNS pinning, rebinding, redirects, response bounds and cancellation; this is not a live-site compatibility guarantee. Only one acquisition per project/domain runs at a time. Up to 100 receipts are retained; expand a saved source to inspect or remove the local copy. To use acquired material in Foundry, save permitted text as a project source and review it first.
+
+## 23. Inspect accounts, coordinate tasks and review sessions
+
+### Account inventory and effective routes
+
+Open **Connections → Account inventory and effective routes** and select **Inspect accounts and routes**. Edit a profile's alias or disable it for new runs. The route display identifies the workspace default, an agent route or an agent's explicit pin. It uses existing configuration and does not move credentials between profiles. A disabled profile is rejected at model dispatch; choose another route explicitly.
+
+The inventory reports whether a credential reference is present, not whether authentication or model execution succeeded. Official CLI accounts remain in their separate Connections section. Quotas remain **unknown** when no supported provider evidence is available. Usage totals cover the latest 500 Nexus run records with a matching profile; older records without profile identity and use outside Nexus are excluded. Missing usage and unknown cost remain labeled. No account rotation, automatic fallback or local aggregation proxy is enabled.
+
+### Task board
+
+Create a card in **Task board**, optionally enabling **Allow agents to discover and claim this task**. Human-only cards are withheld from agent tools, including direct ID lookups. The board stores coordination cards in the existing project state and shows recent agent/workflow records separately. Card status does not rewrite a run's result or grant any tool permissions.
+
+Humans can move cards through `todo`, `doing`, `review`, `done` and `archived`, and add comments. Agent tools can list eligible cards, claim one, comment and request review subject to their grants and approvals. An agent cannot complete or archive a card. Atomic SQLite revision checks reject stale edits and duplicate claims without leaving crash-prone lock files; refresh after a conflict. You can attach a real run ID and inspect its record from the card. Human-owned cards remain inaccessible to agents; agents cannot reopen completed or archived cards. The current board has no deletion, anonymous sharing or Git synchronization control.
+
+### Imported sessions and context handoff
+
+In **Sessions**, select a project-local Claude-style `.jsonl` transcript and approve its import. Only supported user/assistant text is copied, with the source hash and parser coverage. Tool records are not execution evidence. Imports are limited to 1 MB and 2,000 records; individual messages and the eventual handoff are bounded, with explicit truncation flags. Identical source hashes are deduplicated, with a limit of 100 saved imports. Credential-pattern redaction is best effort, so review private content yourself before any model transfer. The source transcript is retained unchanged.
+
+Search imported text, select messages and enter a goal. **Prepare selected context in Tasks** places a bounded context packet into a new task draft. Review the text, target agent, account, permissions and budgets before running it. This action does not resume the original vendor session, transfer credentials or automatically execute a task. **Remove imported copy** removes Nexus's copy while retaining the original file. Native Nexus histories remain in **Run library**.
+
+### Recorded-action assurance
+
+In **Run library → Recorded-action assurance**, enter a stored run ID and choose **Audit stored run**. The read-only checker looks for missing dispatcher evidence, ungranted completed calls, and approvals that do not match recorded arguments. Results are `BLOCK`, `INCONCLUSIVE` or `CLEAR` for the implemented rule and recorded coverage. `CLEAR` does not establish model correctness, complete policy compliance or tamper-proof provenance. Local run records are not cryptographically authenticated. Legacy or incomplete evidence can be inconclusive. The checker does not repair production permissions or send traces to an external judge.
+
+
+### Find and compose published skills
+
+In **Skill Foundry → Find and combine published skills**, search by task keywords. Local lexical matching searches published names/descriptions and shows the matched terms. Drafts are excluded. Enter up to ten distinct published names to inspect a selection plan with pinned digests, provenance, instruction size and a rough token estimate. Plans exceeding 30,000 instruction characters are rejected. Semantic conflicts require human review. This changes no agent: assign approved skills explicitly in **Agents**. New runs record the digests of loaded skills; this records supplied context, not proof that the model followed it.
+
+### Workbench keyboard navigation
+
+Use **Go to…**, **⌘K** on macOS or **Ctrl+K** elsewhere to search workspace names. Arrow keys move through results, Enter opens the selection and Escape closes the dialog. Focus moves to the chosen workspace heading. In **Project files**, the keyboard-accessible **File list width** slider changes the split on wide screens and remembers the value for that local dashboard port. Narrow screens retain a single column. This does not add LSP/DAP or certify compatibility with an external editor.
+
+Astryx was assessed before distribution as a reference for consistent controls, themes and accessibility testing. It is not bundled: its React 19 frontend requirements would require a separate migration. See the [pinned assessment and decision](astryx-assessment.md).

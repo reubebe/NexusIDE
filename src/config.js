@@ -18,10 +18,12 @@ export function validateConfig(config) {
   for (const [name, p] of Object.entries(config.providers)) {
     safeName(name);
     if (!object(p) || !['anthropic', 'compatible', 'responses', 'demo', 'claude-subscription'].includes(p.kind) || typeof p.model !== 'string' || !p.model.trim()) throw new Error(`Invalid provider ${name}`);
-    if (Object.keys(p).some(k => !['kind', 'model', 'baseUrl', 'keyEnv', 'keySecret', 'inputCostPerMillion', 'outputCostPerMillion', 'timeoutMs', 'maxOutputTokens', 'tokenLimitField', 'vision', 'accountId', 'accountBinding'].includes(k))) throw new Error('Provider configuration contains unsupported fields. Store keys in environment variables or the vault.');
+    if (Object.keys(p).some(k => !['kind', 'model', 'baseUrl', 'keyEnv', 'keySecret', 'inputCostPerMillion', 'outputCostPerMillion', 'timeoutMs', 'maxOutputTokens', 'tokenLimitField', 'vision', 'label', 'disabled', 'accountId', 'accountBinding'].includes(k))) throw new Error('Provider configuration contains unsupported fields. Store keys in environment variables or the vault.');
     if (p.kind === 'claude-subscription') {
-      if (!/^[a-f0-9-]{36}$/.test(p.accountId || '') || !/^[a-f0-9]{64}$/.test(p.accountBinding || '') || Object.keys(p).some(k => !['kind', 'model', 'accountId', 'accountBinding', 'timeoutMs'].includes(k))) throw new Error('Invalid subscription profile. Reconnect the official CLI account.');
+      if (!/^[a-f0-9-]{36}$/.test(p.accountId || '') || !/^[a-f0-9]{64}$/.test(p.accountBinding || '') || Object.keys(p).some(k => !['kind', 'model', 'accountId', 'accountBinding', 'timeoutMs', 'label', 'disabled'].includes(k))) throw new Error('Invalid subscription profile. Reconnect the official CLI account.');
     } else if (p.accountId !== undefined || p.accountBinding !== undefined) throw new Error('Only subscription profiles can bind CLI accounts.');
+    if (p.label !== undefined && (typeof p.label !== 'string' || !p.label.trim() || p.label.length > 120)) throw new Error('Invalid profile label.');
+    if (p.disabled !== undefined && typeof p.disabled !== 'boolean') throw new Error('Invalid profile enabled state.');
     validateProviderOptions(Object.fromEntries(['timeoutMs', 'maxOutputTokens', 'tokenLimitField', 'vision'].filter(k => p[k] !== undefined).map(k => [k, p[k]])));
     if (p.baseUrl !== undefined) {
       if (typeof p.baseUrl !== 'string') throw new Error('Provider baseUrl must be a URL.');
@@ -65,6 +67,7 @@ export async function routeProvider(root, agent, { demo = false, providerName, e
   if (!selected) return createProvider(env);
   const p = Object.hasOwn(config.providers, selected) ? config.providers[selected] : undefined;
   if (!p) throw new Error(`Unknown provider profile: ${selected}`);
+  if (p.disabled === true) throw new Error('The selected provider profile is disabled. Choose another route explicitly.');
   if (p.kind === 'claude-subscription') { const provider = subscriptionProvider(p, { home: accountHome }); provider.profile = selected; return provider; }
   if (p.keyEnv && !env[p.keyEnv]) throw new Error(`Provider credential is unavailable: ${p.keyEnv}`);
   const provider = createProvider({ NEXUS_PROVIDER: p.kind, NEXUS_MODEL: p.model, NEXUS_BASE_URL: p.baseUrl, NEXUS_API_KEY: p.keySecret ? await getSecret(root, p.keySecret, env.NEXUS_VAULT_PASSWORD) : p.keyEnv ? env[p.keyEnv] : undefined }, Object.fromEntries(['timeoutMs', 'maxOutputTokens', 'tokenLimitField', 'vision'].filter(k => p[k] !== undefined).map(k => [k, p[k]])));

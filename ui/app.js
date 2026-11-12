@@ -1,3 +1,7 @@
+import { createWorkbench } from './workbench.js';
+import { createFoundry } from './foundry.js';
+import { createCoordination } from './coordination.js';
+import { createStudio } from './studio.js';
 import { createMotionStudio } from './motion.js';
 import { createFileEditor, createFileBrowser } from './file-editor.js';
 import { createAgentEditor } from './agent-editor.js';
@@ -52,8 +56,8 @@ function renderFileEditor() {
 $('file-content').addEventListener('input', () => { fileEditor.draft = $('file-content').value; renderFileEditor(); });
 window.addEventListener('beforeunload', event => { if (window.nexusHasUnsavedChanges()) { event.preventDefault(); event.returnValue = ''; } });
 renderFileEditor();
-async function api(path, method = 'GET', data) {
-  const response = await fetch('/api/' + path, { method, headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' }, ...(data === undefined ? {} : { body: JSON.stringify(data) }) });
+async function api(path, method = 'GET', data, { signal } = {}) {
+  const response = await fetch('/api/' + path, { method, signal, headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' }, ...(data === undefined ? {} : { body: JSON.stringify(data) }) });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'Request failed.');
   return result;
@@ -68,7 +72,7 @@ const codeMap = createCodeMap({ api, openSource: async (file, lines) => {
   } finally { renderFileEditor(); }
 } });
 const visualizations = createVisualizations({ api });
-const titles = { workspace: 'Tasks', files: 'Project files', visualizations: 'Visualizations', agents: 'Agents', history: 'Run library', memory: 'Memory', settings: 'Connections', terminal: 'Terminal', about: 'About Nexus', 'code-map': 'Code map' };
+const titles = { foundry: 'Skill Foundry', board: 'Task board', sessions: 'Sessions', studio: 'Studio', workspace: 'Tasks', files: 'Project files', visualizations: 'Visualizations', agents: 'Agents', history: 'Run library', memory: 'Memory', settings: 'Connections', terminal: 'Terminal', about: 'About Nexus', 'code-map': 'Code map' };
 function showTab(tab) {
   if (!Object.hasOwn(titles, tab)) return;
   if (tab !== 'visualizations') visualizations.suspend();
@@ -78,6 +82,10 @@ function showTab(tab) {
     if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   }
   $('page-title').textContent = titles[tab];
+  if (tab === 'foundry') action(() => foundry.load())();
+  if (tab === 'board') action(() => coordination.board())();
+  if (tab === 'sessions') action(() => coordination.sessionList())();
+  if (tab === 'studio') action(() => studio.load())();
   if (tab === 'terminal') requestAnimationFrame(() => terminalView.resize());
   if (tab === 'files') action(() => loadFiles())();
   if (tab === 'memory') action(() => refreshMemories())();
@@ -85,8 +93,12 @@ function showTab(tab) {
   if (tab === 'visualizations') { visualizations.load(); visualizations.resume(); }
 }
 for (const button of document.querySelectorAll('[data-tab]')) button.onclick = () => showTab(button.dataset.tab);
-if (initialToken === 'about') showTab('about');
+createWorkbench({ showTab, titles });
 const terminalView = createTerminalView({ api, notice: message => { $('notice').textContent = message; } });
+const foundry = createFoundry({api,notice:message=>{$('notice').textContent=message;}});
+const coordination = createCoordination({api,openRun:async id=>{const run=await api('runs/'+encodeURIComponent(id));selectedRun=run;$('transcript').textContent=JSON.stringify(run,null,2);renderDistillButton();showTab('history');},notice:message=>{$('notice').textContent=message;},handoff:task=>{$('task').value=task;showTab('workspace');$('task').focus();}});
+const studio = createStudio({api,token,notice:message=>{$('notice').textContent=message;}});
+if (initialToken === 'about') showTab('about');
 const motionStudio = createMotionStudio({api,token,notice:message=>{$('notice').textContent=message;}});
 createCliAccounts({ api, onConnected: () => providerPicker.loadConfig(), terminal: terminalView, showTerminal: () => showTab('terminal'), notice: message => { $('notice').textContent = message; } });
 function render() {
@@ -149,7 +161,8 @@ function render() {
     }
     return n;
   })));
-  const job = state.jobs.find(j => j.id === activeJob) || state.jobs.at(-1);
+  const taskJobs = state.jobs.filter(j => !j.kind || j.kind === 'task');
+  const job = taskJobs.find(j => j.id === activeJob) || taskJobs.at(-1);
   if (job) { activeJob = job.id; $('activity').textContent = `Task status: ${job.status}\n\n` + job.events.map(e => e.type === 'text' ? e.text : e.type === 'tool-result' ? `${e.name}: ${e.content}` : `[${e.step || ''} ${e.type}] ${e.name || e.status || ''}`).join('\n\n') + (job.error ? '\nError: ' + job.error : '') + (job.plan ? '\nPlan saved. Select its team name to run it after review.\n' + JSON.stringify(job.plan, null, 2) : ''); }
   $('cancel').disabled = !job || job.status !== 'running';
   const lastEvent = job?.events.at(-1);
@@ -167,7 +180,7 @@ function render() {
   if (memoryLoaded && lastMemoryJobKey && memoryJobKey !== lastMemoryJobKey && !$('memory').hidden) action(() => refreshDrafts())();
   lastMemoryJobKey = memoryJobKey;
 }
-async function refresh() { state = await api('state'); render(); motionStudio.update(state.jobs); }
+async function refresh() { state = await api('state'); render(); motionStudio.update(state.jobs); await studio.update(state.jobs); }
 const layerLabels = { L1: 'Facts & decisions', L2: 'Summary', L3: 'Preference' };
 function memoryOption(value, text) { const option = node('option', text); option.value = value; return option; }
 function memoryLabel(text, input) { const label = node('label', text); label.append(input); return label; }

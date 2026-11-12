@@ -1,6 +1,6 @@
 {
   "name": "nexuside",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
   "description": "One runtime. Any agent. Any model.",
   "type": "module",
@@ -11,6 +11,7 @@
     "src/",
     "ui/",
     "scripts/setup-pty.js",
+    "scripts/studio-pdf.swift",
     "scripts/verify-local-model.js",
     "scripts/verify-development.js",
     "scripts/verify-sandbox.js",

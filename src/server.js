@@ -1,4 +1,11 @@
+import { acquireWebSource, listWebSources, removeWebSource } from './web-sources.js';
+import { createSkillDraft, generateSkillDraft, discoverSkills, planSkillSelection, listSkillDrafts, publishSkillDraft, revokeSkillDraft } from './skill-foundry.js';
 import { renderAnimation, exportComparison, readMotionMedia } from './motion.js';
+import { studioCapabilities, importStudioAsset, listStudioAssets, readStudioAsset, readStudioPreview, planStudioEdit, executeStudioPlan, studioHistory } from './studio.js';
+import { boardOverview, createBoardTask, updateBoardTask } from './task-board.js';
+import { importSession, listImportedSessions, removeImportedSession, sessionHandoff } from './session-import.js';
+import { accountOverview, updateAccountProfile } from './account-control.js';
+import { auditRun } from './assurance.js';
 import { inspectSubscriptionAccount, applySubscriptionSelection } from './subscription-provider.js';
 import { initializeWorkspace } from './workspace-init.js';
 import http from 'node:http';
@@ -36,7 +43,7 @@ const publicAssets = new Map([
   ['/', ['ui/index.html', 'text/html']],
   ['/guide', ['ui/guide.html', 'text/html']],
   ['/user-guide.md', ['docs/user-guide.md', 'text/plain']],
-  ...['app.js', 'file-editor.js', 'agent-editor.js', 'render-cache.js', 'provider-picker.js', 'code-map.js', 'visualizations.js', 'spatial-view.js', 'terminal-view.js', 'cli-accounts.js', 'motion.js'].map(name => ['/' + name, ['ui/' + name, 'text/javascript']]),
+  ...['app.js', 'file-editor.js', 'agent-editor.js', 'render-cache.js', 'provider-picker.js', 'code-map.js', 'visualizations.js', 'spatial-view.js', 'terminal-view.js', 'cli-accounts.js', 'motion.js', 'studio.js', 'coordination.js', 'foundry.js', 'workbench.js'].map(name => ['/' + name, ['ui/' + name, 'text/javascript']]),
   ['/vendor/xterm.mjs', ['node_modules/@xterm/xterm/lib/xterm.mjs', 'text/javascript']],
   ['/vendor/addon-fit.mjs', ['node_modules/@xterm/addon-fit/lib/addon-fit.mjs', 'text/javascript']],
   ['/vendor/xterm.css', ['node_modules/@xterm/xterm/css/xterm.css', 'text/css']],
@@ -67,7 +74,7 @@ export async function startServer({ root, port = 4317, accountHome }) {
   const jobs = new Map(), approvals = new Map();
   let terminal;
   let origin, launching = false, terminalStarting = false, closing = false;
-  const executions = new Set();
+  const executions = new Set(), requestControllers = new Set();
   let terminalStart;
   const body = readJsonBody;
   const send = (res, status, value) => { res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value)); };
@@ -80,6 +87,15 @@ export async function startServer({ root, port = 4317, accountHome }) {
     // silently restore a permission or profile that was just removed.
     const release = await acquireWorkspace(root, root, randomUUID());
     try { return await callback(); } finally { await release(); }
+  }
+  async function requestOperation(res, operation) {
+    const controller = new AbortController();
+    const abort = () => { if (!res.writableEnded) controller.abort(); };
+    requestControllers.add(controller); res.once('close', abort);
+    const pending = Promise.resolve().then(() => operation(controller.signal));
+    executions.add(pending);
+    try { return await pending; }
+    finally { executions.delete(pending); requestControllers.delete(controller); res.off('close', abort); }
   }
   const server = http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -106,6 +122,44 @@ export async function startServer({ root, port = 4317, accountHome }) {
         const result = await writeConfiguration(() => initializeWorkspace(root));
         return send(res, 200, result);
       }
+      if(req.method==='POST'&&pathname==='/api/foundry/search')return send(res,200,await discoverSkills(root,(await body(req)).query));
+      if(req.method==='POST'&&pathname==='/api/foundry/selection')return send(res,200,await planSkillSelection(root,await body(req)));
+      if(req.method==='GET'&&pathname==='/api/foundry')return send(res,200,await listSkillDrafts(root));
+      if(req.method==='POST'&&pathname==='/api/foundry')return send(res,201,await createSkillDraft(root,await body(req)));
+      if(req.method==='POST'&&pathname==='/api/foundry/generate'){const input=await body(req);return send(res,201,await requestOperation(res,signal=>generateSkillDraft(root,input,{signal})));}
+      if(req.method==='POST'&&['/api/foundry/publish','/api/foundry/revoke'].includes(pathname)){const input=await body(req);return send(res,200,await writeConfiguration(()=>(pathname.endsWith('/publish')?publishSkillDraft:revokeSkillDraft)(root,input)));}
+      const webSourceRoute=pathname.match(/^\/api\/web-sources\/([a-f0-9-]{36})$/);
+      if(req.method==='DELETE'&&webSourceRoute){await removeWebSource(root,webSourceRoute[1]);return send(res,200,{removed:true});}
+      if(req.method==='GET'&&pathname==='/api/web-sources')return send(res,200,await listWebSources(root));
+      if(req.method==='POST'&&pathname==='/api/web-sources'){const input=await body(req);return send(res,201,await requestOperation(res,signal=>acquireWebSource(root,input,{signal})));}
+      if (req.method === 'GET' && pathname === '/api/accounts') return send(res,200,await accountOverview(root,{home:accountHome}));
+      if (req.method === 'PUT' && pathname === '/api/accounts') { const input=await body(req);return send(res,200,await writeConfiguration(()=>updateAccountProfile(root,input))); }
+      const assuranceRoute=pathname.match(/^\/api\/assurance\/([a-f0-9-]{36})$/);
+      if(req.method==='GET'&&assuranceRoute)return send(res,200,await auditRun(root,assuranceRoute[1]));
+      if(req.method==='GET'&&pathname==='/api/board')return send(res,200,await boardOverview(root));
+      if(req.method==='POST'&&pathname==='/api/board')return send(res,201,await createBoardTask(root,await body(req),{kind:'human',id:'local-user'}));
+      const boardRoute=pathname.match(/^\/api\/board\/([a-f0-9-]{36})$/);
+      if(req.method==='PUT'&&boardRoute)return send(res,200,await updateBoardTask(root,boardRoute[1],await body(req),{kind:'human',id:'local-user'}));
+      if(req.method==='GET'&&pathname==='/api/sessions')return send(res,200,await listImportedSessions(root));
+      if(req.method==='POST'&&pathname==='/api/sessions')return send(res,201,await importSession(root,await body(req)));
+      if(req.method==='POST'&&pathname==='/api/sessions/handoff')return send(res,200,await sessionHandoff(root,await body(req)));
+      const sessionRoute=pathname.match(/^\/api\/sessions\/([a-f0-9-]{36})$/);
+      if(req.method==='DELETE'&&sessionRoute)return send(res,200,await removeImportedSession(root,sessionRoute[1]));
+      if (req.method === 'GET' && pathname === '/api/studio') return send(res,200,{assets:await listStudioAssets(root),jobs:await studioHistory(root)});
+      if (req.method === 'POST' && pathname === '/api/studio/capabilities') return send(res,200,await studioCapabilities());
+      if (req.method === 'POST' && pathname === '/api/studio/import') { const input=await body(req);return send(res,201,await writeConfiguration(()=>importStudioAsset(root,input))); }
+      if (req.method === 'POST' && pathname === '/api/studio/plan') return send(res,201,await planStudioEdit(root,await body(req)));
+      const studioPreview=pathname.match(/^\/api\/studio\/preview\/([a-f0-9-]{36})$/);
+      if(req.method==='GET'&&studioPreview){const bytes=await readStudioPreview(root,studioPreview[1]);res.writeHead(200,{'content-type':'image/png','content-length':bytes.length});return res.end(bytes);}
+      const studioAsset = pathname.match(/^\/api\/studio\/asset\/([a-f0-9-]{36})$/);
+      if (req.method === 'GET' && studioAsset) { const {asset,bytes}=await readStudioAsset(root,studioAsset[1]);res.writeHead(200,{'content-type':asset.mimeType,'content-length':bytes.length,'Content-Security-Policy':"default-src 'none'; sandbox"});return res.end(bytes); }
+      if (req.method === 'POST' && pathname === '/api/studio/execute') {
+        const data=await body(req);if(data.approved!==true)throw new Error('Review and approve the edit plan.');
+        if(launching||[...jobs.values()].some(j=>j.status==='running'))throw new Error('Wait for or cancel the active task.');
+        const id=randomUUID(),controller=new AbortController(),job={id,kind:'studio',status:'running',events:[],controller};
+        const release=await acquireWorkspace(root,root,id);if(closing){await release();throw new Error('Dashboard is shutting down.');}jobs.set(id,job);
+        const execution=executeStudioPlan(root,data,{signal:controller.signal,approve:async()=>true}).then(result=>{job.status='completed';job.output=result.output;}).catch(error=>{job.status=controller.signal.aborted?'cancelled':'failed';job.error=error.message;}).finally(async()=>{await release();executions.delete(execution);});executions.add(execution);return send(res,202,{id});
+      }
       if (req.method === 'GET' && pathname === '/api/motion-media') {
         const media = await readMotionMedia(root, url.searchParams.get('path'));
         res.writeHead(200, {'content-type':media.type, 'content-length':media.bytes.length}); return res.end(media.bytes);
@@ -114,7 +168,7 @@ export async function startServer({ root, port = 4317, accountHome }) {
         const data = await body(req);
         if (data.approved !== true || !['animation','comparison'].includes(data.kind)) throw new Error('Approve a supported motion operation.');
         if ([...jobs.values()].some(j=>j.status==='running')) throw new Error('Wait for the active task or render to finish.');
-        const id=randomUUID(), controller=new AbortController(), job={id,status:'running',events:[],controller};
+        const id=randomUUID(), controller=new AbortController(), job={id,kind:'motion',status:'running',events:[],controller};
         const release=await acquireWorkspace(root,root,id);jobs.set(id,job);
         const execution=(data.kind==='animation'?renderAnimation:exportComparison)(root,data.input,{signal:controller.signal,approve:async()=>true})
           .then(result=>{job.status='completed';job.output=result.output;})
@@ -305,7 +359,7 @@ export async function startServer({ root, port = 4317, accountHome }) {
         try {
         if (jobs.size > 100) jobs.delete(jobs.keys().next().value);
         const id = randomUUID(), controller = new AbortController();
-        const job = { id, status: 'running', events: [], controller };
+        const job = { id, kind: 'task', status: 'running', events: [], controller };
         const approve = (request, { signal = controller.signal } = {}) => new Promise(resolve => {
           signal = AbortSignal.any([controller.signal, signal]);
           const approvalId = randomUUID();
@@ -359,6 +413,7 @@ export async function startServer({ root, port = 4317, accountHome }) {
   return { server, token, url: `${origin}/#${token}`, close() {
     return closePromise ||= (async () => {
       closing = true;
+      for (const controller of requestControllers) controller.abort();
       for (const job of jobs.values()) job.controller.abort();
       for (const approval of approvals.values()) approval.resolve(false);
       await terminalStart;

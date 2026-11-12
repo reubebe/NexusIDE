@@ -1,0 +1,62 @@
+[
+  {
+    "repository": "storytold/photocraft",
+    "revision": "e4e2607c85eb8c293633fc566b96f040e4152da7",
+    "inspected": [
+      "apps/photocraft-cli/src/main.rs",
+      "LICENSE-MIT"
+    ],
+    "license": "MIT license text inspected",
+    "runtimeTested": false
+  },
+  {
+    "repository": "storytold/filmcraft",
+    "revision": "d8749212e432a6344152d0f47d113359d9c7de62",
+    "inspected": [
+      "apps/filmcraft-cli/src/main.rs",
+      "LICENSE-MIT"
+    ],
+    "license": "MIT license text inspected",
+    "runtimeTested": false
+  },
+  {
+    "repository": "storytold/effectcraft",
+    "revision": "d1e6393bcef567f9653ce9169c426ceb19cd2634",
+    "inspected": [
+      "apps/effectcraft-cli/src/main.rs",
+      "LICENSE-MIT"
+    ],
+    "license": "MIT license text inspected",
+    "runtimeTested": false
+  },
+  {
+    "repository": "storytold/lightcraft",
+    "revision": "96f3fd2d6120c9e0730cf6f768a0491645ea540d",
+    "inspected": [
+      "apps/lightcraft-cli/src/main.rs",
+      "LICENSE-MIT"
+    ],
+    "license": "MIT license text inspected",
+    "runtimeTested": false
+  },
+  {
+    "repository": "storytold/designcraft",
+    "revision": "4b63d26ac62e564b71484b7ab617f1ec688bf2a5",
+    "inspected": [
+      "apps/designcraft-cli/src/main.rs",
+      "LICENSE-MIT"
+    ],
+    "license": "MIT license text inspected",
+    "runtimeTested": false
+  },
+  {
+    "repository": "storytold/pdfcraft",
+    "revision": "9f04accceff67174fc2817035f8ab4577bef8285",
+    "inspected": [
+      "apps/pdfcraft-cli/src/main.rs",
+      "LICENSE-MIT"
+    ],
+    "license": "MIT license text inspected",
+    "runtimeTested": false
+  }
+]

@@ -11,6 +11,10 @@ import { createVisualArtifact } from './artifacts.js';
 
 const schema = properties => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false });
 export const toolDefinitions = [
+  { name: 'list_board_tasks', description: 'List project tasks explicitly available to this agent. Human-only and other claimed tasks are withheld.', parameters: schema({}) },
+  { name: 'get_board_task', description: 'Read an eligible task by ID. Human-only tasks cannot be accessed.', parameters: schema({ id: { type: 'string' } }) },
+  { name: 'update_board_task', description: 'Claim, comment or request review on an eligible task after approval. Needs task ID, current revision and changes (claim:true, comment, status:doing|review). Humans authorize completion and archiving.', parameters: schema({ id: { type: 'string' }, changes: { type: 'object' } }) },
+  { name: 'studio_edit', description: 'Propose and execute a reviewed Studio recipe using the same engine as the GUI. Operations: image.adjust (assetId, brightness -1..1, contrast 0..2, saturation 0..3, rotate 0/90/180/270, optional crop x/y/width/height); video.edit (version-1 edit plan); design.layout (title,width,height,background and rect/text items); motion.animate (assetId,seconds,startX,startY,endX,endY,background); pdf.organize on macOS (assetId,pages array of 1-based indices,rotation 0/90/180/270,note). Original sources are preserved. Requires write and host command grants and explicit approval.', parameters: schema({ recipe: { type: 'object' } }) },
   { name: 'render_animation', description: 'Render a reviewed ManimGL Python scene to a new MP4 and receipt. Requires write and host command access plus explicit approval. Python and its imports run with host privileges. ManimGL and FFmpeg/ffprobe must already be installed.', parameters: schema({ script: { type: 'string' }, scene: { type: 'string' }, executable: { type: 'string' } }) },
   { name: 'export_video_comparison', description: 'Export two project videos side by side as a new MP4 after approval. Starts both at zero, source audio only, at most 120 seconds. Preserves originals and writes an inspection receipt. Requires write and host command access and installed FFmpeg/ffprobe.', parameters: schema({ source: { type: 'string' }, draft: { type: 'string' }, seconds: { type: 'number', exclusiveMinimum: 0, maximum: 120 } }) },
   { name: 'preview_media_edit', description: 'Render a local video edit preview with ffmpeg after approval. Preserves originals and returns a receipt, timeline and cut-boundary frames. This does not inspect video or transcribe audio. plan: version 1, title, clips [{path,start,end}], optional width,height,fps. Local MP4/MOV/M4V/WebM/MKV only, at most 24 clips and 600 seconds. Requires write and command access.', parameters: schema({ plan: { type: 'object' } }) },
@@ -24,12 +28,27 @@ export const toolDefinitions = [
   { name: 'write_file', description: 'Create or replace a UTF-8 file in an existing directory after user approval.', parameters: schema({ path: { type: 'string' }, content: { type: 'string' } }) },
 ];
 export function availableTools(agent) {
-  return toolDefinitions.filter(t => ['preview_media_edit', 'render_animation', 'export_video_comparison'].includes(t.name) ? agent.permissions.execute === true && agent.permissions.write === true : t.name === 'run_command' ? agent.permissions.execute === true : ['write_file', 'create_visualization'].includes(t.name) ? agent.permissions.write : agent.permissions.read);
+  return toolDefinitions.filter(t => ['preview_media_edit', 'render_animation', 'export_video_comparison', 'studio_edit'].includes(t.name) ? agent.permissions.execute === true && agent.permissions.write === true : t.name === 'run_command' ? agent.permissions.execute === true : ['write_file', 'create_visualization', 'update_board_task'].includes(t.name) ? agent.permissions.write : agent.permissions.read);
 }
 export async function executeTool(root, agent, name, args, approve, { signal, commandMode = 'host', sandboxImage } = {}) {
   signal?.throwIfAborted();
   if (!availableTools(agent).some(t => t.name === name)) throw new Error(`Permission denied: ${name}`);
   if (!args || typeof args !== 'object') throw new Error('Invalid tool arguments.');
+  if (['list_board_tasks','get_board_task','update_board_task'].includes(name)) {
+    const { listBoardTasks, getBoardTask, updateBoardTask } = await import('./task-board.js');
+    const actor = { kind:'agent', id:agent.name };
+    if(name==='list_board_tasks') return JSON.stringify(await listBoardTasks(root,actor));
+    if(name==='get_board_task') return JSON.stringify(await getBoardTask(root,args.id,actor));
+    await getBoardTask(root,args.id,actor);
+    if(!await approve({type:'board-update',id:args.id,changes:args.changes}))return 'Task update declined.';
+    signal?.throwIfAborted();return JSON.stringify(await updateBoardTask(root,args.id,args.changes,actor));
+  }
+  if (name === 'studio_edit') {
+    if (commandMode !== 'host') throw new Error('Studio media tools require host mode.');
+    const { planStudioEdit, executeStudioPlan } = await import('./studio.js');
+    const plan = await planStudioEdit(root,args.recipe);
+    return JSON.stringify(await executeStudioPlan(root,plan,{approve,signal}));
+  }
   if (['render_animation', 'export_video_comparison'].includes(name)) {
     if (commandMode !== 'host') throw new Error('Motion tools require host command mode; container isolation is not implemented.');
     const { renderAnimation, exportComparison } = await import('./motion.js');
