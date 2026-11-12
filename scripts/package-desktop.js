@@ -79,6 +79,7 @@ export async function packageDesktop({ mode = process.env.NEXUS_SIGNING_MODE || 
   const license = await nodeLicense(metadata.version, nodeLicenseFile);
   await mkdir(outputDirectory, { recursive: true });
   const staging = await mkdtemp(path.join(outputDirectory, '.package-'));
+  let published = false;
   try {
     const volume = path.join(staging, 'volume');
     const app = path.join(volume, 'NexusIDE.app');
@@ -139,18 +140,25 @@ export async function packageDesktop({ mode = process.env.NEXUS_SIGNING_MODE || 
     await writeFile(path.join(volume, 'READ ME.txt'), `NexusIDE ${version} (${arch})\n\nDrag NexusIDE.app to Applications. Open it and choose a project folder. Node and the dashboard runtime are included; Node/npm are not needed to launch.\n\nThis build uses ${policy.signing} signing and is NOT yet notarized. Gatekeeper may block it. Do not disable Gatekeeper globally. See docs/macos-release.md for the explicit notarization workflow.\n\nExternal models, Git, Python and integration tools are separate prerequisites. Project state stays in the chosen project's .nexus directory; app preferences are under ~/Library/Application Support/NexusIDE.\n`);
     const dmgName = `NexusIDE-${version}-${arch}.dmg`, reportName = `NexusIDE-${version}-${arch}.json`;
     const dmg = path.join(staging, dmgName);
-    await checked('/usr/bin/hdiutil', ['create', '-volname', 'NexusIDE', '-srcfolder', volume, '-format', 'UDZO', dmg], { timeoutMs: 180000 });
+    // Current macOS recommends diskutil for image creation. Probe the documented
+    // interface so older supported build hosts retain their hdiutil path.
+    const imageHelp = await runProcess('/usr/sbin/diskutil', ['image', 'create', 'from', '--help'], { timeoutMs: 10000, maxBytes: 10000 });
+    const imageBackend = imageHelp.code === 0 && imageHelp.stdout.includes('--volumeName') ? 'diskutil' : 'hdiutil';
+    if (imageBackend === 'diskutil') await checked('/usr/sbin/diskutil', ['image', 'create', 'from', '--format', 'UDZO', '--volumeName', 'NexusIDE', volume, dmg], { timeoutMs: 180000 });
+    else await checked('/usr/bin/hdiutil', ['create', '-volname', 'NexusIDE', '-srcfolder', volume, '-format', 'UDZO', dmg], { timeoutMs: 180000 });
     await checked('/usr/bin/hdiutil', ['verify', dmg], { timeoutMs: 120000 });
     if (policy.signing === 'developer-id') {
       await checked('/usr/bin/codesign', ['--force', '--sign', policy.signingIdentity, '--timestamp', dmg]);
       await verifySignedDmg(dmg, policy);
     }
-    const report = { ...manifest, dmgSha256: await sha256(dmg), bundledNodeSha256: await sha256(bundledNode), checks: ['system-only-dynamic-linkage', 'minimum-os-targets', 'lockfile-production-install', 'contained-dependency-symlinks', 'bundled-node-abi', 'real-pty', 'sqlite', 'code-signature', 'disk-image-integrity'] };
+    const report = { ...manifest, imageBackend, dmgSha256: await sha256(dmg), bundledNodeSha256: await sha256(bundledNode), checks: ['system-only-dynamic-linkage', 'minimum-os-targets', 'lockfile-production-install', 'contained-dependency-symlinks', 'bundled-node-abi', 'real-pty', 'sqlite', 'code-signature', 'disk-image-integrity'] };
     await writeFile(path.join(staging, reportName), JSON.stringify(report, null, 2) + '\n');
     if (mode === 'release' && ((await checked('git', ['rev-parse', 'HEAD'], { cwd: root })).trim() !== expectedRevision || (await checked('git', ['status', '--porcelain'], { cwd: root })).trim())) throw new Error('Source changed before release publication.');
     const previousArtifacts = await publishArtifacts([{ source: app, name: 'NexusIDE.app' }, { source: dmg, name: dmgName }, { source: path.join(staging, reportName), name: reportName }], outputDirectory);
+    published = true;
     return { app: path.join(outputDirectory, 'NexusIDE.app'), dmg: path.join(outputDirectory, dmgName), report: path.join(outputDirectory, reportName), previousArtifacts, ...policy, arch, runtime: metadata.version };
-  } finally { await rm(staging, { recursive: true, force: true }); }
+  } catch (error) { error.message += `\nBuild staging preserved for diagnosis: ${staging}`; throw error; }
+  finally { if (published) await rm(staging, { recursive: true, force: true }); }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) console.log(JSON.stringify(await packageDesktop(), null, 2));
