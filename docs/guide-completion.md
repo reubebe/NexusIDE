@@ -25,7 +25,7 @@ Implementation follows the user’s instruction to omit components without suffi
 - Responsive/accessibility smoke audit: **56 checks passed**, covering all 14 workspaces at 360, 390, 768 and 1280 pixels, with no browser errors. Includes labels, sampled contrast, overflow and keyboard focus; not a complete VoiceOver audit.
 - Direct Chrome GUI: command search opened Studio and moved focus; a synthetic source was imported, brightness changed, exact plan approved and a real derivative preview/completed receipt observed. Model/provider behavior was not inferred from those GUI results.
 - One regression was found and corrected: media timeout must remain `failed`; only explicit cancellation is `cancelled`. Affected tests passed after the correction. An intermediate Foundry syntax error was also corrected before the passing GUI audit.
-- Native app/DMG checks are recorded separately after packaging. Signing/notarization must never be inferred from build success.
+- Native app and DMG verification completed: **17 bundle checks and 14 mounted-image/install/upgrade checks passed**; see [0.4.0 validation](release-0.4.0.md). Signing/notarization must never be inferred from build success.
 
 ## Scope decisions and blockers
 
