@@ -1,13 +1,15 @@
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { constants } from 'node:fs';
-import { open, mkdir, mkdtemp, writeFile, realpath, unlink } from 'node:fs/promises';
+import { open, mkdir, mkdtemp, writeFile, realpath, unlink, readdir, lstat } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import { resolveProjectPath } from './file-policy.js';
 import { boundedRead } from './bounded-read.js';
 import { validateImage } from './artifacts.js';
-import { readState, writeState, listState, safeName } from './state.js';
+import { readState, writeState, listState, safeName, deleteState } from './state.js';
 import { runProcess } from './process.js';
+import { runMediaProcess } from './media-process.js';
+import { hostname } from 'node:os';
 import { previewMediaEdit, validateEditDecisionList } from './media-workflow.js';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -34,6 +36,7 @@ export async function importStudioAsset(root, input) {
   if (!object(input, ['path','title','rights']) || typeof input.path !== 'string' || typeof input.title !== 'string' || !input.title.trim() || input.title.length > 200 || typeof input.rights !== 'string' || input.rights.length > 1000) throw new Error('Provide a project path, title and source rights note (unknown is permitted).');
   const mimeType = types[path.extname(input.path).toLowerCase()];
   if (!mimeType || mimeType === 'image/svg+xml') throw new Error('Import PNG, JPEG, WebP, MP4, MOV, WebM or PDF. External SVG is not imported.');
+  if((await listState(root,'studio-assets')).length>=500)throw new Error('Studio asset limit reached. Remove unused library records first.');
   const bytes = await bytesAt(root,input.path); let metadata = {};
   if (mimeType.startsWith('image/')) { const {width,height} = validateImage(mimeType,bytes.toString('base64')); metadata={width,height}; }
   if (mimeType === 'application/pdf' && bytes.subarray(0,5).toString() !== '%PDF-') throw new Error('Invalid PDF signature.');
@@ -92,12 +95,13 @@ export async function executeStudioPlan(root,{id,digest},{approve=async()=>false
   if(!await approve({type:'studio-edit',...plan,hostExecution:plan.recipe.operation!=='design.layout'}))throw new Error('Studio edit declined.');
   signal?.throwIfAborted();
   for(const s of plan.sources)if(hash(await bytesAt(root,s.path))!==s.sha256)throw new Error('Source changed after approval.');
+  if((await listState(root,'studio-assets')).length>=500)throw new Error('Studio asset limit reached. Remove unused library records first.');
   await writeState(root,'studio-claims',id+'.json',{created:new Date().toISOString()},{exclusive:true});
-  const {root:canonical,dir}=await outputDirectory(root),job={version:1,id,planId:id,status:'running',started:new Date().toISOString(),pid:process.pid,operation:plan.recipe.operation,commands:[],sources:plan.sources};
+  const {root:canonical,dir}=await outputDirectory(root),job={version:1,id,planId:id,status:'running',started:new Date().toISOString(),pid:process.pid,host:hostname(),directory:path.relative(canonical,dir),operation:plan.recipe.operation,commands:[],sources:plan.sources};
   await writeState(root,'studio-jobs',id+'.json',job);
   let output;
   try {
-    const r=validateStudioRecipe(plan.recipe);let mimeType,width,height;job.limits=plan.limits;job.losses=plan.losses;
+    const r=validateStudioRecipe(plan.recipe);let mimeType,width,height;job.limits={...plan.limits,cpuSecondsPerProcess:60,fileSizeUpperBoundBytes:50000000};job.losses=plan.losses;
     if(['image.adjust','video.edit','motion.animate'].includes(r.operation)){const version=await runProcess('ffmpeg',['-version'],{signal,timeoutMs:5000,maxBytes:20000});if(version.code!==0||version.stopped)throw new Error('FFmpeg version check failed.');job.engineVersion=version.stdout.split('\n')[0];}else if(r.operation==='design.layout')job.engineVersion='Nexus SVG layout writer v1';
     if(r.operation==='image.adjust') {
       const {asset,bytes}=await readStudioAsset(root,r.assetId);const source=path.join(dir,'input'+path.extname(asset.path).toLowerCase());await writeFile(source,bytes,{flag:'wx',mode:0o600});
@@ -105,18 +109,18 @@ export async function executeStudioPlan(root,{id,digest},{approve=async()=>false
       if(r.rotate===90)filters.push('transpose=1');if(r.rotate===180)filters.push('hflip','vflip');if(r.rotate===270)filters.push('transpose=2');
       filters.push(`eq=brightness=${r.brightness}:contrast=${r.contrast}:saturation=${r.saturation}`);
       const args=['-hide_banner','-loglevel','error','-nostdin','-n','-protocol_whitelist','file','-i',source,'-vf',filters.join(','),'-frames:v','1','-update','1','output.png'];
-      const result=await runProcess('ffmpeg',args,{cwd:dir,signal,timeoutMs:60000,maxBytes:100000});job.commands.push({command:'ffmpeg',args,code:result.code,stopped:result.stopped});if(result.code!==0||result.stopped)throw new Error('Image render failed or cancelled.');
+      const result=await runMediaProcess('ffmpeg',args,{cwd:dir,signal,timeoutMs:60000,maxBytes:100000});job.commands.push({command:'ffmpeg',args,code:result.code,stopped:result.stopped});if(result.code!==0||result.stopped)throw new Error('Image render failed or cancelled.');
       output=path.relative(canonical,path.join(dir,'output.png'));mimeType='image/png';const checked=validateImage(mimeType,(await bytesAt(root,output)).toString('base64'));width=checked.width;height=checked.height;
     } else if(r.operation==='pdf.organize') {
       const {bytes}=await readStudioAsset(root,r.assetId);const source=path.join(dir,'source.pdf');await writeFile(source,bytes,{flag:'wx',mode:0o600});
       const request={input:source,output:path.join(dir,'organized.pdf'),preview:path.join(dir,'preview.png'),pages:r.pages,rotation:r.rotation,note:r.note};
-      const result=await runProcess('/usr/bin/swift',[fileURLToPath(new URL('../scripts/studio-pdf.swift',import.meta.url))],{cwd:dir,input:JSON.stringify(request),signal,timeoutMs:60000,maxBytes:50000});
+      const result=await runMediaProcess('/usr/bin/swift',[fileURLToPath(new URL('../scripts/studio-pdf.swift',import.meta.url))],{cwd:dir,input:JSON.stringify(request),signal,timeoutMs:60000,maxBytes:50000});
       job.commands.push({command:'Apple PDFKit via Swift',code:result.code,stopped:result.stopped});if(result.code!==0||result.stopped)throw new Error('PDF export failed. Check page selection and the installed macOS Swift tools.');job.pdf=JSON.parse(result.stdout);output=path.relative(canonical,request.output);mimeType='application/pdf';job.preview=path.relative(canonical,request.preview);
     } else if(r.operation==='motion.animate') {
       const {asset,bytes}=await readStudioAsset(root,r.assetId);const source=path.join(dir,'input'+path.extname(asset.path));await writeFile(source,bytes,{flag:'wx',mode:0o600});
       const x=`${r.startX}+(${r.endX-r.startX})*t/${r.seconds}`,y=`${r.startY}+(${r.endY-r.startY})*t/${r.seconds}`;
       const args=['-v','error','-nostdin','-n','-loop','1','-i',source,'-f','lavfi','-i',`color=c=0x${r.background.slice(1)}:s=1280x720:r=24:d=${r.seconds}`,'-filter_complex',`[0:v]scale=240:240:force_original_aspect_ratio=decrease[image];[1:v][image]overlay=x='${x}':y='${y}':shortest=1[v]`,'-map','[v]','-t',String(r.seconds),'-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart','animation.mp4'];
-      const result=await runProcess('ffmpeg',args,{cwd:dir,signal,timeoutMs:60000,maxBytes:50000});job.commands.push({command:'ffmpeg',args,code:result.code,stopped:result.stopped});if(result.code!==0||result.stopped)throw new Error('Motion export failed or cancelled.');output=path.relative(canonical,path.join(dir,'animation.mp4'));mimeType='video/mp4';width=1280;height=720;
+      const result=await runMediaProcess('ffmpeg',args,{cwd:dir,signal,timeoutMs:60000,maxBytes:50000});job.commands.push({command:'ffmpeg',args,code:result.code,stopped:result.stopped});if(result.code!==0||result.stopped)throw new Error('Motion export failed or cancelled.');output=path.relative(canonical,path.join(dir,'animation.mp4'));mimeType='video/mp4';width=1280;height=720;
       const probe=await runProcess('ffprobe',['-v','error','-show_entries','format=duration','-of','json',path.join(dir,'animation.mp4')],{signal,timeoutMs:10000,maxBytes:10000});if(probe.code!==0||probe.stopped)throw new Error('Motion output validation failed.');job.durationSeconds=Number(JSON.parse(probe.stdout).format?.duration);if(!Number.isFinite(job.durationSeconds)||Math.abs(job.durationSeconds-r.seconds)>.15)throw new Error('Motion duration mismatch.');
     } else if(r.operation==='video.edit') {
       const result=await previewMediaEdit(root,r.plan,{approve:async()=>true,signal});output=result.preview;mimeType='video/mp4';job.mediaReceipt=result;
@@ -138,7 +142,43 @@ export async function executeStudioPlan(root,{id,digest},{approve=async()=>false
   finally{job.finished=new Date().toISOString();await writeState(root,'studio-jobs',id+'.json',job);await writeFile(path.join(dir,'receipt.json'),JSON.stringify(job,null,2),{flag:'wx',mode:0o600});}
 }
 export async function studioHistory(root) {
-  return Promise.all((await listState(root,'studio-jobs')).slice(-100).map(async name=>{const j=await readState(root,'studio-jobs',name);if(j.status==='running'){try{process.kill(j.pid,0);}catch(e){if(e.code==='ESRCH')j.status='interrupted';}}return j;}));
+  return Promise.all((await listState(root,'studio-jobs')).slice(-100).map(async name=>{const j=await readState(root,'studio-jobs',name);if(j.status==='running'&&j.host===hostname()&&Number.isSafeInteger(j.pid)&&j.pid>0){try{process.kill(j.pid,0);}catch(e){if(e.code==='ESRCH'){j.status='interrupted';j.recoveryAvailable=true;j.error='Owning process is absent; no operation was replayed.';}}}return j;}));
 }
 
 export async function readStudioPreview(root,id){const {asset}=await readStudioAsset(root,id);if(!asset.preview||!asset.previewSha256)throw new Error('No preview recorded for this asset.');const bytes=await bytesAt(root,asset.preview,5000000);if(hash(bytes)!==asset.previewSha256)throw new Error('Preview changed. Export a new revision.');validateImage('image/png',bytes.toString('base64'));return bytes;}
+
+export async function removeStudioAsset(root, { id, approved }) {
+  safeName(id);if(approved!==true)throw new Error('Approve removing this library record. Files will be retained.');
+  await deleteState(root,'studio-assets',id+'.json');return {removed:true,filesRetained:true};
+}
+
+export async function cleanupStudioScratch(root,{id,approved}) {
+  safeName(id);if(approved!==true)throw new Error('Approve cleanup of generated scratch copies.');
+  const job=await readState(root,'studio-jobs',id+'.json');
+  if(job.status==='running')throw new Error('Finish or recover this job before cleanup.');
+  const assets=await Promise.all((await listState(root,'studio-assets')).map(name=>readState(root,'studio-assets',name)));
+  const protectedPaths=new Set(assets.flatMap(a=>[a.path,a.preview]).filter(Boolean));
+  const removed=[];let bytesRemoved=0;
+  for(const directory of [job.directory,job.mediaReceipt?.directory].filter(Boolean)){
+    if(!['nexus-studio-output','nexus-visual-output'].includes(path.dirname(directory))||!/^edit-[a-zA-Z0-9_-]+$/.test(path.basename(directory)))throw new Error('Invalid generated scratch directory.');
+    const absolute=await resolveProjectPath(root,directory);
+    for(const name of await readdir(absolute)){
+      if(!/^(?:input\.(?:png|jpe?g|webp)|source\.pdf|clip-\d+\.mp4|concat\.txt)$/.test(name))continue;
+      const relative=path.join(directory,name);if(protectedPaths.has(relative))continue;
+      const target=await resolveProjectPath(root,relative),stat=await lstat(target);
+      if(!stat.isFile()||stat.isSymbolicLink()||stat.nlink!==1)throw new Error('Scratch cleanup refuses links and non-regular files.');
+      await unlink(target);removed.push(relative);bytesRemoved+=stat.size;
+    }
+  }
+  job.cleanup={at:new Date().toISOString(),removed,bytesRemoved};
+  await writeState(root,'studio-jobs',id+'.json',job);return job.cleanup;
+}
+
+export async function recoverStudioJob(root,{id,approved}) {
+  safeName(id);if(approved!==true)throw new Error('Approve marking the abandoned job interrupted.');
+  const job=await readState(root,'studio-jobs',id+'.json');
+  if(job.status!=='running'||job.host!==hostname()||!Number.isSafeInteger(job.pid)||job.pid<1)throw new Error('Only a locally owned running job can be recovered.');
+  try{process.kill(job.pid,0);throw new Error('Owning process is still active.');}catch(error){if(error.code!=='ESRCH')throw error;}
+  job.status='interrupted';job.finished=new Date().toISOString();job.error='Owning process absent. No operation replayed; review a new plan to try again.';
+  await writeState(root,'studio-jobs',id+'.json',job);return job;
+}

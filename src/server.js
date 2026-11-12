@@ -1,7 +1,7 @@
 import { acquireWebSource, listWebSources, removeWebSource } from './web-sources.js';
 import { createSkillDraft, generateSkillDraft, discoverSkills, planSkillSelection, listSkillDrafts, publishSkillDraft, revokeSkillDraft } from './skill-foundry.js';
 import { renderAnimation, exportComparison, readMotionMedia } from './motion.js';
-import { studioCapabilities, importStudioAsset, listStudioAssets, readStudioAsset, readStudioPreview, planStudioEdit, executeStudioPlan, studioHistory } from './studio.js';
+import { studioCapabilities, importStudioAsset, listStudioAssets, readStudioAsset, readStudioPreview, planStudioEdit, executeStudioPlan, studioHistory, removeStudioAsset, cleanupStudioScratch, recoverStudioJob } from './studio.js';
 import { boardOverview, createBoardTask, updateBoardTask } from './task-board.js';
 import { importSession, listImportedSessions, removeImportedSession, sessionHandoff } from './session-import.js';
 import { accountOverview, updateAccountProfile } from './account-control.js';
@@ -145,6 +145,7 @@ export async function startServer({ root, port = 4317, accountHome }) {
       if(req.method==='POST'&&pathname==='/api/sessions/handoff')return send(res,200,await sessionHandoff(root,await body(req)));
       const sessionRoute=pathname.match(/^\/api\/sessions\/([a-f0-9-]{36})$/);
       if(req.method==='DELETE'&&sessionRoute)return send(res,200,await removeImportedSession(root,sessionRoute[1]));
+      if(req.method==='POST'&&['/api/studio/remove','/api/studio/cleanup','/api/studio/recover'].includes(pathname)){const input=await body(req);const operation=pathname.endsWith('/remove')?removeStudioAsset:pathname.endsWith('/cleanup')?cleanupStudioScratch:recoverStudioJob;return send(res,200,await writeConfiguration(()=>operation(root,input)));}
       if (req.method === 'GET' && pathname === '/api/studio') return send(res,200,{assets:await listStudioAssets(root),jobs:await studioHistory(root)});
       if (req.method === 'POST' && pathname === '/api/studio/capabilities') return send(res,200,await studioCapabilities());
       if (req.method === 'POST' && pathname === '/api/studio/import') { const input=await body(req);return send(res,201,await writeConfiguration(()=>importStudioAsset(root,input))); }

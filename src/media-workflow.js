@@ -3,7 +3,7 @@ import { lstat, mkdir, mkdtemp, open, writeFile, readFile, realpath, rm } from '
 import { constants } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolveProjectPath } from './file-policy.js';
-import { runProcess } from './process.js';
+import { runMediaProcess } from './media-process.js';
 import { validateVisualSpec } from './visual-spec.js';
 
 const formats = { '.mp4': 'mov', '.mov': 'mov', '.m4v': 'mov', '.webm': 'matroska', '.mkv': 'matroska' };
@@ -49,7 +49,7 @@ export async function previewMediaEdit(root, input, { ffmpeg = 'ffmpeg', ffprobe
   const receipt = { version: 1, created: new Date().toISOString(), status: 'rendering', title: plan.title, plan, sources: sources.map(({ absolute, dev, ino, mtimeMs, ...source }) => source), review: { status: 'pending', note: 'Inspect preview playback, sound, subtitles if present, and each boundary frame. Preview generation is not editorial approval.' }, commands: [] };
   const run = async (command, args) => {
     cancelled.throwIfAborted();
-    const result = await runProcess(command, args, { cwd: directory, signal: cancelled, timeoutMs: Math.min(timeoutMs, 120000), maxBytes: 500000 });
+    const result = await runMediaProcess(command, args, { cwd: directory, signal: cancelled, timeoutMs: Math.min(timeoutMs, 120000), maxBytes: 500000 });
     receipt.commands.push({ executable: command, args, code: result.code, stopped: result.stopped });
     if (result.code !== 0 || result.stopped) throw new Error(`Media command ${result.stopped || `exited ${result.code}`}: ${result.output.slice(-1500)}`);
     return result.output;
