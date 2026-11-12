@@ -32,6 +32,7 @@ test('visual reviews require selected vision profile and consent, retain evidenc
   let calls=0;t.mock.method(globalThis,'fetch',async()=>{calls++;return Response.json({choices:[{finish_reason:'stop',message:{content:'Visible red; no functional tests performed.'}}],usage:{prompt_tokens:2,completion_tokens:3}});});
   assert.equal((await visualReviewProfiles(root)).length,1);
   await assert.rejects(reviewVisualArtifact(root,artifact.id,{provider:'vision',question:'Color?'}),/Approve/);
+  for (const approved of ['false', 1, {}]) await assert.rejects(reviewVisualArtifact(root,artifact.id,{provider:'vision',question:'Color?',approved}),/Approve/);
   await assert.rejects(reviewVisualArtifact(root,artifact.id,{provider:'text',question:'Color?',approved:true}),/vision/);assert.equal(calls,0);
   const result=await reviewVisualArtifact(root,artifact.id,{provider:'vision',question:'Color?',approved:true});
   const saved=await readState(root,'visual-reviews',(await listState(root,'visual-reviews'))[0]);

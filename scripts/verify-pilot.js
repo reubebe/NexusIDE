@@ -95,7 +95,7 @@ export async function runSyntheticPilot({ cycles = 3 } = {}) {
           if (!messages.some(message => message.role === 'tool')) return reply('Proposing denied write.', [call('write_file', { path: 'protected.txt', content: 'Must not be written.' })]);
           assert.match(messages.at(-1).content, /declined/i);
           return reply('The user denied the write.');
-        });
+        }, { expectedError: /Run incomplete/, expectedStatus: 'failed' });
         assert.equal(await readFile(path.join(root, 'protected.txt'), 'utf8'), 'Must remain unchanged.');
         assert.equal(run.events.filter(event => event.type === 'approval' && !event.allowed).length, 1);
       });

@@ -214,3 +214,20 @@ test('dashboard discovery and selection require authentication and persist no cr
   assert.equal(config.providers[config.routes.default].keyEnv, 'DEEPSEEK_API_KEY');
   assert.ok(!JSON.stringify(config).includes('fixture-private-key'));
 });
+
+test('model discovery propagates cancellation for local and cloud listings without making a second request', async () => {
+  for (const id of ['ollama', 'anthropic']) {
+    const controller = new AbortController();
+    let requests = 0;
+    const reason = new Error('Fixture cancelled discovery.');
+    const fetchImpl = async (_url, { signal }) => {
+      requests++;
+      controller.abort(reason);
+      signal.throwIfAborted();
+    };
+    await assert.rejects(discoverModels(id, { env: { ANTHROPIC_API_KEY: 'fixture-key' }, signal: controller.signal, fetchImpl }), error => error === reason);
+    assert.equal(requests, 1);
+    await assert.rejects(discoverModels(id, { env: { ANTHROPIC_API_KEY: 'fixture-key' }, signal: controller.signal, fetchImpl }), error => error === reason);
+    assert.equal(requests, 1);
+  }
+});

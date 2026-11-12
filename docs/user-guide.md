@@ -1842,3 +1842,10 @@ In **Skill Foundry → Find and combine published skills**, search by task keywo
 Use **Go to…**, **⌘K** on macOS or **Ctrl+K** elsewhere to search workspace names. Arrow keys move through results, Enter opens the selection and Escape closes the dialog. Focus moves to the chosen workspace heading. In **Project files**, the keyboard-accessible **File list width** slider changes the split on wide screens and remembers the value for that local dashboard port. Narrow screens retain a single column. This does not add LSP/DAP or certify compatibility with an external editor.
 
 Astryx was assessed before distribution as a reference for consistent controls, themes and accessibility testing. It is not bundled: its React 19 frontend requirements would require a separate migration. See the [pinned assessment and decision](astryx-assessment.md).
+
+
+## Execution activity and appearance (November 2026)
+
+The Workspace timeline separates tool attempts, successful returns, failures and denied approvals. Expand **Full activity and model responses** for the underlying output. A finished execution still needs result review; it is not proof that the requested outcome passed independent tests. A failed or denied action prevents successful final status until the same action succeeds. An alternative approach with different arguments remains unresolved automatically: inspect the output and start a continuation when appropriate.
+
+Use **Theme** beside the workspace breadcrumb to choose System, Dark or Light. The choice is stored locally in the browser profile. All existing workspaces remain available in the grouped navigation and the **Go to…** command palette.

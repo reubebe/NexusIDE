@@ -9,7 +9,7 @@ export async function visualReviewProfiles(root) {
   return Object.entries(config.providers).filter(([, p]) => p.vision === true && p.kind !== 'demo').map(([name, p]) => ({ name, model: p.model, endpoint: p.baseUrl || (p.kind === 'anthropic' ? 'https://api.anthropic.com/v1' : 'https://api.openai.com/v1') }));
 }
 export async function reviewVisualArtifact(root, id, { provider: name, question, approved = false }, { signal } = {}) {
-  if (!approved) throw new Error('Approve sending this image and question to the selected provider.');
+  if (approved !== true) throw new Error('Approve sending this image and question to the selected provider.');
   if (typeof question !== 'string' || !question.trim() || question.length > 6000) throw new Error('Provide a review question under 6000 characters.');
   const profile = (await visualReviewProfiles(root)).find(p => p.name === name);
   if (!profile) throw new Error('Choose a configured provider with vision: true.');

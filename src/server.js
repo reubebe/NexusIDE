@@ -92,7 +92,8 @@ export async function startServer({ root, port = 4317, accountHome }) {
     const controller = new AbortController();
     const abort = () => { if (!res.writableEnded) controller.abort(); };
     requestControllers.add(controller); res.once('close', abort);
-    const pending = Promise.resolve().then(() => operation(controller.signal));
+    if (closing || res.destroyed) controller.abort();
+    const pending = Promise.resolve().then(() => { controller.signal.throwIfAborted(); return operation(controller.signal); });
     executions.add(pending);
     try { return await pending; }
     finally { executions.delete(pending); requestControllers.delete(controller); res.off('close', abort); }
@@ -187,10 +188,8 @@ export async function startServer({ root, port = 4317, accountHome }) {
         return send(res, 200, input.action === 'configure' ? await configureVisualTool(root, input.name, input.options) : await previewVisualToolConfig(root, input.name, input.options));
       }
       if (req.method === 'POST' && pathname === '/api/visual-review') {
-        const input = await body(req), controller = new AbortController();
-        const aborted = () => { if (!res.writableEnded) controller.abort(); }; res.once('close', aborted);
-        const pending = reviewVisualArtifact(root, input.id, input, { signal: controller.signal }); executions.add(pending);
-        try { return send(res, 200, await pending); } finally { executions.delete(pending); res.off('close', aborted); }
+        const input = await body(req);
+        return send(res, 200, await requestOperation(res, signal => reviewVisualArtifact(root, input.id, input, { signal })));
       }
       if (req.method === 'POST' && pathname === '/api/artifacts') {
         const input = await body(req);
@@ -201,16 +200,11 @@ export async function startServer({ root, port = 4317, accountHome }) {
       if (req.method === 'DELETE' && artifactRoute) { await writeConfiguration(() => removeArtifact(root, artifactRoute[1])); return send(res, 200, { deleted: true }); }
       if (req.method === 'GET' && pathname === '/api/code-map') return send(res, 200, await codeMapStatus(root));
       if (req.method === 'POST' && pathname === '/api/code-map') {
-        const input = await body(req), controller = new AbortController();
-        const aborted = () => { if (!res.writableEnded) controller.abort(); };
-        res.once('close', aborted);
-        const query = queryCodeMap(root, input, { signal: controller.signal });
-        executions.add(query);
-        try { return send(res, 200, await query); }
-        finally { executions.delete(query); res.off('close', aborted); }
+        const input = await body(req);
+        return send(res, 200, await requestOperation(res, signal => queryCodeMap(root, input, { signal })));
       }
       if (req.method === 'GET' && pathname === '/api/providers') return send(res, 200, { providers: discoverProviders() });
-      if (req.method === 'GET' && pathname === '/api/providers/models') return send(res, 200, await discoverModels(url.searchParams.get('provider')));
+      if (req.method === 'GET' && pathname === '/api/providers/models') return send(res, 200, await requestOperation(res, signal => discoverModels(url.searchParams.get('provider'), { signal })));
       if (req.method === 'POST' && pathname === '/api/providers/select') {
         const selection = await body(req);
         if (!selection || Object.keys(selection).some(k => !['provider', 'model', 'route'].includes(k))) throw new Error('Invalid provider selection.');
@@ -227,14 +221,13 @@ export async function startServer({ root, port = 4317, accountHome }) {
       if (req.method === 'POST' && pathname === '/api/skills/deep-audit') {
         const input = await body(req);
         if (input.approved !== true) throw new Error('Approve the selected scanner and its network/model settings.');
-        const skill = await loadSkill(root, input.name), controller = new AbortController();
-        const aborted = () => { if (!res.writableEnded) controller.abort(); }; res.once('close', aborted);
-        const pending = deepScanSkillFiles(skill.files, { ...input.options, signal: controller.signal }); executions.add(pending);
-        try {
-          const result = await pending;
+        const skill = await loadSkill(root, input.name);
+        return send(res, 200, await requestOperation(res, async signal => {
+          const result = await deepScanSkillFiles(skill.files, { ...input.options, signal });
+          signal.throwIfAborted();
           await writeState(root, 'skill-reviews', `${Date.now()}-${result.digest.slice(0,16)}.json`, result, { exclusive: true });
-          return send(res, 200, result);
-        } finally { executions.delete(pending); res.off('close', aborted); }
+          return result;
+        }));
       }
       const reader = { permissions: { read: true, write: false } };
       if (req.method === 'GET' && pathname === '/api/files') return send(res, 200, await projectFiles(root, url.searchParams.get('path') || '.'));
@@ -277,11 +270,11 @@ export async function startServer({ root, port = 4317, accountHome }) {
       const memoryRoute = pathname.match(/^\/api\/memory\/([^/]+)(\/history)?$/);
       if (req.method === 'GET' && memoryRoute?.[2]) return send(res, 200, await memoryHistory(root, memoryRoute[1], { offset: Number(url.searchParams.get('offset') || 0), limit: Number(url.searchParams.get('limit') || 50) }));
       if (req.method === 'PATCH' && memoryRoute && !memoryRoute[2]) return send(res, 200, await updateMemory(root, memoryRoute[1], await body(req)));
-      if (req.method === 'POST' && pathname === '/api/memory/index') return send(res, 200, await rebuildMemoryIndex(root));
+      if (req.method === 'POST' && pathname === '/api/memory/index') return send(res, 200, await requestOperation(res, signal => rebuildMemoryIndex(root, { signal })));
       if (req.method === 'POST' && pathname === '/api/memory/search') {
         const data = await body(req), agent = data.agent ? await loadAgent(root, data.agent) : undefined;
         if (agent && !agent.memory) throw new Error('Memory is disabled for this agent.');
-        return send(res, 200, await searchMemory(root, data.query, agent?.name, { mode: data.mode || 'hybrid', loadout: agent ? agent.memoryLoadout || {} : undefined }));
+        return send(res, 200, await requestOperation(res, signal => searchMemory(root, data.query, agent?.name, { signal, mode: data.mode || 'hybrid', loadout: agent ? agent.memoryLoadout || {} : undefined })));
       }
       if (req.method === 'POST' && pathname === '/api/subscription-route') {
         const input = await body(req);

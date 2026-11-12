@@ -18,8 +18,8 @@ test('bounded synthetic pilot exercises durable runs, denied approvals, continua
   assert.equal(receipt.providerCharges, 0);
   assert.equal(receipt.temporaryWorkspaceRemoved, true);
   assert.equal(receipt.summary.runCount, 11);
-  assert.equal(receipt.summary.completedRuns, 8);
-  assert.equal(receipt.summary.expectedFailureRuns, 2);
+  assert.equal(receipt.summary.completedRuns, 6);
+  assert.equal(receipt.summary.expectedFailureRuns, 4);
   assert.equal(receipt.summary.expectedCancelledRuns, 1);
   assert.equal(receipt.summary.failedChecks, 0);
   assert.equal(receipt.summary.syntheticModelRequests, 19);
@@ -61,7 +61,7 @@ test('explicit CLI saves a truthful bounded rehearsal receipt in the selected pr
   assert.equal(receipt.verified, true, receipt.error);
   assert.equal(receipt.productionReady, false);
   assert.equal(receipt.summary.runCount, 16);
-  assert.equal(receipt.summary.expectedFailureRuns, 3);
+  assert.equal(receipt.summary.expectedFailureRuns, 6);
   assert.equal(receipt.summary.expectedCancelledRuns, 1);
   assert.equal(receipt.summary.syntheticModelRequests, 28);
   await assert.rejects(readFile(path.join(root, '.nexus/storage.sqlite')), { code: 'ENOENT' });

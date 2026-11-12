@@ -1,9 +1,48 @@
+// Presentation uses recorded execution events; a successful tool return is not
+// independent evidence that the user's requested outcome has been achieved.
+export function taskActivity(job, approvalCount = 0) {
+  const events = job?.events || [];
+  const actions = [];
+  const counts = { attempted: 0, completed: 0, failed: 0, denied: 0 };
+  for (const event of events) {
+    if (event.type === 'tool-dispatch') {
+      counts.attempted++;
+      actions.push({ label: `${event.name}: attempted`, at: event.at, outcome: 'attempted' });
+    } else if (event.type === 'tool-finish') {
+      const outcome = ['completed', 'failed', 'denied'].includes(event.outcome) ? event.outcome : 'unverified';
+      if (outcome in counts) counts[outcome]++;
+      actions.push({ label: `${event.name}: ${outcome}`, at: event.at, outcome });
+    } else if (event.type === 'model-request') {
+      actions.push({ label: `Model request: ${event.model || event.provider || 'selected model'}`, at: event.at, outcome: 'requested' });
+    } else if (event.type === 'approval') {
+      actions.push({ label: `Approval ${event.allowed ? 'granted' : 'declined'}: ${event.action || 'action'}`, at: event.at, outcome: event.allowed ? 'approved' : 'denied' });
+    }
+  }
+  const status = !job ? 'Ready to start' : approvalCount && job.status === 'running' ? 'Waiting for your approval'
+    : job.plan ? 'Plan saved · Review before running'
+    : ({ running: 'Running', completed: 'Execution finished · Review results', failed: 'Failed · Review activity', cancelled: 'Cancelled · Review partial work' }[job.status] || `Task status: ${job.status}`);
+  return { status, counts, actions: actions.slice(-12), omitted: Math.max(0, actions.length - 12),
+    progress: !job ? 0 : job.status === 'running' ? 1 : 2,
+    evidence: job ? `${counts.attempted} tool attempts · ${counts.completed} completed · ${counts.failed} failed · ${counts.denied} denied. Tool completion is not independent validation.` : 'Tool results and validation evidence will appear as the task runs.' };
+}
+
 export function commandMatches(commands, query) {
   const words = query.trim().toLowerCase().split(/\s+/);
   return commands.filter(c => words.every(word => `${c.label} ${c.id}`.toLowerCase().includes(word))).slice(0, 30);
 }
 
 export function createWorkbench({ showTab, titles }) {
+  const theme = document.createElement('select'); theme.id = 'theme-choice';
+  for (const [value, text] of [['system', 'System'], ['dark', 'Dark'], ['light', 'Light']]) {
+    const option = document.createElement('option'); option.value = value; option.textContent = text; theme.append(option);
+  }
+  const themeLabel = document.createElement('label'); themeLabel.className = 'theme-control'; themeLabel.textContent = 'Theme'; themeLabel.append(theme);
+  document.querySelector('.breadcrumb').append(themeLabel);
+  const systemTheme = matchMedia('(prefers-color-scheme: light)');
+  try { const saved = localStorage.getItem('nexus-theme'); if (['system', 'dark', 'light'].includes(saved)) theme.value = saved; } catch {}
+  const applyTheme = () => { document.documentElement.dataset.theme = theme.value === 'system' ? (systemTheme.matches ? 'light' : 'dark') : theme.value; };
+  theme.addEventListener('change', () => { applyTheme(); try { localStorage.setItem('nexus-theme', theme.value); } catch {} });
+  systemTheme.addEventListener('change', applyTheme); applyTheme();
   const dialog = document.createElement('dialog');
   dialog.className = 'command-palette'; dialog.setAttribute('aria-labelledby', 'command-title');
   const heading = document.createElement('h2'); heading.id = 'command-title'; heading.textContent = 'Go to…';

@@ -7,19 +7,28 @@ function canonical(value) {
   return value;
 }
 
-export function toolFailed(name, content, { threw = false, mcp = false } = {}) {
-  if (threw) return true;
-  const declined = { write_file: 'Write declined by user.', run_command: 'Command declined by user.', run_application: 'Application declined.', save_memory: 'Memory declined.', search_memory_semantic: 'Semantic search declined.' };
-  if (Object.hasOwn(declined, name) && content === declined[name]) return true;
-  if (mcp && content === 'MCP call declined.') return true;
-  if (['run_command', 'run_application', 'git_diff'].includes(name) || mcp) {
+export function toolOutcome(name, content, { threw = false, mcp = false, denied = false } = {}) {
+  if (denied) return 'denied';
+  if (threw) return 'failed';
+  const declined = { write_file: 'Write declined by user.', run_command: 'Command declined by user.', run_application: 'Application declined.', save_memory: 'Memory declined.', search_memory_semantic: 'Semantic search declined.', update_board_task: 'Task update declined.', create_visualization: 'Visualization declined.' };
+  if (Object.hasOwn(declined, name) && content === declined[name]) return 'denied';
+  if (mcp && content === 'MCP call declined.') return 'denied';
+  if (['run_command', 'run_application', 'git_diff', 'git_status'].includes(name) || mcp) {
     try {
       const result = JSON.parse(content);
-      if (mcp) return result?.isError === true;
-      return !!result && typeof result === 'object' && Object.hasOwn(result, 'code') && (result.code !== 0 || !!result.stopped || !!result.signal);
+      if (mcp) return result?.isError === true ? 'failed' : 'completed';
+      if (result && typeof result === 'object' && Object.hasOwn(result, 'code') && (result.code !== 0 || result.stopped || result.signal)) return 'failed';
     } catch { /* Ordinary text is not a structured failure. */ }
   }
-  return false;
+  return 'completed';
+}
+
+export function toolFailed(name, content, options) {
+  return toolOutcome(name, content, options) !== 'completed';
+}
+
+export function toolCallKey(call) {
+  return createHash('sha256').update(JSON.stringify([call.name, canonical(call.args)])).digest('hex');
 }
 
 export function createToolFailureGuard(limit = 3) {
@@ -27,7 +36,7 @@ export function createToolFailureGuard(limit = 3) {
   const failures = new Map();
   return {
     record(call, failed) {
-      const key = createHash('sha256').update(JSON.stringify([call.name, canonical(call.args)])).digest('hex');
+      const key = toolCallKey(call);
       if (!failed) { failures.delete(key); return null; }
       const attempts = (failures.get(key) || 0) + 1;
       failures.set(key, attempts);

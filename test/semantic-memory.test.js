@@ -7,7 +7,7 @@ import path from 'node:path';
 import { rebuildMemoryIndex, semanticRecall, validateEmbedding } from '../src/semantic-memory.js';
 import { remember, forget } from '../src/memory.js';
 import { saveConfig, defaultConfig } from '../src/config.js';
-import { writeState } from '../src/state.js';
+import { writeState, readState } from '../src/state.js';
 
 test('semantic retrieval excludes other agents, deleted notes and changed notes', async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'nexus-semantic-'));
@@ -73,9 +73,14 @@ test('runtime semantic search needs memory grant and approval before embedding a
       assert.equal(tools.some(t => t.name === 'search_memory_semantic'), memory);
       return calls++ === 0 ? { text: '', calls: [{ id: 'search', name: 'search_memory_semantic', args: { query: 'semantic request' } }] } : { text: 'Done', calls: [] };
     } };
-    const record = await runAgent({ root, agent, task: 'inspect', provider, approve: async request => {
+    let runId;
+    const running = runAgent({ root, agent, task: 'inspect', provider, onEvent: event => { if (event.type === 'start') runId = event.id; }, approve: async request => {
       approvals++; assert.equal(request.type, 'semantic-memory'); assert.equal(request.agent, 'reviewer'); return allow;
     } });
+    if (memory && allow) await running;
+    else await assert.rejects(running, /Run incomplete/);
+    const record = await readState(root, 'runs', `${runId}.json`);
+    assert.equal(record.status, memory && allow ? 'completed' : 'failed');
     const result = record.messages.find(m => m.role === 'tool').content;
     assert.equal(approvals, memory ? 1 : 0);
     if (memory && allow) {

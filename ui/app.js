@@ -1,4 +1,4 @@
-import { createWorkbench } from './workbench.js';
+import { createWorkbench, taskActivity } from './workbench.js';
 import { createFoundry } from './foundry.js';
 import { createCoordination } from './coordination.js';
 import { createStudio } from './studio.js';
@@ -164,6 +164,23 @@ function render() {
   const taskJobs = state.jobs.filter(j => !j.kind || j.kind === 'task');
   const job = taskJobs.find(j => j.id === activeJob) || taskJobs.at(-1);
   if (job) { activeJob = job.id; $('activity').textContent = `Task status: ${job.status}\n\n` + job.events.map(e => e.type === 'text' ? e.text : e.type === 'tool-result' ? `${e.name}: ${e.content}` : `[${e.step || ''} ${e.type}] ${e.name || e.status || ''}`).join('\n\n') + (job.error ? '\nError: ' + job.error : '') + (job.plan ? '\nPlan saved. Select its team name to run it after review.\n' + JSON.stringify(job.plan, null, 2) : ''); }
+  const activity = taskActivity(job, state.approvals.length);
+  if ($('task-status').textContent !== activity.status) $('task-status').textContent = activity.status;
+  $('task-status').dataset.status = job?.status || 'ready';
+  $('task-evidence').textContent = activity.evidence;
+  renderWhenChanged($('activity-timeline'), JSON.stringify(activity.actions), () => {
+    $('activity-timeline').replaceChildren(...activity.actions.map(item => {
+      const row = node('li'); row.dataset.outcome = item.outcome;
+      const label = node('span', item.label); row.append(label);
+      if (item.at) { const time = node('time', new Date(item.at).toLocaleTimeString()); time.dateTime = item.at; row.append(time); }
+      return row;
+    }));
+  });
+  document.querySelector('.activity-details summary').textContent = activity.omitted ? `Full activity and model responses (${activity.omitted} earlier events)` : 'Full activity and model responses';
+  [...document.querySelectorAll('.run-path li')].forEach((step, index) => {
+    step.classList.toggle('active', index === activity.progress);
+    if (index === activity.progress) step.setAttribute('aria-current', 'step'); else step.removeAttribute('aria-current');
+  });
   $('cancel').disabled = !job || job.status !== 'running';
   const lastEvent = job?.events.at(-1);
   if (job?.status === 'running' && lastEvent?.type === 'model-request') {

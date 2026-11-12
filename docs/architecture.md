@@ -4,6 +4,8 @@ The supplied architecture diagram remains the product target. This document dist
 
 ## Current build phase
 
+The [2026-11-12 engineering audit](audit-2026-11-12.md) records a fresh baseline, execution-outcome and cancellation fixes, cross-interface workspace exclusion, UI improvements and current validation limits. Historical evidence below retains its original scope.
+
 NexusIDE is a working local prototype with a shared runtime, editor adapters and a self-contained macOS development app. Local model tool use, a small real-model coding workflow, selected editor-host demos, research evidence retrieval and a zero-key media render have verification evidence. Phases 1–4 now cover SQLite/incremental indexing, selected-provider compatibility, managed integration lifecycle and an ad-hoc bundled macOS build. These are bounded checks, not production certification. Developer ID distribution, broader cloud-provider validation and real-world workloads remain open. See [release phases](release-phases.md), the [workflow audit](audit-2026-10-08.md) and [evaluation](evaluation.md) for scope and evidence.
 
 The user-facing setup steps are in the [User Guide](user-guide.md). The concrete adaptation decisions for the supplied repositories are in [Integration review](integrations.md) and [the machine-readable catalog](../integrations/catalog.json).

@@ -64,13 +64,14 @@ export function isAgentModel(id, provider = '') {
     && !(provider.startsWith('qwen') && /^qwen3\.5-(?:122b-a10b|27b)(?:-|$)/i.test(id));
 }
 
-export async function discoverModels(id, { env = process.env, fetchImpl = fetch } = {}) {
+export async function discoverModels(id, { env = process.env, fetchImpl = fetch, signal } = {}) {
+  signal?.throwIfAborted();
   const p = preset(id);
   if (p.local) {
     try {
       // Only the local service is queried. Never forward environment keys or
       // follow redirects, and bound both response bytes and request duration.
-      const response = await fetchImpl(new URL('http://127.0.0.1:11434/api/tags'), { signal: AbortSignal.timeout(5000), redirect: 'error' });
+      const response = await fetchImpl(new URL('http://127.0.0.1:11434/api/tags'), { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(5000)]) : AbortSignal.timeout(5000), redirect: 'error' });
       if (!response.ok) throw new Error('Local service unavailable.');
       const data = await readProviderJson(response, 1024 * 1024);
       if (!Array.isArray(data.models) || data.models.length > 2000) throw new Error('Invalid local model list.');
@@ -83,6 +84,7 @@ export async function discoverModels(id, { env = process.env, fetchImpl = fetch 
         ? 'Ollama is running locally. Choose an installed text model with tool calling; this list does not verify agent compatibility. No API key is needed.'
         : 'Ollama is running, but no installed local text models were found. Pull a tool-capable model in Ollama, then refresh models. No API key is needed.' };
     } catch {
+      signal?.throwIfAborted();
       throw new Error('Could not reach Ollama at 127.0.0.1:11434 or read its model list. Open Ollama or run ollama serve, then refresh models. No API key is needed.');
     }
   }
@@ -91,13 +93,13 @@ export async function discoverModels(id, { env = process.env, fetchImpl = fetch 
     ? { 'x-api-key': env[p.keyEnv], 'anthropic-version': '2023-06-01' }
     : { authorization: `Bearer ${env[p.keyEnv]}` };
   try {
-    const models = [], signal = AbortSignal.timeout(15000);
+    const models = [], requestSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000);
     let after, listed = 0, hasMore = false;
     for (let page = 0; page < 10; page++) {
       const url = new URL(p.modelsUrl || `${p.baseUrl}/models`);
       if (p.kind === 'anthropic') { url.searchParams.set('limit', '100'); if (after) url.searchParams.set('after_id', after); }
       if (p.modelsUrl) { url.searchParams.set('page_no', String(page + 1)); url.searchParams.set('page_size', '100'); url.searchParams.set('capabilities', 'TG'); url.searchParams.set('features', 'function-calling'); }
-      const response = await fetchImpl(url, { headers, signal, redirect: 'error' });
+      const response = await fetchImpl(url, { headers, signal: requestSignal, redirect: 'error' });
       if (!response.ok) throw new Error(`Model list unavailable (HTTP ${response.status}). Check your key, account region, and access, or enter a model ID below.`);
       const data = await readProviderJson(response);
       const entries = p.modelsUrl ? data.output?.models : data.data;
@@ -114,6 +116,7 @@ export async function discoverModels(id, { env = process.env, fetchImpl = fetch 
     }
     return { models: [...new Set(models)].sort(), note: `Provider model list. Choose a text model with tool calling; listing does not verify account access or agent compatibility.${hasMore ? ' The list was limited to ten pages; enter an omitted model ID manually.' : ''}` };
   } catch (error) {
+    signal?.throwIfAborted();
     // Never relay provider response bodies or transport errors containing keys.
     if (error.message.startsWith('Model list unavailable') || error.message.startsWith('This provider does not')) throw error;
     throw new Error('Could not load models. Check your connection or enter a model ID below.');

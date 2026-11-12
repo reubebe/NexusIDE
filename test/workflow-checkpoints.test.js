@@ -109,3 +109,38 @@ test('concurrent resume attempts claim a checkpoint only once', async t => {
   assert.equal(results.find(r => r.status === 'rejected').reason.code, 'EEXIST');
   assert.equal((await listState(root, 'runs')).length, 2);
 });
+
+test('checkpoint continuation cancellation interrupts pending approval without claiming or replaying stages', async t => {
+  const root = await workspace(t), prior = await stopped(root), controller = new AbortController();
+  let entered;
+  const approvalEntered = new Promise(resolve => { entered = resolve; });
+  const pending = resumeWorkflow({ root, id: prior.id, signal: controller.signal, approve: (_request, context) => {
+    entered(context?.signal);
+    return new Promise(() => {});
+  } });
+  const approvalSignal = await approvalEntered;
+  controller.abort(new Error('Cancel checkpoint continuation'));
+  let timer;
+  try {
+    const outcome = await Promise.race([
+      pending.then(() => 'resolved', error => error.message),
+      new Promise(resolve => { timer = setTimeout(() => resolve('approval remained pending'), 500); }),
+    ]);
+    assert.equal(outcome, 'Cancel checkpoint continuation');
+    assert.equal(approvalSignal, controller.signal);
+  } finally { clearTimeout(timer); }
+  assert.deepEqual(await readState(root, 'workflows', `${prior.id}.json`), prior);
+  assert.deepEqual(await listState(root, 'workflow-resumes'), []);
+  assert.equal((await listState(root, 'runs')).length, 1);
+  // The cancelled approval has not consumed the checkpoint's exclusive claim.
+  assert.equal((await resumeWorkflow({ root, id: prior.id, approve: async () => true })).status, 'completed');
+});
+
+test('an already cancelled continuation never opens an approval', async t => {
+  const root = await workspace(t), prior = await stopped(root), controller = new AbortController();
+  controller.abort(new Error('Already cancelled'));
+  let approvals = 0;
+  await assert.rejects(resumeWorkflow({ root, id: prior.id, signal: controller.signal, approve: async () => { approvals++; return true; } }), /Already cancelled/);
+  assert.equal(approvals, 0);
+  assert.deepEqual(await listState(root, 'workflow-resumes'), []);
+});

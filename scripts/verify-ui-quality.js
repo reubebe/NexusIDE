@@ -16,7 +16,7 @@ const base = await realpath(await mkdtemp(path.join(os.tmpdir(), 'nexus-ui-quali
 const root = path.join(base, 'project'), profile = path.join(base, 'browser');
 const chromePath = process.env.NEXUS_CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-const receipt = { version: 1, at: new Date().toISOString(), verified: false, syntheticWorkspace: true, widths: [360, 390, 768, 1280], checks: [], failures: [], browserErrors: [], screenshots: [], limitations: ['Rendered checks cover the synthetic empty/default states and a synthetic chart.', 'Accessible names use labels/ARIA/text; this is not a full accessibility-tree or VoiceOver audit.', 'Contrast samples cover visible text controls on solid computed backgrounds; images and gradients need manual review.', 'Screenshots do not establish model accuracy or external service behavior.'] };
+const receipt = { version: 1, at: new Date().toISOString(), verified: false, syntheticWorkspace: true, widths: [360, 390, 768, 1280], themes: ['dark', 'light'], checks: [], failures: [], browserErrors: [], screenshots: [], limitations: ['Rendered checks cover the synthetic empty/default states and a synthetic chart.', 'Accessible names use labels/ARIA/text; this is not a full accessibility-tree or VoiceOver audit.', 'Contrast samples cover visible text controls on solid computed backgrounds; images and gradients need manual review.', 'Screenshots do not establish model accuracy or external service behavior.'] };
 let server, chrome, socket, sequence = 0;
 const pending = new Map();
 async function send(method, params = {}) {
@@ -50,7 +50,7 @@ const inspect = `(() => {
   for(const e of [...document.querySelectorAll('h1,h2,label,.primary,.secondary,p,small')].filter(visible).filter(e=>!e.disabled && e.textContent.trim()).slice(0,140)) {
     const style=getComputedStyle(e), bg=background(e), fg=rgba(style.color); if(!bg || !fg || +style.opacity<1) continue;
     const a=luminance(composite(fg,bg)), b=luminance(bg), ratio=(Math.max(a,b)+.05)/(Math.min(a,b)+.05), large=parseFloat(style.fontSize)>=24 || (parseFloat(style.fontSize)>=18.66 && +style.fontWeight>=700), required=large?3:4.5;
-    contrast.push({element:e.id || e.tagName.toLowerCase()+'.'+e.className,ratio:+ratio.toFixed(2),required,text:e.textContent.trim().slice(0,90)});
+    contrast.push({element:e.id || e.tagName.toLowerCase()+'.'+e.className,ratio:+ratio.toFixed(2),required,foreground:style.color,background:bg,text:e.textContent.trim().slice(0,90)});
   }
   const moving=[...document.querySelectorAll('*')].filter(visible).filter(e=>{const s=getComputedStyle(e);return [...s.animationDuration.split(','),...s.transitionDuration.split(',')].some(v=>parseFloat(v)>.001)}).map(e=>e.id||e.tagName);
   return {width:innerWidth,scrollWidth:document.documentElement.scrollWidth,unnamed,contrastFailures:contrast.filter(c=>c.ratio+.01<c.required),contrastSamples:contrast.length,controls:controls.length,controlIds:controls.map(e=>e.id).filter(Boolean),moving,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches};
@@ -88,6 +88,9 @@ try {
   await send('Page.navigate', { url: server.url });
   await until('Boolean(document.querySelector("#stats .stat"))');
   const tabs = await evaluate('[...document.querySelectorAll("[data-tab]")].map(e=>e.dataset.tab)');
+  for (const theme of receipt.themes) {
+    await evaluate(`document.getElementById('theme-choice').value = '${theme}'; document.getElementById('theme-choice').dispatchEvent(new Event('change'))`);
+    await until(`document.documentElement.dataset.theme === '${theme}'`);
   for (const width of receipt.widths) {
     await send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: false });
     for (const tab of tabs) {
@@ -99,13 +102,37 @@ try {
       if (metrics.unnamed.length) issues.push(`${metrics.unnamed.length} unnamed visible controls`);
       if (!metrics.reducedMotion || metrics.moving.length) issues.push('reduced motion not respected');
       if (metrics.contrastFailures.length) issues.push(`${metrics.contrastFailures.length} sampled contrast failures`);
-      const check = { width, tab, ...metrics, issues }; receipt.checks.push(check);
-      if (issues.length) receipt.failures.push({ width, tab, issues });
+      const check = { theme, width, tab, ...metrics, issues }; receipt.checks.push(check);
+      if (issues.length) {
+        receipt.failures.push({ theme, width, tab, issues });
+        const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+        const filename = `failure-${theme}-${tab}-${width}.png`; await writeFile(path.join(output, filename), Buffer.from(shot.data, 'base64')); receipt.screenshots.push(filename);
+      }
     }
     await evaluate('document.querySelector("[data-tab=visualizations]").click()');
     const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
-    const filename = `visualizations-${width}.png`; await writeFile(path.join(output, filename), Buffer.from(shot.data, 'base64')); receipt.screenshots.push(filename);
+    const filename = `visualizations-${theme}-${width}.png`; await writeFile(path.join(output, filename), Buffer.from(shot.data, 'base64')); receipt.screenshots.push(filename);
   }
+  }
+  // Real offline runtime output in a synthetic workspace, not a model-quality claim.
+  await evaluate(`document.querySelector('[data-tab="workspace"]').click(); document.getElementById('task').value = 'Inspect the synthetic project'; document.getElementById('demo').checked = true; document.getElementById('run-form').requestSubmit()`);
+  await until(`document.getElementById('task-status').textContent.startsWith('Execution finished')`);
+  receipt.taskTimeline = await evaluate(`({ status: document.getElementById('task-status').textContent, count: document.getElementById('activity-timeline').children.length, evidence: document.getElementById('task-evidence').textContent, progress: document.querySelector('.run-path [aria-current="step"]')?.textContent.trim() })`);
+  if (!receipt.taskTimeline.count || !receipt.taskTimeline.evidence.includes('not independent validation') || !receipt.taskTimeline.progress?.startsWith('3')) receipt.failures.push({ issues: ['Offline task timeline/status failed'] });
+  for (const theme of receipt.themes) {
+    await evaluate(`document.getElementById('theme-choice').value = '${theme}'; document.getElementById('theme-choice').dispatchEvent(new Event('change')); document.querySelector('.activity-section').scrollIntoView({block:'center'})`);
+    const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+    const filename = `task-timeline-${theme}.png`; await writeFile(path.join(output, filename), Buffer.from(shot.data, 'base64')); receipt.screenshots.push(filename);
+  }
+  await evaluate('window.__uiBeforeReload = true'); await send('Page.reload'); await until('!window.__uiBeforeReload && Boolean(document.querySelector("#stats .stat")) && Boolean(document.getElementById("theme-choice"))');
+  receipt.themePersistence = await evaluate(`document.getElementById('theme-choice').value === 'light' && document.documentElement.dataset.theme === 'light'`);
+  if (!receipt.themePersistence) receipt.failures.push({ issues: ['Explicit theme choice did not survive reload'] });
+  await evaluate(`document.getElementById('theme-choice').value = 'system'; document.getElementById('theme-choice').dispatchEvent(new Event('change'))`);
+  await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }, { name: 'prefers-color-scheme', value: 'dark' }] });
+  await until(`document.documentElement.dataset.theme === 'dark'`);
+  await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }, { name: 'prefers-color-scheme', value: 'light' }] });
+  await until(`document.documentElement.dataset.theme === 'light'`);
+  receipt.systemThemeChanges = true;
   await evaluate('document.querySelector("[data-tab=workspace]").focus()');
   await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
   await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });

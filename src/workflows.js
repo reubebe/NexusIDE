@@ -115,6 +115,7 @@ export async function runWorkflow(options) {
 }
 
 export async function resumeWorkflow({ root, id, approve = async () => false, signal, onEvent, commandMode, sandboxImage }) {
+  signal?.throwIfAborted();
   safeName(id);
   const previous = await readState(root, 'workflows', `${id}.json`);
   if (!['failed', 'cancelled', 'interrupted'].includes(previous.status) || previous.checkpoint?.version !== 1) throw new Error('Resume requires a stopped workflow created with --checkpoint.');
@@ -129,7 +130,7 @@ export async function resumeWorkflow({ root, id, approve = async () => false, si
   }
   if (Object.keys(steps).length === workflow.steps.length) throw new Error('All stages completed; inspect the final record instead of resuming.');
   for (const step of workflow.steps.filter(s => Object.hasOwn(steps, s.id))) if ((step.dependsOn || []).some(d => !Object.hasOwn(steps, d))) throw new Error('Checkpoint dependency history is inconsistent.');
-  if (!await approve({ type: 'workflow-resume', id, completed: Object.keys(steps), pending: workflow.steps.filter(s => !Object.hasOwn(steps, s.id)).map(s => s.id), action: 'Continue pending stages; completed stages are not replayed.' })) throw new Error('Workflow resume declined.');
+  if (!await withAbort(() => approve({ type: 'workflow-resume', id, completed: Object.keys(steps), pending: workflow.steps.filter(s => !Object.hasOwn(steps, s.id)).map(s => s.id), action: 'Continue pending stages; completed stages are not replayed.' }, { signal }), signal)) throw new Error('Workflow resume declined.');
   signal?.throwIfAborted();
   if (JSON.stringify(await readState(root, 'workflows', `${id}.json`)) !== JSON.stringify(previous)) throw new Error('Workflow changed during approval.');
   return executeWorkflow({ root, workflow, task: previous.task, approve, signal, onEvent, commandMode, sandboxImage, ...previous.checkpoint.settings, checkpoint: true, continuation: { ...previous, steps } });
