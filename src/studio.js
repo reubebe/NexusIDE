@@ -92,7 +92,7 @@ export async function executeStudioPlan(root,{id,digest},{approve=async()=>false
   safeName(id);const plan=await readState(root,'studio-plans',id+'.json');
   const {digest:stored,...payload}=plan;
   if(digest!==stored||hash(JSON.stringify(payload))!==stored)throw new Error('Edit plan changed. Review it again.');
-  if(!await approve({type:'studio-edit',...plan,hostExecution:plan.recipe.operation!=='design.layout'}))throw new Error('Studio edit declined.');
+  if((await approve({type:'studio-edit',...plan,hostExecution:plan.recipe.operation!=='design.layout'})) !== true)throw new Error('Studio edit declined.');
   signal?.throwIfAborted();
   for(const s of plan.sources)if(hash(await bytesAt(root,s.path))!==s.sha256)throw new Error('Source changed after approval.');
   if((await listState(root,'studio-assets')).length>=500)throw new Error('Studio asset limit reached. Remove unused library records first.');

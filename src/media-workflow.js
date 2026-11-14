@@ -40,7 +40,7 @@ export async function previewMediaEdit(root, input, { ffmpeg = 'ffmpeg', ffprobe
   for (const command of [ffmpeg, ffprobe]) if (typeof command !== 'string' || !command || /[\0\r\n]/.test(command)) throw new Error('Invalid media executable.');
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 900000) throw new Error('Preview timeout must be 1 second to 15 minutes.');
   const sources = await Promise.all([...new Set(plan.clips.map(c => c.path))].map(file => sourceIdentity(root, file)));
-  if (!await approve({ type: 'media-preview', plan, sources: sources.map(({ absolute, dev, ino, mtimeMs, ...source }) => source), durationSeconds: plan.clips.reduce((n, c) => n + c.end - c.start, 0), preservesOriginals: true, network: false, executables: { ffmpeg, ffprobe } })) throw new Error('Media preview declined.');
+  if ((await approve({ type: 'media-preview', plan, sources: sources.map(({ absolute, dev, ino, mtimeMs, ...source }) => source), durationSeconds: plan.clips.reduce((n, c) => n + c.end - c.start, 0), preservesOriginals: true, network: false, executables: { ffmpeg, ffprobe } })) !== true) throw new Error('Media preview declined.');
   const timeout = AbortSignal.timeout(timeoutMs), cancelled = signal ? AbortSignal.any([signal, timeout]) : timeout;
   cancelled.throwIfAborted();
   const base = await resolveProjectPath(root, 'nexus-visual-output');

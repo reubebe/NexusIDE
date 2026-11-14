@@ -38,7 +38,7 @@ export async function renderAnimation(root,input,{approve=async()=>false,signal}
  root=await realpath(root);
  if (!input || Object.keys(input).some(k=>!['script','scene','executable'].includes(k)) || !/^[A-Za-z_][A-Za-z0-9_]{0,100}$/.test(input.scene||'') || !path.isAbsolute(input.executable||'')) throw new Error('Provide a scene class and absolute path of installed manimgl.');
  const source=await motionInput(root,input.script,{script:true,maxBytes:100000}), command=await realpath(input.executable);await access(command,constants.X_OK);
- if (!await approve({type:'animation',script:source.path,sha256:source.sha256,scene:input.scene,executable:command,hostCode:true,note:'Python scene code executes with your account permissions. Review its code and imports before approval.'})) throw new Error('Animation render declined.');
+ if ((await approve({type:'animation',script:source.path,sha256:source.sha256,scene:input.scene,executable:command,hostCode:true,note:'Python scene code executes with your account permissions. Review its code and imports before approval.'})) !== true) throw new Error('Animation render declined.');
  signal?.throwIfAborted();await unchanged(root,source,true);
  const dir=await directory(root), receipt={kind:'manimgl',source:{path:source.path,sha256:source.sha256},scene:input.scene,status:'running',commands:[]};
  try {
@@ -52,7 +52,7 @@ export async function exportComparison(root,input,{approve=async()=>false,signal
  root=await realpath(root);
  if (!input || Object.keys(input).some(k=>!['source','draft','seconds'].includes(k)) || !Number.isFinite(input.seconds) || input.seconds<=0 || input.seconds>120) throw new Error('Comparison duration must be greater than zero and at most 120 seconds.');
  const sources=await Promise.all([input.source,input.draft].map(p=>motionInput(root,p)));
- if (!await approve({type:'video-comparison',sources:sources.map(({file,format,...s})=>s),seconds:input.seconds,preservesOriginals:true,audio:'source only'})) throw new Error('Comparison export declined.');
+ if ((await approve({type:'video-comparison',sources:sources.map(({file,format,...s})=>s),seconds:input.seconds,preservesOriginals:true,audio:'source only'})) !== true) throw new Error('Comparison export declined.');
  signal?.throwIfAborted();for (const s of sources) await unchanged(root,s);
  const dir=await directory(root), receipt={kind:'comparison',sources:sources.map(({file,format,...s})=>s),seconds:input.seconds,status:'running',commands:[]};
  try {

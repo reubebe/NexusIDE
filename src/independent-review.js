@@ -97,7 +97,7 @@ export function createIndependentReviewRunner(run = runAgent) {
     async function stageRun(stage, prompt, round = 1) {
       signal?.throwIfAborted();
       const definition = workflow.steps.find(step => step.id === stage);
-      if (definition.approval && !await approve({ type: 'workflow', step: stage, task: definition.task })) throw new Error(`Step declined: ${stage}`);
+      if (definition.approval && (await approve({ type: 'workflow', step: stage, task: definition.task })) !== true) throw new Error(`Step declined: ${stage}`);
       signal?.throwIfAborted();
       const { agent, provider } = prepared.get(stage);
       const boundedProvider = { ...provider, async complete(...args) {

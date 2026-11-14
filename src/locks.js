@@ -57,7 +57,7 @@ export async function removeStaleWorkspaceLock(root, key, approve = async () => 
   const filename = `${lock.key}.json`;
   const before = await readState(root, 'locks', filename);
   if (before.id !== lock.runId || before.pid !== lock.pid || before.workspace !== lock.workspace || before.started !== lock.started) throw new Error('Lock changed; inspect it again.');
-  if (!await approve({ type: 'remove-stale-lock', ...lock })) throw new Error('Lock removal declined.');
+  if ((await approve({ type: 'remove-stale-lock', ...lock })) !== true) throw new Error('Lock removal declined.');
   const current = await readState(root, 'locks', filename);
   if (JSON.stringify(current) !== JSON.stringify(before) || await processIsAlive(lock.pid) !== false) throw new Error('Lock changed or its process is active; inspect it again.');
   // New cross-project locks have an authority in the workspace and an identical

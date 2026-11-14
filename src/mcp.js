@@ -15,7 +15,7 @@ export async function connectMcp(root, agent, approve, signal, workspaceRoot = r
       signal?.throwIfAborted();
       const server = Object.hasOwn(config.mcp, name) ? config.mcp[name] : undefined;
       if (!server) throw new Error(`Missing MCP configuration: ${name}`);
-      if (!await approve({ type: 'mcp-connect', name, transport: server.transport || 'stdio', url: server.url, keyEnv: server.keyEnv, command: server.command, args: server.args, cwd: workspaceRoot, envKeys: server.envKeys || [] })) throw new Error(`MCP connection declined: ${name}`);
+      if ((await approve({ type: 'mcp-connect', name, transport: server.transport || 'stdio', url: server.url, keyEnv: server.keyEnv, command: server.command, args: server.args, cwd: workspaceRoot, envKeys: server.envKeys || [] })) !== true) throw new Error(`MCP connection declined: ${name}`);
       signal?.throwIfAborted();
       const env = commandEnvironment();
       for (const key of server.envKeys || []) { if (typeof key !== 'string' || !/^[A-Z_][A-Z0-9_]*$/.test(key)) throw new Error('Invalid MCP environment key.'); if (process.env[key]) env[key] = process.env[key]; }
@@ -43,7 +43,7 @@ export async function connectMcp(root, agent, approve, signal, workspaceRoot = r
     return { tools, close, async call(alias, args) {
       const route = routes.get(alias);
       if (!route) throw new Error('MCP tool not granted.');
-      if (!await approve({ type: 'mcp-call', server: route.server, tool: route.name, args })) return 'MCP call declined.';
+      if ((await approve({ type: 'mcp-call', server: route.server, tool: route.name, args })) !== true) return 'MCP call declined.';
       signal?.throwIfAborted();
       const raw = await route.client.callTool({ name: route.name, arguments: args }, undefined, { timeout: 60000, signal });
       const result = await extractMcpArtifacts(root, raw, { source: `${route.server}/${route.name}`, runId });

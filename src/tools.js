@@ -10,6 +10,7 @@ import { runGit } from './git.js';
 import { createVisualArtifact } from './artifacts.js';
 
 const schema = properties => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false });
+const projectPath = { type: 'string', minLength: 1, description: 'Required nonempty path relative to the project. Use "." for the project directory, or e.g. "src/app.js" for a file. Never use an empty path, an absolute path or a guessed workspace prefix.' };
 export const toolDefinitions = [
   { name: 'list_board_tasks', description: 'List project tasks explicitly available to this agent. Human-only and other claimed tasks are withheld.', parameters: schema({}) },
   { name: 'get_board_task', description: 'Read an eligible task by ID. Human-only tasks cannot be accessed.', parameters: schema({ id: { type: 'string' } }) },
@@ -22,13 +23,13 @@ export const toolDefinitions = [
   { name: 'search_code', description: 'Bounded case-insensitive literal text search in project files, with file and line references. No regex execution.', parameters: schema({ query: { type: 'string' } }) },
   { name: 'git_status', description: 'Read Git status for this workspace.', parameters: schema({}) },
   { name: 'git_diff', description: 'Read tracked changes against HEAD, without external diff programs or text converters.', parameters: schema({}) },
-  { name: 'run_command', description: 'Run an executable with arguments after explicit approval. This is host execution, not a sandbox. No shell expansion. Timeout 60 seconds; combined output capped at 100 KB.', parameters: schema({ command: { type: 'string' }, args: { type: 'array', items: { type: 'string' } }, path: { type: 'string' } }) },
-  { name: 'list_files', description: 'List one project directory. Protected paths are omitted.', parameters: schema({ path: { type: 'string' } }) },
-  { name: 'read_file', description: 'Read a UTF-8 project file, up to 100 KB.', parameters: schema({ path: { type: 'string' } }) },
-  { name: 'write_file', description: 'Create or replace a UTF-8 file in an existing directory after user approval.', parameters: schema({ path: { type: 'string' }, content: { type: 'string' } }) },
+  { name: 'run_command', description: 'Run an executable with arguments after explicit approval. This is host execution, not a sandbox. No shell expansion. Timeout 60 seconds; combined output capped at 100 KB.', parameters: schema({ command: { type: 'string' }, args: { type: 'array', items: { type: 'string' } }, path: projectPath }) },
+  { name: 'list_files', description: 'List one project directory. Pass path:"." to list the project root. Protected paths are omitted.', parameters: schema({ path: projectPath }) },
+  { name: 'read_file', description: 'Read a UTF-8 project file, up to 100 KB.', parameters: schema({ path: projectPath }) },
+  { name: 'write_file', description: 'Create or replace a UTF-8 file in an existing directory after user approval.', parameters: schema({ path: projectPath, content: { type: 'string' } }) },
 ];
 export function availableTools(agent) {
-  return toolDefinitions.filter(t => ['preview_media_edit', 'render_animation', 'export_video_comparison', 'studio_edit'].includes(t.name) ? agent.permissions.execute === true && agent.permissions.write === true : t.name === 'run_command' ? agent.permissions.execute === true : ['write_file', 'create_visualization', 'update_board_task'].includes(t.name) ? agent.permissions.write : agent.permissions.read);
+  return toolDefinitions.filter(t => ['preview_media_edit', 'render_animation', 'export_video_comparison', 'studio_edit'].includes(t.name) ? agent.permissions?.execute === true && agent.permissions?.write === true : t.name === 'run_command' ? agent.permissions?.execute === true : ['write_file', 'create_visualization', 'update_board_task'].includes(t.name) ? agent.permissions?.write === true : agent.permissions?.read === true);
 }
 export async function executeTool(root, agent, name, args, approve, { signal, commandMode = 'host', sandboxImage } = {}) {
   signal?.throwIfAborted();
@@ -40,7 +41,7 @@ export async function executeTool(root, agent, name, args, approve, { signal, co
     if(name==='list_board_tasks') return JSON.stringify(await listBoardTasks(root,actor));
     if(name==='get_board_task') return JSON.stringify(await getBoardTask(root,args.id,actor));
     await getBoardTask(root,args.id,actor);
-    if(!await approve({type:'board-update',id:args.id,changes:args.changes}))return 'Task update declined.';
+    if((await approve({type:'board-update',id:args.id,changes:args.changes})) !== true)return 'Task update declined.';
     signal?.throwIfAborted();return JSON.stringify(await updateBoardTask(root,args.id,args.changes,actor));
   }
   if (name === 'studio_edit') {
@@ -62,7 +63,7 @@ export async function executeTool(root, agent, name, args, approve, { signal, co
   if (name === 'create_visualization') {
     const { validateVisualSpec } = await import('./visual-spec.js');
     const spec = validateVisualSpec(args.spec);
-    if (!await approve({ type: 'visualization', title: spec.title, spec })) return 'Visualization declined.';
+    if ((await approve({ type: 'visualization', title: spec.title, spec })) !== true) return 'Visualization declined.';
     signal?.throwIfAborted();
     return JSON.stringify(await createVisualArtifact(root, spec, { source: `Agent ${agent.name || 'tool'}` }));
   }
@@ -89,7 +90,7 @@ export async function executeTool(root, agent, name, args, approve, { signal, co
     if (typeof args.command !== 'string' || !args.command || args.command.includes('\0') || !Array.isArray(args.args) || args.args.some(a => typeof a !== 'string' || a.includes('\0'))) throw new Error('Expected executable and string arguments.');
     if (!(await lstat(file)).isDirectory()) throw new Error('Command path must be a directory.');
     if (!['host', 'docker'].includes(commandMode)) throw new Error('Invalid command mode.');
-    if (!await approve({ type: 'command', command: args.command, args: args.args, cwd: file, mode: commandMode, image: sandboxImage })) return 'Command declined by user.';
+    if ((await approve({ type: 'command', command: args.command, args: args.args, cwd: file, mode: commandMode, image: sandboxImage })) !== true) return 'Command declined by user.';
     signal?.throwIfAborted();
     await resolveProjectPath(root, args.path);
     return JSON.stringify(commandMode === 'docker' ? await runSandbox(root, file, args.command, args.args, sandboxImage, signal) : await runProcess(args.command, args.args, { cwd: file, signal }));
@@ -116,7 +117,7 @@ export async function executeTool(root, agent, name, args, approve, { signal, co
     const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     try { before = utf8Text(await boundedRead(handle, 100_000)); } finally { await handle.close(); }
   } catch (e) { if (e.code !== 'ENOENT') throw e; }
-  if (!await approve({ path: args.path, before, after: args.content })) return 'Write declined by user.';
+  if ((await approve({ path: args.path, before, after: args.content })) !== true) return 'Write declined by user.';
   signal?.throwIfAborted();
   await resolveProjectPath(root, args.path);
   const flags = constants.O_RDWR | constants.O_NOFOLLOW | (before === null ? constants.O_CREAT | constants.O_EXCL : 0);

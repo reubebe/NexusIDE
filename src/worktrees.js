@@ -138,7 +138,7 @@ export async function mergeWorktree(root, name, approve = async () => false) {
   try {
     releaseTarget = await acquireWorkspace(root, target, randomUUID());
     const review = await mergeReview(root, target, name);
-    if (!await approve(review)) throw new Error('Merge declined.');
+    if ((await approve(review)) !== true) throw new Error('Merge declined.');
     if (JSON.stringify(await mergeReview(root, target, name)) !== JSON.stringify(review)) throw new Error('Branches changed during approval; review the merge again.');
     await git(root, ['merge', '--ff-only', '--no-edit', '--no-stat', review.after]);
     return { name, branch: review.targetBranch, before: review.before, after: await git(root, ['rev-parse', 'HEAD']), files: review.files };

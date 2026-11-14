@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "at": "2026-11-13T04:33:47.633Z",
+  "suite": "real-local-agent-quality",
+  "model": "gpt-oss:20b",
+  "endpoint": "http://127.0.0.1:11435/v1",
+  "syntheticWorkspace": true,
+  "realModel": true,
+  "verified": true,
+  "cases": [
+    {
+      "name": "bug-repair-test-and-review-handoff",
+      "status": "passed",
+      "started": "2026-11-13T04:33:47.708Z",
+      "before": "TAP version 13\n# Subtest: []\nok 1 - []\n  ---\n  duration_ms: 0.416\n  type: 'test'\n  ...\n# Subtest: [{\"price\":7,\"quantity\":3}]\nnot ok 2 - [{\"price\":7,\"quantity\":3}]\n  ---\n  duration_ms: 0.397167\n  type: 'test'\n  location: '[synthetic-workspace]\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly equal:\n    \n    7 !== 21\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 21\n  actual: 7\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> ([synthetic-workspace]\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:744:18)\n    Test.postRun (node:internal/test_runner/test:1173:19)\n    Test.run (node:internal/test_runner/test:1101:12)\n    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)\n  ...\n# Subtest: [{\"price\":7,\"quantity\":3},{\"price\":2,\"quantity\":4}]\nnot ok 3 - [{\"price\":7,\"quantity\":3},{\"price\":2,\"quantity\":4}]\n  ---\n  duration_ms: 0.133625\n  type: 'test'\n  location: '[synthetic-workspace]\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly equal:\n    \n    9 !== 29\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 29\n  actual: 9\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> ([synthetic-workspace]\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:744:18)\n    Test.postRun (node:internal/test_runner/test:1173:19)\n    Test.run (node:internal/test_runner/test:1101:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)\n  ...\n# Subtest: [{\"price\":0.1,\"quantity\":3}]\nnot ok 4 - [{\"price\":0.1,\"quantity\":3}]\n  ---\n  duration_ms: 0.07425\n  type: 'test'\n  location: '[synthetic-workspace]\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly equal:\n    \n    0.1 !== 0.3\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0.3\n  actual: 0.1\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> ([synthetic-workspace]\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:744:18)\n    Test.postRun (node:internal/test_runner/test:1173:19)\n    Test.run (node:internal/test_runner/test:1101:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)\n  ...\n# Subtest: [{\"price\":10,\"quantity\":0}]\nnot ok 5 - [{\"price\":10,\"quantity\":0}]\n  ---\n  duration_ms: 0.056125\n  type: 'test'\n  location: '[synthetic-workspace]\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly equal:\n    \n    10 !== 0\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 0\n  actual: 10\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> ([synthetic-workspace]\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:744:18)\n    Test.postRun (node:internal/test_runner/test:1173:19)\n    Test.run (node:internal/test_runner/test:1101:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 1\n# fail 4\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 44.943167\n",
+      "approvals": [
+        {
+          "type": "workflow",
+          "allowed": true
+        },
+        {
+          "type": "write",
+          "allowed": true
+        },
+        {
+          "type": "command",
+          "allowed": true
+        }
+      ],
+      "after": "TAP version 13\n# Subtest: []\nok 1 - []\n  ---\n  duration_ms: 0.428083\n  type: 'test'\n  ...\n# Subtest: [{\"price\":7,\"quantity\":3}]\nok 2 - [{\"price\":7,\"quantity\":3}]\n  ---\n  duration_ms: 0.058958\n  type: 'test'\n  ...\n# Subtest: [{\"price\":7,\"quantity\":3},{\"price\":2,\"quantity\":4}]\nok 3 - [{\"price\":7,\"quantity\":3},{\"price\":2,\"quantity\":4}]\n  ---\n  duration_ms: 0.043875\n  type: 'test'\n  ...\n# Subtest: [{\"price\":0.1,\"quantity\":3}]\nok 4 - [{\"price\":0.1,\"quantity\":3}]\n  ---\n  duration_ms: 0.042833\n  type: 'test'\n  ...\n# Subtest: [{\"price\":10,\"quantity\":0}]\nok 5 - [{\"price\":10,\"quantity\":0}]\n  ---\n  duration_ms: 0.043875\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 41.941875\n",
+      "handoffs": {
+        "tester": [
+          {
+            "step": "code",
+            "workspace": "[synthetic-workspace]",
+            "report": "**What changed**\n\nI rewrote the `exports.total` function in **invoice.cjs** to calculate the correct subtotal for each invoice row and round the result to two decimal places.\n\n**Key fixes**\n\n| Old implementation | New implementation |\n|---------------------|---------------------|\n| `rows.reduce((sum, row) => sum + row.price, 0)` | `rows.reduce((sum, {price, quantity}) => sum + price * quantity, 0).toFixed(2)` |\n| Only summed `price`, ignored `quantity`, produced raw floats. | Multiplies `price` by `quantity` for each row and rounds the total to 2 decimal places. |\n| Returned a number directly. | Returns a number parsed back from the fixed‑point string (`parseFloat`). |\n\n**Result**\n\nThe `total()` function now:\n\n1. Adds each row’s `price * quantity`.  \n2. Handles empty lists (returns 0).  \n3. Rounds the final amount to two decimal places, satisfying the acceptance tests."
+          }
+        ],
+        "reviewer": [
+          {
+            "step": "test",
+            "workspace": "[synthetic-workspace]",
+            "report": "**Execution Result**\n\nAll acceptance tests passed:\n\n```\nTAP version 13\n# Subtest: []\nok 1 - []\n  ---\n  duration_ms: 0.533917\n  type: 'test'\n  ...\n# Subtest: [{\"price\":7,\"quantity\":3}]\nok 2 - [{\"price\":7,\"quantity\":3}]\n  ---\n  duration_ms: 0.06275\n  type: 'test'\n  ...\n# Subtest: [{\"price\":7,\"quantity\":3},{\"price\":2,\"quantity\":4}]\nok 3 - [{\"price\":7,\"quantity\":3},{\"price\":2,\"quantity\":4}]\n  ---\n  duration_ms: 0.044208\n  type: 'test'\n  ...\n# Subtest: [{\"price\":0.1,\"quantity\":3}]\nok 4 - [{\"price\":0.1,\"quantity\":3}]\n  ---\n  duration_ms: 0.041416\n  type: 'test'\n  ...\n# Subtest: [{\"price\":10,\"quantity\":0}]\nok 5 - [{\"price\":10,\"quantity\":0}]\n  ---\n  duration_ms: 0.041417\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 43.474042\n```\n\nAll five subtests succeeded, confirming that the invoice total calculation function now correctly handles price, quantity, and rounding."
+          }
+        ]
+      },
+      "acceptance": "Five immutable acceptance tests failed before and passed after; actual code/write/test/review tools, approval and handoff evidence checked.",
+      "durationMs": 45483,
+      "runs": [
+        {
+          "id": "77692e8a-f089-4096-9d36-f2497e21f7a7",
+          "agent": "coder",
+          "model": "gpt-oss:20b",
+          "status": "completed",
+          "execution": {
+            "attempted": 4,
+            "completed": 4,
+            "failed": 0,
+            "denied": 0,
+            "unresolved": 0
+          },
+          "usage": {
+            "input": 4880,
+            "output": 854,
+            "reported": true,
+            "estimatedCost": null
+          },
+          "requests": 5,
+          "tools": [
+            {
+              "name": "list_files",
+              "outcome": "completed"
+            },
+            {
+              "name": "read_file",
+              "outcome": "completed"
+            },
+            {
+              "name": "read_file",
+              "outcome": "completed"
+            },
+            {
+              "name": "write_file",
+              "outcome": "completed"
+            }
+          ],
+          "toolErrors": [],
+          "answer": "**What changed**\n\nI rewrote the `exports.total` function in **invoice.cjs** to calculate the correct subtotal for each invoice row and round the result to two decimal places.\n\n**Key fixes**\n\n| Old implementation | New implementation |\n|---------------------|---------------------|\n| `rows.reduce((sum, row) => sum + row.price, 0)` | `rows.reduce((sum, {price, quantity}) => sum + price * quantity, 0).toFixed(2)` |\n| Only summed `price`, ignored `quantity`, produced raw floats. | Multiplies `price` by `quantity` for each row and rounds the total to 2 decimal places. |\n| Returned a number directly. | Returns a number parsed back from the fixed‑point string (`parseFloat`). |\n\n**Result**\n\nThe `total()` function now:\n\n1. Adds each row’s `price * quantity`.  \n2. Handles empty lists (returns 0).  \n3. Rounds the final amount to two decimal places, satisfying the acceptance tests."
+        },
+        {
+          "id": "82dd28bb-1aab-482f-9e92-106f3704e861",
+          "agent": "tester",
+          "model": "gpt-oss:20b",
+          "status": "completed",
+          "execution": {
+            "attempted": 1,
+            "completed": 1,
+            "failed": 0,
+            "denied": 0,
+            "unresolved": 0
+          },
+          "usage": {
+            "input": 2612,
+            "output": 473,
+            "reported": true,
+            "estimatedCost": null
+          },
+          "requests": 2,
+          "tools": [
+            {
+              "name": "run_command",
+              "outcome": "completed"
+            }
+          ],
+          "toolErrors": [],
+          "answer": "**Execution Result**\n\nAll acceptance tests passed:\n\n```\nTAP version 13\n# Subtest: []\nok 1 - []\n  ---\n  duration_ms: 0.533917\n  type: 'test'\n  ...\n# Subtest: [{\"price\":7,\"quantity\":3}]\nok 2 - [{\"price\":7,\"quantity\":3}]\n  ---\n  duration_ms: 0.06275\n  type: 'test'\n  ...\n# Subtest: [{\"price\":7,\"quantity\":3},{\"price\":2,\"quantity\":4}]\nok 3 - [{\"price\":7,\"quantity\":3},{\"price\":2,\"quantity\":4}]\n  ---\n  duration_ms: 0.044208\n  type: 'test'\n  ...\n# Subtest: [{\"price\":0.1,\"quantity\":3}]\nok 4 - [{\"price\":0.1,\"quantity\":3}]\n  ---\n  duration_ms: 0.041416\n  type: 'test'\n  ...\n# Subtest: [{\"price\":10,\"quantity\":0}]\nok 5 - [{\"price\":10,\"quantity\":0}]\n  ---\n  duration_ms: 0.041417\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 43.474042\n```\n\nAll five subtests succeeded, confirming that the invoice total calculation function now correctly handles price, quantity, and rounding."
+        },
+        {
+          "id": "ae01540c-a832-4e4e-9928-863400cc9aaa",
+          "agent": "reviewer",
+          "model": "gpt-oss:20b",
+          "status": "completed",
+          "execution": {
+            "attempted": 3,
+            "completed": 3,
+            "failed": 0,
+            "denied": 0,
+            "unresolved": 0
+          },
+          "usage": {
+            "input": 4263,
+            "output": 642,
+            "reported": true,
+            "estimatedCost": null
+          },
+          "requests": 4,
+          "tools": [
+            {
+              "name": "list_files",
+              "outcome": "completed"
+            },
+            {
+              "name": "read_file",
+              "outcome": "completed"
+            },
+            {
+              "name": "read_file",
+              "outcome": "completed"
+            }
+          ],
+          "toolErrors": [],
+          "answer": "The implementation introduced a straightforward calculation that works for the provided test cases.  However, there are two potential remaining issues:\n\n1. **Floating‑point rounding** – JavaScript’s binary double‑precision arithmetic can produce numbers such as 1.005 × 1 = 1.0049999…, which `toFixed(2)` will round down to “1.00” instead of the mathematically correct “1.01”.  This subtle rounding error will surface if invoices involve amounts that, in decimal math, require rounding up at the third decimal place.\n\n2. **Input validation** – The code assumes each element of `rows` has numeric `price` and `quantity` properties.  If either is missing or not a number, the multiplication will yield `NaN`, and the whole reduction will return `NaN`, which could silently propagate errors in production code.\n\nNo changes were made to the test harness, and the tests only cover a limited set of simple cases.  If you need to cover the edge cases mentioned above, consider adding explicit validation or using a decimal library that handles rounding correctly."
+        }
+      ]
+    }
+  ],
+  "environment": {
+    "node": "v22.18.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "harnessSha256": "faac8fa090785815e7d1ac85e1fabaf967638d9ecdaf995b77448857a41dc410",
+  "ollama": "0.40.1",
+  "installedModelDigests": [
+    "21fd97703fbeb8b4a74b2ef1648aca44c8daeb32dcb019f88ec5ab4c97397892",
+    "9ba9cc2b4e02463b933096090530aef679d534dd91ecc9afadfb2dbfdc59f3c5"
+  ],
+  "selection": "bug-repair-test-and-review-handoff",
+  "finished": "2026-11-13T04:34:33.194Z",
+  "summary": {
+    "passed": 1,
+    "failed": 0,
+    "requests": 11
+  }
+}

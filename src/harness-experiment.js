@@ -207,8 +207,8 @@ export async function listHarnessFeedback(root, id) {
 export async function reviewHarnessExperiment(root, id, input, { approve = async () => false } = {}) {
   if (!keys(input, ['action', 'reviewer', 'notes']) || !['adopt', 'reject', 'rollback'].includes(input.action) || !string(input.reviewer, 100) || !string(input.notes, 4000)) throw new Error('Review needs adopt/reject/rollback, a reviewer and notes.');
   const before = await getHarnessExperiment(root, id);
-  if (!await approve({ type: `harness-${input.action}`, experimentId: id, agent: before.agent, baselineRevision: before.baselineRevision, candidateRevision: before.candidateRevision, ...input,
-    notice: input.action === 'reject' ? 'Retains rejected evidence without changing the agent.' : 'Changes only this agent’s instructions after checking its exact saved revision. Existing permissions and provider settings remain unchanged.' })) throw new Error('Harness review declined.');
+  if ((await approve({ type: `harness-${input.action}`, experimentId: id, agent: before.agent, baselineRevision: before.baselineRevision, candidateRevision: before.candidateRevision, ...input,
+    notice: input.action === 'reject' ? 'Retains rejected evidence without changing the agent.' : 'Changes only this agent’s instructions after checking its exact saved revision. Existing permissions and provider settings remain unchanged.' })) !== true) throw new Error('Harness review declined.');
   const release = await acquireWorkspace(root, root, randomUUID());
   try {
     const record = await getHarnessExperiment(root, id), current = await loadAgent(root, record.agent);

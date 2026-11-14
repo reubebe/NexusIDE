@@ -29,7 +29,7 @@ export async function recoverActivity(root, kind, id, approve = async () => fals
   const record = await readState(root, folder, filename);
   if (record.status !== 'running') throw new Error('Only records still marked running can be recovered.');
   if (await ownerStatus(record.owner) !== 'absent') throw new Error('Recovery requires a confirmed absent process on this host. Active, legacy, and other-host records are left unchanged.');
-  if (!await approve({ type: 'recover-activity', kind, id, owner: record.owner, started: record.started, action: 'Mark interrupted; preserve history and files; do not replay tools.' })) throw new Error('Recovery declined.');
+  if ((await approve({ type: 'recover-activity', kind, id, owner: record.owner, started: record.started, action: 'Mark interrupted; preserve history and files; do not replay tools.' })) !== true) throw new Error('Recovery declined.');
   const latest = await readState(root, folder, filename);
   if (JSON.stringify(latest) !== JSON.stringify(record) || await ownerStatus(latest.owner) !== 'absent') throw new Error('Activity changed during approval; inspect it again.');
   const at = new Date().toISOString();

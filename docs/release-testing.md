@@ -38,6 +38,8 @@ Receipt fields include `schemaVersion`, `suite`, artifact digests, source revisi
 
 ## Clean-device acceptance matrix
 
+For an additional **developer-machine offline** rehearsal, run `npm run verify:offline-desktop` after packaging. It reuses the lifecycle checks above in a macOS kernel sandbox, proves external networking is denied while loopback works, and saves `.nexus/verification/offline-desktop.json`. Its subprocesses retain the existing isolated data/HOME and system-only PATH. It does not change system network/security settings. Its `cleanMachineVerified` and `releaseCertified` flags remain false. This complements the clean-device matrix below; it does not substitute for it.
+
 Use a physical Mac or a fresh macOS VM snapshot that has never launched this app/version. A second account on the development Mac helps with user-state testing but does not clear OS-level caches or establish a clean machine. Record the device/VM identifier without personal identifiers, OS build, native CPU architecture, artifact SHA-256, app version, source revision, tester, UTC time and expected versus actual result.
 
 Test each distributed architecture natively: `arm64` on Apple Silicon and `x64` on Intel. A Rosetta run is separate optional evidence, not an Intel-machine substitute. Cover the declared minimum macOS version and the current supported macOS version for each advertised build. Mark unavailable combinations `not-run` and narrow published support claims until they pass.

@@ -84,7 +84,7 @@ async function executeWorkflow({ root, workflow, task, checkpoint = false, conti
       const results = await Promise.allSettled(ready.map(async step => {
         record.steps[step.id] = { status: 'pending', startedExecution: false }; await save();
         signal?.throwIfAborted();
-        if (step.approval && !await approve({ type: 'workflow', step: step.id, task: step.task })) throw new Error(`Step declined: ${step.id}`);
+        if (step.approval && (await approve({ type: 'workflow', step: step.id, task: step.task })) !== true) throw new Error(`Step declined: ${step.id}`);
         signal?.throwIfAborted();
         const workspace = isolated ? await createWorktree(root, `wf-${id.slice(0, 8)}-${step.id}`.slice(0, 64)) : root;
         const handoffs = (step.dependsOn || []).map(d => ({ step: d, workspace: record.steps[d].workspace, report: record.steps[d].report }));
@@ -130,7 +130,7 @@ export async function resumeWorkflow({ root, id, approve = async () => false, si
   }
   if (Object.keys(steps).length === workflow.steps.length) throw new Error('All stages completed; inspect the final record instead of resuming.');
   for (const step of workflow.steps.filter(s => Object.hasOwn(steps, s.id))) if ((step.dependsOn || []).some(d => !Object.hasOwn(steps, d))) throw new Error('Checkpoint dependency history is inconsistent.');
-  if (!await withAbort(() => approve({ type: 'workflow-resume', id, completed: Object.keys(steps), pending: workflow.steps.filter(s => !Object.hasOwn(steps, s.id)).map(s => s.id), action: 'Continue pending stages; completed stages are not replayed.' }, { signal }), signal)) throw new Error('Workflow resume declined.');
+  if ((await withAbort(() => approve({ type: 'workflow-resume', id, completed: Object.keys(steps), pending: workflow.steps.filter(s => !Object.hasOwn(steps, s.id)).map(s => s.id), action: 'Continue pending stages; completed stages are not replayed.' }, { signal }), signal)) !== true) throw new Error('Workflow resume declined.');
   signal?.throwIfAborted();
   if (JSON.stringify(await readState(root, 'workflows', `${id}.json`)) !== JSON.stringify(previous)) throw new Error('Workflow changed during approval.');
   return executeWorkflow({ root, workflow, task: previous.task, approve, signal, onEvent, commandMode, sandboxImage, ...previous.checkpoint.settings, checkpoint: true, continuation: { ...previous, steps } });
