@@ -38,6 +38,8 @@ A native WKWebView smoke check used a disposable project through the actual macO
 
 This is an offline rehearsal on the development Mac, not a clean-machine release test. No independent Mac/VM, Intel/minimum-OS matrix, standard-user account, actual cross-version migration, quarantined download, Developer ID identity or notarization submission was available or manufactured. No security setting was bypassed. The existing native architecture and local-only launch requirements remain intact.
 
+The final app and `NexusIDE-0.4.0-arm64.dmg` were rebuilt from executable-source commit `aee4169` at `2026-11-14T03:01:59.481Z` (November 13 locally). All 17 relocated-bundle checks and 13 kernel-isolated offline lifecycle checks passed. The verified app replaced `/Applications/NexusIDE.app`; its previous copy was retained. The installed copy passed signature/manifest verification and an actual native bootstrap/shutdown check. [Final desktop receipt](evidence/2026-11-13/desktop-validation.json) records artifact hashes and exact checks. Signing remains ad-hoc, notarization false; the dirty-source flag correctly reflects the user's preserved unrelated media changes. This final evidence paragraph was recorded after packaging and does not alter executable code.
+
 ## Remaining work, bounded by evidence
 
 1. **Public distribution gate:** obtain owner-signed/notarized artifacts and test them on an independent clean Mac/VM, including quarantine, standard-user permissions, actual supported-version upgrades and the advertised OS/CPU matrix.

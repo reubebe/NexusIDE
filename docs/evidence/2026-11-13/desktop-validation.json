@@ -1,0 +1,112 @@
+{
+  "recordedAt": "2026-11-14T03:04:03.237Z",
+  "artifact": {
+    "version": "0.4.0",
+    "arch": "arm64",
+    "signing": "ad-hoc",
+    "reportedNotarized": false,
+    "notarizationIndependentlyVerified": false,
+    "sourceRevision": "aee416946f0b46c85c938321bb4a6e437b89b1de",
+    "sourceDirty": true,
+    "reportSha256": "4fb2146048ea2f22fcb20d991afd7d0c2e65d5c01fe6f2d9d4c597a7f9c58ab4",
+    "dmgSha256": "3337913af8f40a1530998f9821e05722eb60be90b607fb286605facb47842d88",
+    "bundledNodeSha256": "0fbd19ac183dc3a711e86a313b522f61484c10a84c0821e7ec23abf080673bb5"
+  },
+  "offline": {
+    "verified": true,
+    "checks": [
+      {
+        "name": "artifact-metadata-and-digests",
+        "status": "passed"
+      },
+      {
+        "name": "macos-native-architecture",
+        "status": "passed"
+      },
+      {
+        "name": "disk-image-integrity",
+        "status": "passed"
+      },
+      {
+        "name": "application-code-signature",
+        "status": "passed"
+      },
+      {
+        "name": "read-only-disk-image-install-source",
+        "status": "passed"
+      },
+      {
+        "name": "install-copy-and-native-bootstrap",
+        "status": "passed"
+      },
+      {
+        "name": "relaunch-preserves-project-history-and-agents",
+        "status": "passed"
+      },
+      {
+        "name": "app-replacement-preserves-state",
+        "status": "passed"
+      },
+      {
+        "name": "uninstall-app-retains-project-and-application-data",
+        "status": "passed"
+      },
+      {
+        "name": "restore-app-and-reopen-retained-data",
+        "status": "passed"
+      },
+      {
+        "name": "closed-state-backup-and-separate-location-restore",
+        "status": "passed"
+      },
+      {
+        "name": "isolated-install-lifecycle",
+        "status": "passed"
+      },
+      {
+        "name": "disk-image-detached",
+        "status": "passed"
+      }
+    ],
+    "networkIsolation": {
+      "mechanism": "macOS sandbox-exec inherited by child processes",
+      "externalProbe": "EPERM",
+      "loopbackProbe": "passed",
+      "profile": "(version 1)(allow default)(deny network*)(allow network-outbound (remote ip \"localhost:*\"))(allow network-inbound (local ip \"localhost:*\"))(allow network-bind (local ip \"localhost:*\"))"
+    },
+    "cleanMachineVerified": false,
+    "releaseCertified": false
+  },
+  "bundle": {
+    "verified": true,
+    "checks": [
+      "relocated-signature-valid",
+      "native-provider-credential-allowlist",
+      "native-numbered-provider-credential-allowlist",
+      "native-owned-bundled-bootstrap",
+      "native-shutdown-closes-service",
+      "bundled-cli-demo",
+      "persisted-sqlite-history",
+      "bundled-visual-guide-and-brand",
+      "bundled-provider-picker-all-eight-keys",
+      "bundled-provider-picker-numbered-accounts",
+      "bundled-provider-selection-without-secret-persistence",
+      "bundled-versioned-memory-and-fts",
+      "bundled-reviewable-offline-distillation",
+      "relocated-authenticated-dashboard",
+      "bundled-native-pty",
+      "parent-eof-shutdown",
+      "separate-private-app-data"
+    ]
+  },
+  "installed": {
+    "verified": true,
+    "sourceRevision": "aee416946f0b46c85c938321bb4a6e437b89b1de",
+    "checks": [
+      "installed-copy-signature-and-manifest",
+      "installed-native-bootstrap-and-owned-runtime-shutdown"
+    ],
+    "signing": "ad-hoc",
+    "notarized": false
+  }
+}
